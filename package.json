@@ -29,12 +29,17 @@
     ],
     "win": {
       "icon": "build/icon.ico",
-      "target": "nsis"
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "artifactName": "anime-tracker-${version}-win.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true
+      "createDesktopShortcut": true,
+      "artifactName": "Anime-Tracker-Setup-${version}.${ext}"
     },
     "mac": {
       "icon": "build/icon.png"
