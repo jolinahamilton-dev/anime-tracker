@@ -1,7 +1,7 @@
 // Google Drive als Ablage: nur der versteckte App-Ordner (appDataFolder, Berechtigung drive.appdata).
 // Reine REST-Aufrufe per fetch – gleich am PC und im Browser. Den Zugangstoken liefert die Plattform.
 
-export interface DriveDatei { id: string; name: string }
+export interface DriveDatei { id: string; name: string; createdTime: string }
 
 const API = 'https://www.googleapis.com/drive/v3/files'
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files'
@@ -29,7 +29,7 @@ export function drive(holeToken: () => Promise<string>) {
       const dateien: DriveDatei[] = []
       let seite: string | undefined
       do {
-        const p = new URLSearchParams({ spaces: 'appDataFolder', fields: 'nextPageToken, files(id, name)', pageSize: '1000' })
+        const p = new URLSearchParams({ spaces: 'appDataFolder', fields: 'nextPageToken, files(id, name, createdTime)', pageSize: '1000' })
         if (seite) p.set('pageToken', seite)
         const j = await (await anfrage(`${API}?${p}`)).json()
         dateien.push(...j.files)
@@ -42,16 +42,18 @@ export function drive(holeToken: () => Promise<string>) {
       return (await anfrage(`${API}/${id}?alt=media`)).text()
     },
 
-    async speichere(name: string, inhalt: string): Promise<void> {
+    /** Liefert die ID der neuen Datei */
+    async speichere(name: string, inhalt: string): Promise<string> {
       const grenze = 'trenner' + Math.random().toString(36).slice(2)
       const body = `--${grenze}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
         JSON.stringify({ name, parents: ['appDataFolder'] }) +
         `\r\n--${grenze}\r\nContent-Type: application/json\r\n\r\n${inhalt}\r\n--${grenze}--`
-      await anfrage(`${UPLOAD}?uploadType=multipart&fields=id`, {
+      const res = await anfrage(`${UPLOAD}?uploadType=multipart&fields=id`, {
         method: 'POST',
         headers: { 'Content-Type': `multipart/related; boundary=${grenze}` },
         body,
       })
+      return (await res.json()).id
     },
 
     async loesche(id: string): Promise<void> {

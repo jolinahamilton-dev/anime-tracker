@@ -38,7 +38,11 @@ function schreibe(daten: Uint8Array): Promise<void> {
     t.objectStore(STORE).put(daten, SCHLUESSEL)
     t.oncomplete = () => resolve()
     t.onerror = () => reject(t.error)
-  })).catch(e => console.error('Speichern fehlgeschlagen:', e))
+  })).catch(e => {
+    console.error('Speichern fehlgeschlagen:', e)
+    // Sichtbar machen (z. B. Speicher voll) – sonst gingen Änderungen still verloren
+    window.dispatchEvent(new CustomEvent('speicherfehler', { detail: String(e?.name ?? e) }))
+  })
   return schreibtGerade
 }
 

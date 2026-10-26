@@ -2,9 +2,10 @@
 // Plattformunabhängig – Anmeldung und Schlüssel-Ablage liefert die Plattform (PC bzw. Handy).
 import type { IpcMain } from 'electron'
 import { drive, DriveDatei } from './drive'
-import { entschluessele, erzeugePruefwert, leiteSchluesselAb, neuesSalz, passtSchluessel, verschluessele } from './krypto'
+import { entschluessele, erzeugePruefwert, leiteSchluesselAb, MIN_PASSWORT, neuesSalz, passtSchluessel, verschluessele } from './krypto'
 import {
-  eigeneGeraeteId, gesamtstand, hochgeladenBis, letzteNr, LogZeile, neueEigeneAenderungen, setzeHochgeladenBis, spieleEin,
+  eigeneGeraeteId, gesamtstand, hochgeladenBis, letzteNr, LogZeile, neueEigeneAenderungen, setzeAbgleichZurueck,
+  setzeHochgeladenBis, spieleEin,
 } from './abgleich'
 import { dbGet, getDb, schedulePersist } from '../db/kern'
 
@@ -54,27 +55,42 @@ export function erstelleSyncDienst(plattform: SyncPlattform) {
     }
   }
 
+  /** Das gültige salz.json – haben zwei Geräte gleichzeitig eins angelegt, gilt das ältere */
+  async function ladeSalz(dateien: DriveDatei[]): Promise<{ id: string; salz: string; pruef: string } | null> {
+    const d = dateien.filter(x => x.name === 'salz.json')
+      .sort((a, b) => a.createdTime.localeCompare(b.createdTime) || a.id.localeCompare(b.id))[0]
+    if (!d) return null
+    const { salz, pruef } = JSON.parse(await ablage.lade(d.id))
+    return { id: d.id, salz, pruef }
+  }
+
   /** Abgleich-Passwort festlegen (erstes Gerät) bzw. eingeben (weitere Geräte) */
   async function setzePasswort(passwort: string): Promise<{ ok: boolean; neu?: boolean; fehler?: string }> {
-    if (passwort.length < 8) return { ok: false, fehler: 'Das Passwort braucht mindestens 8 Zeichen.' }
+    if (passwort.length < MIN_PASSWORT) return { ok: false, fehler: `Das Passwort braucht mindestens ${MIN_PASSWORT} Zeichen.` }
     try {
-      const dateien = await ablage.liste()
-      const salzDatei = dateien.find(d => d.name === 'salz.json')
-      let schluessel: string
+      let s = await ladeSalz(await ablage.liste())
+      let schluessel: string | null = null
       let neu = false
-      if (salzDatei) {
-        const { salz, pruef } = JSON.parse(await ablage.lade(salzDatei.id))
-        schluessel = await leiteSchluesselAb(passwort, salz)
-        if (!(await passtSchluessel(schluessel, pruef))) {
-          return { ok: false, fehler: 'Das Passwort passt nicht zu dem, das auf dem anderen Gerät festgelegt wurde.' }
-        }
-      } else {
+      if (!s) {
         const salz = neuesSalz()
         schluessel = await leiteSchluesselAb(passwort, salz)
-        await ablage.speichere('salz.json', JSON.stringify({ salz, pruef: await erzeugePruefwert(schluessel) }))
-        neu = true
+        const id = await ablage.speichere('salz.json', JSON.stringify({ salz, pruef: await erzeugePruefwert(schluessel) }))
+        s = await ladeSalz(await ablage.liste())
+        if (s && s.id !== id) {
+          // Ein anderes Gerät war im selben Moment schneller – dessen Passwort gilt
+          await ablage.loesche(id)
+          schluessel = null
+        } else neu = true
       }
+      if (!s) throw new Error('salz.json fehlt nach dem Anlegen')
+      schluessel ??= await leiteSchluesselAb(passwort, s.salz)
+      if (!(await passtSchluessel(schluessel, s.pruef))) {
+        return { ok: false, fehler: 'Das Passwort passt nicht zu dem, das auf dem anderen Gerät festgelegt wurde.' }
+      }
+      // Neuer Schlüssel = neuer Anfang: alles hochladen, alle anderen Geräte von vorn einspielen
+      setzeAbgleichZurueck()
       await plattform.speichereSchluessel(schluessel)
+      fehler = null
       await abgleichen()
       return { ok: true, neu }
     } catch (e: any) {
@@ -87,45 +103,69 @@ export function erstelleSyncDienst(plattform: SyncPlattform) {
     const schluessel = await plattform.ladeSchluessel()
     if (!schluessel || !(await plattform.istVerbunden())) return status()
     laeuft = true
+    const probleme: string[] = []
     try {
-      const eigene = eigeneGeraeteId()
-      const dateien = (await ablage.liste()).map(zerlege).filter((n): n is Name => !!n)
-      const lade = async <T>(n: Name) => entschluessele<T>(schluessel, await ablage.lade(n.datei.id))
+      const alle = await ablage.liste()
 
-      // 1) Änderungen der anderen Geräte einspielen
+      // 0) Gilt unser Schlüssel noch? (Passwort auf einem anderen Gerät neu festgelegt oder Drive-Daten gelöscht)
+      const salz = await ladeSalz(alle)
+      if (!salz || !(await passtSchluessel(schluessel, salz.pruef))) {
+        await plattform.speichereSchluessel(null)
+        setzeAbgleichZurueck()
+        throw new Error(salz
+          ? 'Das Abgleich-Passwort wurde auf einem anderen Gerät neu festgelegt – bitte hier das neue Passwort eingeben.'
+          : 'Die Abgleich-Daten in Google Drive fehlen – bitte das Abgleich-Passwort neu festlegen.')
+      }
+
+      const eigene = eigeneGeraeteId()
+      const dateien = alle.map(zerlege).filter((n): n is Name => !!n)
+      const lade = async <T>(n: Name) => entschluessele<T>(schluessel, await ablage.lade(n.datei.id), n.datei.name)
+
+      // 1) Änderungen der anderen Geräte einspielen. Eine unlesbare Datei hält nur dieses Gerät an –
+      //    es geht genau dort weiter, sobald sie lesbar ist; alle anderen Geräte laufen normal.
       const geaendert = new Set<number>()
       const fremde = [...new Set(dateien.filter(n => n.geraet !== eigene).map(n => n.geraet))]
       for (const g of fremde) {
         let bekannt = letzteNr(g)
         const stand = dateien.filter(n => n.geraet === g && n.art === 'stand').sort((a, b) => b.bis - a.bis)[0]
         const logs = dateien.filter(n => n.geraet === g && n.art === 'log').sort((a, b) => a.von - b.von)
-        // Gesamtstand nötig: Gerät noch nie gesehen, oder die nötigen Einzeldateien wurden schon zusammengefasst
-        const luecke = bekannt !== null && !logs.some(l => l.von <= bekannt! + 1 && l.bis > bekannt!) && logs.some(l => l.bis > bekannt!)
-        if (stand && (bekannt === null || luecke) && stand.bis > (bekannt ?? -1)) {
-          const s = await lade<{ zeilen: LogZeile[] }>(stand)
-          spieleEin(s.zeilen, { geraet: g, bisNr: stand.bis }).forEach(id => geaendert.add(id))
-          bekannt = stand.bis
-        }
         const neue: LogZeile[] = []
-        for (const l of logs) if (l.bis > (bekannt ?? 0)) neue.push(...(await lade<{ zeilen: LogZeile[] }>(l)).zeilen)
+        try {
+          // Gesamtstand nötig: Gerät noch nie gesehen, oder die nötigen Einzeldateien wurden schon zusammengefasst
+          const luecke = bekannt !== null && !logs.some(l => l.von <= bekannt! + 1 && l.bis > bekannt!) && logs.some(l => l.bis > bekannt!)
+          if (stand && (bekannt === null || luecke) && stand.bis > (bekannt ?? -1)) {
+            const s = await lade<{ zeilen: LogZeile[] }>(stand)
+            spieleEin(s.zeilen, { geraet: g, bisNr: stand.bis }).forEach(id => geaendert.add(id))
+            bekannt = stand.bis
+          }
+          for (const l of logs) {
+            if (l.bis <= (bekannt ?? 0)) continue
+            // Nur Zeilen des Geräts, dem die Datei laut (mitverschlüsseltem) Namen gehört
+            neue.push(...(await lade<{ zeilen: LogZeile[] }>(l)).zeilen.filter(z => z.geraet === g))
+          }
+        } catch (e) {
+          console.error(`Abgleich: Datei von Gerät ${g} unlesbar`, e)
+          probleme.push('Eine Datei des anderen Geräts ließ sich nicht entschlüsseln (beschädigt oder mit einem alten Passwort angelegt) und wurde übersprungen.')
+        }
         if (neue.length) spieleEin(neue).forEach(id => geaendert.add(id))
       }
 
-      // 2) Eigene Änderungen hochladen
+      // 2) Eigene Änderungen hochladen. Beim ersten Mal – oder wenn unsere Dateien in Drive fehlen –
+      //    zuerst den kompletten Stand (alles von vor dem Protokoll ist sonst nicht dabei)
       let bis = hochgeladenBis()
+      if (bis !== null && !dateien.some(n => n.geraet === eigene)) bis = null
       if (bis === null) {
-        if (!dateien.some(n => n.geraet !== eigene)) {
-          // Erstes Gerät: kompletter Stand (alles von vor dem Protokoll ist sonst nicht dabei)
-          const gs = gesamtstand()
-          await ablage.speichere(`stand_${eigene}_${gs.bisNr}.json`, await verschluessele(schluessel, gs))
-          bis = gs.bisNr
-        } else bis = 0
+        const gs = gesamtstand()
+        const name = `stand_${eigene}_${gs.bisNr}.json`
+        await ablage.speichere(name, await verschluessele(schluessel, gs, name))
+        bis = gs.bisNr
         setzeHochgeladenBis(bis)
       }
       const zeilen = neueEigeneAenderungen(bis)
       if (zeilen.length) {
         const bisNeu = zeilen[zeilen.length - 1].nr
-        await ablage.speichere(`log_${eigene}_${zeilen[0].nr}_${bisNeu}.json`, await verschluessele(schluessel, { zeilen }))
+        const name = `log_${eigene}_${zeilen[0].nr}_${bisNeu}.json`
+        await ablage.speichere(name, await verschluessele(schluessel, { zeilen }, name))
         setzeHochgeladenBis(bisNeu)
       }
 
@@ -133,13 +173,14 @@ export function erstelleSyncDienst(plattform: SyncPlattform) {
       const eigeneLogs = dateien.filter(n => n.geraet === eigene && n.art === 'log')
       if (eigeneLogs.length > MAX_EIGENE_LOGS) {
         const gs = gesamtstand()
-        await ablage.speichere(`stand_${eigene}_${gs.bisNr}.json`, await verschluessele(schluessel, gs))
+        const name = `stand_${eigene}_${gs.bisNr}.json`
+        await ablage.speichere(name, await verschluessele(schluessel, gs, name))
         for (const n of dateien.filter(n => n.geraet === eigene && n.bis <= gs.bisNr)) await ablage.loesche(n.datei.id)
       }
 
       getDb().run('INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)', ['sync_letzter', new Date().toISOString()])
       schedulePersist()
-      fehler = null
+      fehler = probleme.length ? probleme.join(' ') : null
       if (geaendert.size) plattform.benachrichtige([...geaendert])
     } catch (e: any) {
       fehler = e?.message ?? String(e)
@@ -156,11 +197,13 @@ export function erstelleSyncDienst(plattform: SyncPlattform) {
       try { await plattform.verbinden(); fehler = null } catch (e: any) { fehler = e?.message ?? String(e) }
       return status()
     })
-    ipcMain.handle('sync:passwort', (_, passwort: string) => setzePasswort(passwort))
+    ipcMain.handle('sync:passwort', (_, passwort: string) => setzePasswort(String(passwort ?? '')))
     ipcMain.handle('sync:jetzt', () => abgleichen())
     ipcMain.handle('sync:trennen', async () => {
       await plattform.trennen()
       await plattform.speichereSchluessel(null)
+      // Beim erneuten Verbinden (evtl. mit geleertem Drive oder neuem Passwort) wieder alles hochladen
+      setzeAbgleichZurueck()
       fehler = null
       return status()
     })

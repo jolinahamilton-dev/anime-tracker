@@ -199,6 +199,10 @@ function richteSyncEin(db: Database, entryCols: unknown[]) {
   // unabhängig voneinander geändert haben (Konflikt) oder nur eines (einfach übernehmen)
   const logCols = db.exec('PRAGMA table_info(sync_log)')[0]?.values?.map((r: any) => r[1]) ?? []
   if (!logCols.includes('alt')) db.run('ALTER TABLE sync_log ADD COLUMN alt')
+  // Der Abgleich sucht für jede eingespielte Zeile die letzte Änderung desselben Felds
+  db.run('CREATE INDEX IF NOT EXISTS idx_sync_log_feld ON sync_log(tabelle, zeile, feld, zeit)')
+  // Pause gilt nur während des Einspielens (eine Transaktion) – ein Rest davon würde das Protokoll still abschalten
+  db.run("DELETE FROM app_meta WHERE key = 'sync_pause'")
   // Bis zu welcher Nummer die Änderungen jedes anderen Geräts schon eingespielt sind
   db.run('CREATE TABLE IF NOT EXISTS sync_geraete (geraet TEXT PRIMARY KEY, letzte_nr INTEGER NOT NULL)')
 

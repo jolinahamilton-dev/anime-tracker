@@ -30,6 +30,14 @@ export function hochgeladenBis(): number | null {
 }
 export function setzeHochgeladenBis(nr: number) { setzeMeta('sync_hochgeladen_bis', String(nr)); schedulePersist() }
 
+/** Neuanfang (Trennen, neues Passwort, Drive geleert): beim nächsten Abgleich wieder den kompletten
+ *  eigenen Stand hochladen und die anderen Geräte von vorn einspielen */
+export function setzeAbgleichZurueck() {
+  getDb().run("DELETE FROM app_meta WHERE key = 'sync_hochgeladen_bis'")
+  getDb().run('DELETE FROM sync_geraete')
+  schedulePersist()
+}
+
 export function letzteNr(geraet: string): number | null {
   const r = dbGet('SELECT letzte_nr FROM sync_geraete WHERE geraet = ?', [geraet])
   return r ? Number(r.letzte_nr) : null
@@ -46,15 +54,24 @@ export function neueEigeneAenderungen(seit: number): LogZeile[] {
 }
 
 /**
- * Gesamtstand aller abzugleichenden Daten als Protokollzeilen (für das erste Gerät – alles von vor
- * Version 1.1 steht ja noch nicht im Protokoll – und für neue Geräte).
+ * Gesamtstand aller abzugleichenden Daten als Protokollzeilen (beim ersten Abgleich jedes Geräts –
+ * alles von vor Version 1.1 steht ja noch nicht im Protokoll – und beim Zusammenfassen).
+ * Jedes Feld trägt Zeit und Gerät seiner letzten echten Änderung (unprotokollierte Altdaten: Zeit 0),
+ * damit ein Gesamtstand nie neuere Änderungen eines anderen Geräts überstimmt.
  */
 export function gesamtstand(): { bisNr: number; zeilen: LogZeile[] } {
   const geraet = eigeneGeraeteId()
-  const zeit = Date.now()
+  const herkunft = new Map<string, { zeit: number; geraet: string }>()
+  for (const r of dbAll('SELECT tabelle, zeile, feld, zeit, geraet FROM sync_log ORDER BY zeit, nr')) {
+    herkunft.set(`${r.tabelle}|${r.zeile}|${r.feld}`, { zeit: Number(r.zeit), geraet: String(r.geraet) })
+  }
+  const vorhanden = new Set<string>()
   const zeilen: LogZeile[] = []
-  const neu = (tabelle: string, zeile: string, feld: string, wert: unknown) =>
-    zeilen.push({ nr: 0, zeit, geraet, tabelle, zeile, feld, wert })
+  const neu = (tabelle: string, zeile: string, feld: string, wert: unknown) => {
+    const h = herkunft.get(`${tabelle}|${zeile}|${feld}`)
+    zeilen.push({ nr: 0, zeit: h?.zeit ?? 0, geraet: h?.geraet ?? geraet, tabelle, zeile, feld, wert })
+    if (feld === '*') vorhanden.add(`${tabelle}|${zeile}`)
+  }
 
   for (const e of dbAll('SELECT * FROM entries')) {
     neu('entries', String(e.uuid), '*', null)
@@ -75,6 +92,11 @@ export function gesamtstand(): { bisNr: number; zeilen: LogZeile[] } {
   }
   for (const a of dbAll('SELECT id, unlocked_at FROM achievements')) neu('achievements', String(a.id), 'unlocked_at', a.unlocked_at)
   for (const k of SYNC_META) { const v = meta(k); if (v != null) neu('app_meta', k, 'value', v) }
+  // Löschvermerke für Zeilen, die es nicht mehr gibt – sonst blieben sie auf einem Gerät, das die
+  // Einzeldatei mit der Löschung verpasst hat, für immer stehen
+  for (const r of dbAll("SELECT DISTINCT tabelle, zeile FROM sync_log WHERE feld = '-'")) {
+    if (!vorhanden.has(`${r.tabelle}|${r.zeile}`)) neu(String(r.tabelle), String(r.zeile), '-', null)
+  }
   return { bisNr: hoechsteEigeneNr(), zeilen }
 }
 
@@ -114,7 +136,11 @@ export function spieleEin(zeilen: LogZeile[], stand?: { geraet: string; bisNr: n
   const db = getDb()
   const geaendert = new Set<number>()
   const hoechste = new Map<string, number>()
-  const sortiert = [...zeilen].sort((a, b) => a.zeit - b.zeit || a.nr - b.nr)
+  const eigene = eigeneGeraeteId()
+  // Gesamtstand: erst Einträge und Listen anlegen, dann was daran hängt, dann die Felder – die Zeiten
+  // allein geben die Reihenfolge nicht her (Altdaten haben Zeit 0)
+  const rang = (r: LogZeile) => !stand || r.feld !== '*' ? 2 : r.tabelle === 'entries' || r.tabelle === 'custom_lists' ? 0 : 1
+  const sortiert = [...zeilen].sort((a, b) => rang(a) - rang(b) || a.zeit - b.zeit || a.nr - b.nr)
   const entryId = (uuid: string) => dbGet('SELECT id FROM entries WHERE uuid = ?', [uuid])?.id as number | undefined
   const listId = (uuid: string) => dbGet('SELECT id FROM custom_lists WHERE uuid = ?', [uuid])?.id as number | undefined
 
@@ -122,6 +148,8 @@ export function spieleEin(zeilen: LogZeile[], stand?: { geraet: string; bisNr: n
   try {
     setzeMeta('sync_pause', '1') // Trigger schweigen – sonst würden fremde Änderungen als eigene protokolliert
     for (const r of sortiert) {
+      // Eigene Änderungen (in fremden Gesamtständen enthalten) sind hier längst angewendet oder überholt
+      if (r.geraet === eigene) continue
       if (stand === undefined) {
         const bekannt = letzteNr(r.geraet)
         if (bekannt !== null && r.nr <= bekannt) continue // schon eingespielt

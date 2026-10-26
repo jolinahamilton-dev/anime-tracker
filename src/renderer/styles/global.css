@@ -18,7 +18,8 @@
 }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
+  /* Systemschrift (Windows: Segoe UI, Android: Roboto) – keine Google-Fonts-Anfrage, die IP-Adressen an Google schickt */
+  font-family: 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
   height: 100vh;

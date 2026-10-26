@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, istHandyApp, SyncStatus } from '../api'
 import { bestaetigen, snackbar } from '../meldungen'
 import { meldeAenderung } from '../aktionen'
+import { MIN_PASSWORT } from '../../sync/krypto'
 
 // Einstellungen → Abgleich zwischen PC und Handy über Google Drive (gleich auf beiden Geräten)
 export default function SyncBereich() {
@@ -76,14 +77,14 @@ export default function SyncBereich() {
           <p className="einstell-sub" style={{ marginBottom: 10 }}>
             ✅ Mit Google Drive verbunden. Jetzt das <strong>Abgleich-Passwort</strong>: Auf dem ersten Gerät legst du es fest,
             auf dem {anderes} gibst du später <strong>dasselbe</strong> ein. Damit wird alles verschlüsselt – ohne das Passwort
-            kann niemand die Daten lesen, auch Google nicht. <strong>Gut merken</strong> (mind. 8 Zeichen).
+            kann niemand die Daten lesen, auch Google nicht. <strong>Gut merken</strong> (mind. {MIN_PASSWORT} Zeichen).
           </p>
           <div className="sync-passwort">
             <input
               type={zeigen ? 'text' : 'password'}
               value={passwort}
               onChange={e => setPasswort(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && passwort.length >= 8) passwortSetzen() }}
+              onKeyDown={e => { if (e.key === 'Enter' && passwort.length >= MIN_PASSWORT) passwortSetzen() }}
               placeholder="Abgleich-Passwort"
               autoComplete="new-password"
               aria-label="Abgleich-Passwort"
@@ -92,7 +93,7 @@ export default function SyncBereich() {
               {zeigen ? '🙈' : '👁'}
             </button>
           </div>
-          <button className="btn-primary" style={{ marginTop: 10 }} onClick={passwortSetzen} disabled={beschaeftigt || passwort.length < 8}>
+          <button className="btn-primary" style={{ marginTop: 10 }} onClick={passwortSetzen} disabled={beschaeftigt || passwort.length < MIN_PASSWORT}>
             {beschaeftigt ? 'Wird eingerichtet …' : 'Abgleich starten'}
           </button>
         </>

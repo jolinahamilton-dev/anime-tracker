@@ -2,12 +2,11 @@ import { defineConfig, Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-// Content-Security-Policy nur im gepackten Build: erlaubt eigene Skripte, Bilder
-// (AniList-Cover per https) und die Schrift „Inter" von Google Fonts, sonst nichts.
+// Content-Security-Policy nur im gepackten Build: erlaubt eigene Skripte und Bilder
+// (AniList-Cover per https), sonst nichts. Netzanfragen laufen alle über den Main-Prozess.
 // Im Dev-Modus braucht Vite Inline-Skripte für Hot-Reload, daher dort nicht aktiv.
-const CSP = "default-src 'self'; script-src 'self'; " +
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; " +
-  "img-src 'self' https: data:; connect-src 'self'"
+const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; " +
+  "img-src 'self' https: data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'"
 
 function cspPlugin(): Plugin {
   return {

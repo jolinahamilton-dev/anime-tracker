@@ -23,8 +23,10 @@ async function start() {
   try {
     await initDb()
   } catch (e) {
-    document.getElementById('root')!.innerHTML =
-      `<p style="padding:24px;font-family:system-ui">Die Daten konnten nicht geladen werden: ${String(e)}</p>`
+    const p = document.createElement('p')
+    p.style.cssText = 'padding:24px;font-family:system-ui;color:#f0f0f5'
+    p.textContent = `Die Daten konnten nicht geladen werden: ${String(e)}`
+    document.getElementById('root')!.replaceChildren(p)
     return
   }
 
@@ -38,6 +40,18 @@ async function start() {
   trackAppOpen()
 
   await import('../renderer/main')
+
+  const { hinweis } = await import('../renderer/meldungen')
+  let gemeldet = false
+  window.addEventListener('speicherfehler', e => {
+    if (gemeldet) return
+    gemeldet = true
+    const voll = String((e as CustomEvent).detail).includes('Quota')
+    hinweis('Speichern fehlgeschlagen', voll
+      ? 'Der Speicher des Browsers ist voll – die letzten Änderungen sind nur bis zum Schließen der App da. Bitte etwas Speicher freigeben.'
+      : 'Die letzten Änderungen konnten nicht gespeichert werden. Bitte die App neu laden.')
+      .then(() => { gemeldet = false })
+  })
 
   // Hintergrund wie am PC: erst mit dem PC abgleichen, dann neue Folgen/Staffeln und News prüfen
   const fenster = BrowserWindow.getAllWindows()[0] as any

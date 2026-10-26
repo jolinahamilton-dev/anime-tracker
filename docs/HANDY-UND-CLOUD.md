@@ -48,7 +48,22 @@ eigene Datenbank und gleichen sich über einen Cloud-Ordner ab. Kosten: keine.
   alle verschlüsselt. Ab 40 eigenen Log-Dateien wird zu einem neuen Gesamtstand zusammengefasst.
 - Eingespielte fremde Zeilen landen mit fremder Geräte-ID im eigenen Protokoll. So werden sie nicht zurückgeschickt,
   und spätere Konflikte lassen sich gegen sie entscheiden.
-- Test: `synctest.js` (zwei simulierte Geräte, Drive-Attrappe), 12/12 bestanden.
+- Test: `synctest.js` (zwei simulierte Geräte, Drive-Attrappe), 18/18 bestanden.
+
+### Absicherung (Version 1.3, nach Sicherheits-Review)
+- Dateiname ist per AES-GCM `additionalData` mitverschlüsselt: umbenannte Dateien sind unlesbar.
+- PBKDF2 mit 600.000 Durchläufen, Passwort mind. 12 Zeichen, Unicode-NFC-normalisiert.
+- Vor jedem Abgleich wird der Schlüssel gegen `salz.json` geprüft; passt er nicht (Passwort anderswo neu
+  festgelegt, Drive geleert), wird der Schlüssel verworfen und neu gefragt. Gibt es zwei `salz.json`, gilt die ältere.
+- Eine unlesbare Datei hält nur das betroffene Gerät an, nicht den ganzen Abgleich.
+- Gesamtstände tragen pro Feld Zeit und Gerät der letzten echten Änderung und enthalten Löschvermerke –
+  Zusammenfassen überstimmt so keine neueren Änderungen. Jedes Gerät lädt beim ersten Abgleich seinen Gesamtstand hoch
+  (Reihenfolge PC/Handy egal); Trennen, neues Passwort oder fehlende eigene Dateien starten neu.
+- `meta:get/set` nur für `darkMode` und `akzentfarbe`; Electron verweigert alle Berechtigungsanfragen.
+- Web-App mit CSP (`<meta>`), keine Google Fonts mehr (Systemschrift), Cover-Cache per CORS und auf 600 begrenzt,
+  Speicherfehler (z. B. Speicher voll) werden angezeigt.
+- Offen/bewusst so: Alle Pages-Seiten des Kontos teilen sich den Ursprung `jolinahamilton-dev.github.io`
+  (localStorage, IndexedDB). Dort keine fremden oder ungeprüften Seiten veröffentlichen.
 
 ### Anmeldung
 - PC (`src/main/sync-pc.ts`): OAuth „Desktop-App" mit PKCE, Rückleitung auf `http://127.0.0.1:<Port>`.

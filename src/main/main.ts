@@ -43,6 +43,8 @@ function createWindow() {
   // fremde Seiten bekämen sonst ebenfalls Zugriff auf window.api
   win.webContents.on('will-navigate', (e) => e.preventDefault())
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  // Kamera, Mikrofon, Standort usw. braucht die App nie
+  win.webContents.session.setPermissionRequestHandler((_wc, _recht, antwort) => antwort(false))
 
   if (isDev) {
     win.loadURL('http://localhost:5173')

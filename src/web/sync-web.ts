@@ -12,7 +12,7 @@ const lies = (k: string) => { try { return localStorage.getItem(k) } catch { ret
 const setze = (k: string, v: string | null) => { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v) } catch { /* privat */ } }
 
 function zuGoogle(stumm: boolean) {
-  const state = Math.random().toString(36).slice(2) + Date.now().toString(36)
+  const state = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('')
   sessionStorage.setItem(K.state, state)
   const p = new URLSearchParams({
     client_id: CLIENT_ID, redirect_uri: ZURUECK, response_type: 'token', scope: BEREICH,

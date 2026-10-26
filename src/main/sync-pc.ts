@@ -60,7 +60,9 @@ async function anmelden(): Promise<void> {
       server.on('request', (req, res) => {
         const url = new URL(req.url ?? '/', redirect)
         if (url.pathname !== '/') { res.writeHead(404); res.end(); return }
-        const ok = url.searchParams.get('state') === state && url.searchParams.get('code')
+        // Anfragen ohne passenden state (nicht von Google) ignorieren – sie dürfen die Anmeldung nicht abbrechen
+        if (url.searchParams.get('state') !== state) { res.writeHead(400); res.end(); return }
+        const ok = url.searchParams.get('code')
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
         res.end(`<!doctype html><meta charset="utf-8"><title>Anime Tracker</title>
           <body style="font-family:system-ui;background:#0f0f13;color:#f0f0f5;display:grid;place-items:center;height:100vh;margin:0">

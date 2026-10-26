@@ -60,7 +60,8 @@ async function exportCSV(felder: string[], zielPfad: string, statusFilter?: stri
   const header = felder.map(f => FELD_LABEL[f] ?? f).join(';')
   const zeilen = daten.map(row =>
     felder.map(f => {
-      const v = formatWert(f, row[f])
+      // Beginnt ein Wert mit = + - @, würde Excel ihn als Formel ausführen → als Text markieren
+      const v = formatWert(f, row[f]).replace(/^[=+\-@\t\r]/, "'$&")
       return `"${v.replace(/"/g, '""')}"`
     }).join(';')
   )
