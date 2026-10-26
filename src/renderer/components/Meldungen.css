@@ -1,0 +1,108 @@
+.dialog-hintergrund {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 16px;
+  animation: dialog-ein 0.15s ease;
+}
+
+.dialog {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.dialog-titel {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.dialog-text {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.dialog-knoepfe {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.dialog-btn {
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dialog-btn:hover { background: var(--border); }
+.dialog-btn--ok { background: var(--accent); border-color: var(--accent); color: #fff; }
+.dialog-btn--ok:hover { background: var(--accent-hover); }
+.dialog-btn--gefahr { background: #e74c3c; border-color: #e74c3c; color: #fff; }
+.dialog-btn--gefahr:hover { background: #c0392b; }
+
+@keyframes dialog-ein { from { opacity: 0; } to { opacity: 1; } }
+
+.snackbar {
+  position: fixed;
+  left: 50%;
+  bottom: calc(72px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 10px 10px 10px 16px;
+  background: var(--text);
+  color: var(--bg);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  z-index: 9998;
+  animation: snack-ein 0.2s ease;
+  font-size: 14px;
+}
+
+.snackbar-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.snackbar-aktion {
+  font-weight: 700;
+  color: var(--accent);
+  padding: 6px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.snackbar-aktion:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); }
+
+.snackbar-zu {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  opacity: 0.6;
+}
+
+.snackbar-zu:hover { opacity: 1; }
+
+@keyframes snack-ein {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}

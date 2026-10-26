@@ -1,0 +1,173 @@
+.vorschau-seite {
+  overflow: hidden;
+}
+
+.vorschau-inhalt {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.vorschau-oben {
+  display: flex;
+  gap: 16px;
+}
+
+.vorschau-cover {
+  width: 90px;
+  height: 128px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.vorschau-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.vorschau-titel {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.vorschau-titel-en {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.vorschau-beschreibung {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  background: var(--bg-card);
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.vorschau-formular {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.formular-zeile {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.formular-zeile label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.status-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.zaehler-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.zaehler-btn {
+  width: 32px;
+  height: 32px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.zaehler-btn:hover {
+  background: var(--border);
+}
+
+.zaehler-input {
+  width: 64px;
+  text-align: center;
+  height: 32px;
+}
+
+.zaehler-von {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.favorit-btn {
+  padding: 7px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  font-size: 13px;
+  transition: all 0.15s;
+}
+
+.favorit-btn.aktiv {
+  border-color: #f5c518;
+  color: #f5c518;
+}
+
+.btn-primary {
+  padding: 12px 24px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-speichern {
+  margin-top: 4px;
+}
+
+.gespeichert-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.gespeichert-icon {
+  font-size: 48px;
+}
+
+.gespeichert-state h3 {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.gespeichert-state p {
+  color: var(--text-muted);
+}

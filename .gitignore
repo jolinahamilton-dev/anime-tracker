@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.db
+*.db-shm
+*.db-wal
+.env
+certs/
+release/
+*.db.bak*
+*.db.tmp
+electron-*.txt
+src/main/geheim.local.ts
+dist-web/
+.claude/

@@ -1,0 +1,187 @@
+.anilist-suche {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.suche-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.suche-input {
+  flex: 1;
+  min-width: 200px;
+  height: 40px;
+  font-size: 14px;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.filter-btn {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  transition: all 0.15s;
+}
+
+.filter-btn:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.filter-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.suche-btn {
+  padding: 8px 18px;
+  height: 40px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+
+.suche-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.suche-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fehler-text {
+  color: #e85d5d;
+  padding: 0 20px;
+  font-size: 13px;
+}
+
+.ergebnisse-liste {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.keine-ergebnisse {
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 40px;
+}
+
+.ergebnis-karte {
+  display: flex;
+  gap: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+  width: 100%;
+}
+
+.ergebnis-karte:hover {
+  border-color: var(--accent);
+  background: #1e1e2e;
+}
+
+.ergebnis-karte.vorhanden {
+  opacity: 0.55;
+}
+
+.ergebnis-karte.vorhanden::after {
+  content: '✓ Bereits in Liste';
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #4adb6f;
+  background: rgba(74, 219, 111, 0.15);
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+.ergebnis-karte {
+  position: relative;
+}
+
+.ergebnis-cover {
+  width: 60px;
+  height: 85px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.ergebnis-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ergebnis-typ {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+}
+
+.ergebnis-titel {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ergebnis-titel-en {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ergebnis-genres {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.genre-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  background: var(--border);
+  border-radius: 20px;
+  color: var(--text-muted);
+}
+
+.ergebnis-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: auto;
+}

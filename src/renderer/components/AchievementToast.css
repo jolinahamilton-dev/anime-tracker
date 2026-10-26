@@ -1,0 +1,56 @@
+.achievement-toast {
+  position: fixed;
+  bottom: 136px; /* über der Snackbar */
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  z-index: 9999;
+  animation: toast-in 0.3s ease;
+  min-width: 260px;
+  max-width: 400px;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to   { opacity: 0; transform: translateX(-50%) translateY(20px); }
+}
+
+.achievement-toast.toast-out {
+  animation: toast-out 0.5s ease forwards;
+}
+
+.toast-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.toast-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toast-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.toast-name {
+  font-size: 15px;
+  font-weight: 700;
+}

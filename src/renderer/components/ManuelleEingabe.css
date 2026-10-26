@@ -1,0 +1,61 @@
+.manuelle-eingabe {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.manuelle-formular {
+  padding: 16px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 640px;
+}
+
+.manuelle-input {
+  flex: 1;
+  height: 40px;
+  font-size: 14px;
+  min-width: 200px;
+}
+
+.manuelle-textarea {
+  flex: 1;
+  font-size: 14px;
+  resize: vertical;
+  min-width: 200px;
+  line-height: 1.5;
+}
+
+.formular-zeile--top {
+  align-items: flex-start;
+}
+
+.formular-zeile--top label {
+  padding-top: 4px;
+}
+
+.genre-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+}
+
+.genre-tag--aktiv {
+  background: var(--accent) !important;
+  color: #fff !important;
+  border-color: var(--accent) !important;
+}
+
+.genre-tag {
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: all 0.15s;
+}
+
+.genre-tag:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}

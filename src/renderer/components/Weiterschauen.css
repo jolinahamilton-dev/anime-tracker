@@ -1,0 +1,105 @@
+.weiterschauen {
+  margin-bottom: 16px;
+}
+
+.weiterschauen-kopf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  padding: 4px 2px;
+  margin-bottom: 8px;
+}
+
+.weiterschauen-zahl {
+  background: var(--accent);
+  color: #fff;
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: 11px;
+}
+
+.weiterschauen-pfeil { color: var(--text-muted); }
+
+.weiterschauen-leiste {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scroll-snap-type: x proximity;
+}
+
+.ws-karte {
+  flex: 0 0 auto;
+  width: 270px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: border-color 0.15s;
+}
+
+.ws-karte:hover, .ws-karte:focus-visible { border-color: var(--accent); outline: none; }
+
+.ws-cover {
+  width: 40px;
+  height: 58px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.ws-cover--leer {
+  background: var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ws-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ws-titel, .ws-staffel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-titel { font-size: 13px; font-weight: 600; }
+.ws-staffel { font-size: 11px; color: var(--text-muted); }
+.ws-stand { font-size: 11px; color: var(--text-muted); display: flex; gap: 6px; align-items: center; }
+
+.ws-offen {
+  color: #4adb6f;
+  font-weight: 700;
+}
+
+.ws-plus {
+  width: 44px;
+  height: 36px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--accent) 60%, var(--border));
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-card));
+  color: var(--accent);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.ws-plus:hover { background: color-mix(in srgb, var(--accent) 28%, var(--bg-card)); }
+.ws-plus:active { transform: scale(0.94); }
+
+@media (max-width: 640px) {
+  .ws-karte { width: 82vw; }
+}

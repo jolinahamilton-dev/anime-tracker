@@ -1,0 +1,200 @@
+/* Gemeinsam genutzte UI-Elemente */
+
+/* Markierung neuer / angekündigter Staffeln (Serien-Abgleich) */
+.staffel-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+  color: var(--text-muted);
+  background: var(--border);
+}
+
+.staffel-badge--neu {
+  color: #fff;
+  background: var(--accent);
+}
+
+.filter-btn {
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  transition: all 0.15s;
+  cursor: pointer;
+}
+
+.filter-btn:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.filter-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.status-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.zaehler-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.zaehler-btn {
+  width: 32px;
+  height: 32px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  cursor: pointer;
+}
+
+.zaehler-btn:hover {
+  background: var(--border);
+}
+
+.zaehler-input {
+  width: 64px;
+  text-align: center;
+  height: 32px;
+}
+
+.zaehler-von {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.favorit-btn {
+  padding: 7px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  font-size: 13px;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+
+.favorit-btn.aktiv {
+  border-color: #f5c518;
+  color: #f5c518;
+}
+
+.abo-btn { margin-left: 8px; }
+
+.abo-btn.aktiv {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-primary {
+  padding: 12px 24px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 0.15s;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ergebnis-genres {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.genre-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  background: var(--border);
+  border-radius: 20px;
+  color: var(--text-muted);
+}
+
+.ergebnis-typ {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+}
+
+.ergebnis-typ.typ-anime,
+.karte-typ.typ-anime {
+  color: #4a9eff;
+}
+
+.ergebnis-typ.typ-manga,
+.karte-typ.typ-manga {
+  color: #a259ff;
+}
+
+.fehler-text {
+  color: #e85d5d;
+  font-size: 13px;
+}
+
+.formular-zeile {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.formular-zeile label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.gespeichert-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.gespeichert-icon {
+  font-size: 48px;
+}
+
+.gespeichert-state h3 {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.gespeichert-state p {
+  color: var(--text-muted);
+}

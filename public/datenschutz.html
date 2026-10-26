@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Datenschutz – Anime Tracker</title>
+  <style>
+    :root { --bg: #f5f5f8; --text: #111118; --muted: #555566; --accent: #e85d8a; --card: #ffffff; --border: #d8d8e0; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #0f0f13; --text: #f0f0f5; --muted: #9999aa; --card: #1a1a24; --border: #2a2a3a; } }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, sans-serif; }
+    main { max-width: 720px; margin: 0 auto; padding: 32px 16px 48px; }
+    h1 { font-size: 26px; margin: 0 0 4px; }
+    h2 { font-size: 18px; margin: 28px 0 6px; color: var(--accent); }
+    p, li { color: var(--text); }
+    .klein { color: var(--muted); font-size: 14px; }
+    section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 4px 20px 16px; margin-top: 16px; }
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Datenschutzerklärung</h1>
+  <p class="klein">Anime Tracker – private App zum Verfolgen von Anime und Manga · Stand: Oktober 2026</p>
+
+  <section>
+    <h2>Kurz gesagt</h2>
+    <p>Anime Tracker ist ein privates Hobby-Projekt ohne Werbung, ohne Tracking und ohne eigenen Server.
+    Deine Liste gehört dir: Sie liegt auf deinen eigenen Geräten und – falls du den Abgleich einschaltest –
+    verschlüsselt in deinem eigenen Google Drive.</p>
+  </section>
+
+  <section>
+    <h2>Welche Daten die App verarbeitet</h2>
+    <ul>
+      <li><strong>Deine Einträge</strong> (Titel, Fortschritt, Status, Bewertungen, Notizen, Listen). Sie werden nur
+        lokal auf deinem Gerät gespeichert (am PC in einer Datei, am Handy im Speicher des Browsers).</li>
+      <li><strong>Suchanfragen und Titel-IDs</strong> werden an <a href="https://anilist.co">AniList</a> geschickt, um
+        Cover, Beschreibungen, Folgenzahlen und Sendetermine abzurufen. Dabei wird kein Konto und keine persönliche
+        Angabe übertragen.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Abgleich über Google Drive (freiwillig)</h2>
+    <ul>
+      <li>Wenn du „Mit Google Drive verbinden“ wählst, meldest du dich bei Google an und erlaubst der App den Zugriff
+        auf ihren <strong>eigenen, versteckten App-Ordner</strong> (Berechtigung <code>drive.appdata</code>).
+        Auf deine übrigen Dateien, Fotos oder Dokumente hat die App <strong>keinen</strong> Zugriff.</li>
+      <li>In diesem Ordner liegen ausschließlich deine Tracker-Daten – <strong>Ende-zu-Ende-verschlüsselt</strong>.
+        Der Schlüssel bleibt auf deinen Geräten (Übertragung per QR-Code); weder Google noch sonst jemand kann die Inhalte lesen.</li>
+      <li>Die Anmeldedaten (Zugriffstoken) werden nur auf deinem Gerät gespeichert. Es gibt keinen Server des Projekts,
+        der Daten empfängt oder speichert.</li>
+      <li>Die Nutzung von Daten aus Google-APIs hält sich an die
+        <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>
+        einschließlich der Anforderungen zur eingeschränkten Nutzung (Limited Use). Die Daten werden ausschließlich
+        für den Abgleich deiner eigenen Liste verwendet, nicht weitergegeben und nicht ausgewertet.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Zugriff widerrufen und Daten löschen</h2>
+    <ul>
+      <li>Den Zugriff auf Google Drive kannst du jederzeit unter
+        <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a> entziehen.</li>
+      <li>Die Daten im App-Ordner löschst du in Google Drive unter <em>Einstellungen → Apps verwalten → Anime Tracker →
+        Ausgeblendete App-Daten löschen</em>.</li>
+      <li>Lokale Daten verschwinden, wenn du die App deinstallierst bzw. die Website-Daten im Browser löschst.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Hosting</h2>
+    <p>Die Handy-App wird als statische Website über GitHub Pages ausgeliefert. Beim Aufruf verarbeitet GitHub
+    technisch notwendige Verbindungsdaten (z. B. IP-Adresse) gemäß der
+    <a href="https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement">Datenschutzerklärung von GitHub</a>.
+    Schriften werden von Google Fonts geladen.</p>
+  </section>
+
+  <section>
+    <h2>Kontakt</h2>
+    <p>Fragen zum Datenschutz über das Projekt auf GitHub:
+      <a href="https://github.com/jolinahamilton-dev/anime-tracker">github.com/jolinahamilton-dev/anime-tracker</a></p>
+  </section>
+</main>
+</body>
+</html>
