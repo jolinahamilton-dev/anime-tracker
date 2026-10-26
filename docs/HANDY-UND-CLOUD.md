@@ -23,55 +23,44 @@ eigene Datenbank und gleichen sich über einen Cloud-Ordner ab. Kosten: keine.
 | Pause beim Einspielen | `app_meta.sync_pause` | Fremde Änderungen werden beim Einspielen nicht erneut protokolliert |
 | Was synchronisiert wird | `SYNC_FELDER`, `SYNC_META` | Nur eigene Daten; was jedes Gerät selbst von AniList holt, bleibt lokal |
 
-## Was noch fehlt (in dieser Reihenfolge)
+## Umsetzung (Version 1.2)
 
-### 1. Kern vom Electron-Teil trennen (Programmierung)
-Die Handler in `src/main/handlers/*.ts` mischen Logik und Electron (`ipcMain`, `BrowserWindow`, `net`).
-Aufteilen in
-- `src/kern/*.ts`: reine Funktionen mit der Datenbank als Parameter (Einträge, +1, Watch-Order,
-  Serien-Abgleich, News, Statistik, Achievements). AniList-Abfragen über `fetch` (erlaubt AniList auch im Browser).
-- `src/main/handlers/*.ts`: nur noch `ipcMain.handle('…', (_, …a) => kern.funktion(db, …a))`.
+### Gemeinsamer Code für PC und Handy
+- `src/db/kern.ts`: Schema, Migrationen, Änderungsprotokoll, Zugriffsfunktionen (plattformunabhängig).
+  `src/db/database.ts` (PC, Datei) und `src/web/datenbank.ts` (Handy, IndexedDB) laden und speichern nur.
+- Die Handler in `src/main/handlers` laufen unverändert auch im Browser. Der Web-Build (`vite.web.config.ts`)
+  ersetzt `electron` durch `src/web/electron-shim.ts` und die PC-Datenbank durch `src/web/datenbank.ts`.
+  `src/web/api-web.ts` stellt dasselbe `window.api` bereit wie die Electron-Brücke.
+- AniList-Abfragen laufen über `fetch` (geht im Main-Prozess und im Browser).
 
-Danach kann der Browser denselben Kern benutzen.
+### Abgleich (`src/sync`)
+- `abgleich.ts`: Gesamtstand erzeugen, eigene Änderungen auslesen, fremde einspielen.
+- `krypto.ts`: AES-GCM, Schlüssel aus dem Abgleich-Passwort.
+- `drive.ts`: Google-Drive-REST im App-Ordner.
+- `dienst.ts`: Ablauf und die Handler `sync:*`.
+- Regeln pro Feld:
+  - Hat das andere Gerät genau unseren Stand geändert (`alt` = aktueller Wert), wird übernommen.
+  - Sonst bei Fortschritt und Wiederholungen das Maximum, bei allen anderen Feldern die spätere Änderung.
+  - Löschen gegen spätere Bearbeitung: Die Bearbeitung gewinnt.
+  - Listen-Zuordnung: Die spätere Aktion gewinnt.
+  - Achievements: Vereinigung mit dem frühesten Datum.
+- Dateien im App-Ordner: `salz.json`, `stand_<gerät>_<bisNr>.json` (Gesamtstand) und `log_<gerät>_<von>_<bis>.json`,
+  alle verschlüsselt. Ab 40 eigenen Log-Dateien wird zu einem neuen Gesamtstand zusammengefasst.
+- Eingespielte fremde Zeilen landen mit fremder Geräte-ID im eigenen Protokoll. So werden sie nicht zurückgeschickt,
+  und spätere Konflikte lassen sich gegen sie entscheiden.
+- Test: `synctest.js` (zwei simulierte Geräte, Drive-Attrappe), 12/12 bestanden.
 
-### 2. Abgleich-Logik `src/sync/merge.ts` (Programmierung)
-Regeln beim Zusammenführen pro Feld:
-- Fortschritt (`progress_*`): **höherer Wert gewinnt**. Zwei Geräte zählen gleichzeitig hoch, dann geht nichts verloren.
-  Bewusstes Zurücksetzen wird als eigene Aktion markiert.
-- Status, Bewertung, Favorit, Rezension, Spitzname, Abo, Reihenfolge: **letzte Änderung gewinnt**.
-- `bekannte_ids`, `auto_offen`, Achievements: **Vereinigung** (nichts geht verloren).
-- Löschen gegen Bearbeiten: die spätere Aktion gewinnt.
-- Statusänderungen der automatischen Staffel-Erkennung verlieren immer gegen eine Änderung von dir.
-- Uhrzeit: Hybrid-Uhr (Zeit + Zähler + Gerät), damit falsch gehende Handy-Uhren nichts durcheinanderbringen.
+### Anmeldung
+- PC (`src/main/sync-pc.ts`): OAuth „Desktop-App" mit PKCE, Rückleitung auf `http://127.0.0.1:<Port>`.
+  Der dauerhafte Zugang wird mit `safeStorage` verschlüsselt gespeichert. Der Clientschlüssel liegt in `src/main/geheim.local.ts`
+  (nicht im Repository). Ohne diese Datei funktioniert nur die PC-Anmeldung nicht.
+- Handy (`src/web/sync-web.ts`): OAuth für Browser-Apps (Token per Weiterleitung, ca. 1 h gültig), stille Erneuerung beim Öffnen.
 
-Ablauf eines Abgleichs (beim Start, alle 15 Minuten, beim Schließen):
-1. Eigene neue `sync_log`-Zeilen in eine Datei schreiben, verschlüsseln, hochladen.
-2. Neue Dateien der anderen Geräte herunterladen.
-3. Mit `sync_pause` einspielen, Seite neu laden.
-4. Ab und zu einen komprimierten Gesamtstand hochladen, damit ein neues Gerät nicht alles einzeln einspielen muss.
-   **Der erste Abgleich ist immer ein Gesamtstand vom PC**, denn alles vor Version 1.1 steht noch nicht im Protokoll.
+### Veröffentlichung
+- `.github/workflows/handy-app.yml` baut bei jedem Push auf `main` die Web-App und veröffentlicht sie auf GitHub Pages.
+- Die PC-App wird weiterhin lokal gebaut (electron-builder).
 
-### 3. Cloud-Anbindung (Programmierung + einmalig du)
-- **Google Drive, App-Ordner** (`spaces=appDataFolder`, Berechtigung `drive.appdata`):
-  Die App sieht nur ihren eigenen versteckten Ordner, nicht deine Dateien.
-  (OneDrive verworfen: Private Microsoft-Konten können Apps nur noch mit einem Azure-Konto registrieren.)
-- Verschlüsselung (XChaCha20-Poly1305): Der Schlüssel entsteht am PC und kommt per **QR-Code** aufs Handy.
-  Google sieht nur unlesbare Daten.
-- Anmeldung:
-  - Handy: Google Identity Services, Token-Modell. OAuth-Client „Webanwendung“, Quelle `https://jolinahamilton-dev.github.io`.
-  - PC: OAuth-Client „Desktop-App“ mit PKCE und Rückleitung auf `http://127.0.0.1:<Port>`. Das Token liegt verschlüsselt über `safeStorage`.
-- Die einmaligen Schritte für dich stehen in **ANLEITUNG-HANDY-GOOGLE-DRIVE.md**.
-
-### 4. Die Handy-App selbst (Programmierung + einmalig du)
-- **Web-App (PWA)**: derselbe React-Code, dazu `manifest.webmanifest` und ein Service Worker für die Offline-Nutzung.
-  Am Handy in Chrome öffnen und „Zum Startbildschirm hinzufügen" wählen. Sie startet dann wie eine normale App, auch ohne Internet.
-- Die Datenbank läuft im Browser (sql.js, dieselbe wie am PC) und wird in IndexedDB gespeichert.
-- `src/renderer/api.ts` bekommt eine zweite Umsetzung (`BrowserApi`), die den Kern aus Schritt 1 direkt aufruft.
-- **Hosting**: kostenlos über **GitHub Pages** (HTTPS ist Pflicht für installierbare Web-Apps).
-  **Du brauchst dafür** ein kostenloses GitHub-Konto. Darüber ließen sich auch die PC-Updates verteilen.
-  Deine Daten liegen dort nicht, nur der Programmcode.
-
-### 5. Benachrichtigungen am Handy (später, optional)
+### Später: Benachrichtigungen am Handy (später, optional)
 Eine Web-App kann bei geschlossener App nicht zuverlässig im Hintergrund prüfen. Neue Folgen erscheinen deshalb
 beim Öffnen der App. Wer echte Benachrichtigungen bei ausgeschaltetem PC will: dieselbe App als Android-App mit
 **Capacitor** verpacken. AniList liefert die Sendezeiten (`airingAt`), daraus lassen sich lokale Wecker

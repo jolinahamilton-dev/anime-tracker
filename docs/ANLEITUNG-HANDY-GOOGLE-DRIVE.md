@@ -93,36 +93,49 @@ Dann **Erweitert** → **Weiter zu Anime Tracker (unsicher)** klicken. Es ist de
 
 ## Teil B: Was ich dann baue
 
-| Schritt | Was passiert | Was du davon merkst |
+| Schritt | Was passiert | Stand |
 |---|---|---|
-| B1 | Repository und GitHub Pages anlegen, erster Upload | Nichts (Anmeldung aus A2 genügt) |
-| B2 | Automatischer Build auf GitHub: Bei jedem Upload wird die Handy-App neu gebaut und veröffentlicht | Auf deinem PC muss dafür nichts installiert werden |
-| B3 | Programmlogik vom PC-Teil trennen, damit sie auch im Handy-Browser läuft | Nichts, die PC-App bleibt gleich |
-| B4 | Abgleich-Regeln: Fortschritt = höherer Wert, Status/Bewertung = letzte Änderung, Löschen gilt auf beiden Geräten | Nichts geht verloren, wenn du an beiden Geräten etwas änderst |
-| B5 | Google-Drive-Anbindung in der PC-App: Einstellungen → „Mit Google Drive verbinden" | Einmal im Browser bei Google anmelden und zulassen |
-| B6 | Verschlüsselung: Der PC erzeugt einen Schlüssel, Google sieht nur unlesbare Daten | Am PC erscheint unter „Handy koppeln" ein QR-Code |
-| B7 | Die Handy-App (Web-App mit Offline-Speicher) | Fertig zum Einrichten (Teil C) |
-| B8 | Test mit zwei Testprofilen, dann der erste echte Abgleich: Der PC lädt einmal deinen kompletten Stand hoch | Danach gleichen sich nur noch Änderungen ab |
-
-Vor B8 legt die App wie immer eine Sicherung deiner Datenbank an.
+| B1 | Repository https://github.com/jolinahamilton-dev/anime-tracker, GitHub Pages eingeschaltet | ✅ |
+| B2 | Automatischer Build: Bei jedem Upload wird die Handy-App neu gebaut und veröffentlicht | ✅ online |
+| B3 | Programmlogik vom PC-Teil getrennt, damit sie auch im Handy-Browser läuft | ✅ |
+| B4 | Abgleich-Regeln: Fortschritt = höherer Wert, Status/Bewertung = letzte Änderung, Löschen gilt auf beiden Geräten | ✅ 12/12 Tests |
+| B5 | Google-Drive-Anbindung in der PC-App (Version 1.2.0) | ✅ |
+| B6 | Verschlüsselung mit einem **Abgleich-Passwort**: Daraus entsteht der Schlüssel, Google sieht nur unlesbare Daten | ✅ |
+| B7 | Die Handy-App (Web-App mit Offline-Speicher) | ✅ |
+| B8 | Erster echter Abgleich | **→ Teil C, das machst du** |
 
 ---
 
-## Teil C: Handy einrichten (wenn Teil B fertig ist)
+## Teil C: Einrichten (erst PC, dann Handy)
 
-1. Am Android-Handy **Chrome** öffnen und zu **https://jolinahamilton-dev.github.io/anime-tracker/** gehen.
-2. Menü **⋮** → **„App installieren"** (bzw. „Zum Startbildschirm hinzufügen").
-3. In der App: **Einstellungen → „Mit Google Drive verbinden"** → dasselbe Google-Konto wie am PC wählen.
-4. Am PC: **Einstellungen → „Handy koppeln"** → QR-Code. Am Handy auf **„QR-Code scannen"** tippen und den Code erfassen.
-5. Das Handy lädt einmal den Gesamtstand. Fertig.
+### C1. Am PC (zuerst!)
+1. **Anime Tracker Setup 1.2.0** installieren (über die alte Version, deine Daten bleiben).
+2. App öffnen → **⚙️ Einstellungen → „Abgleich mit dem Handy" → „Mit Google Drive verbinden"**.
+3. Der Browser öffnet sich. Mit **deinem Google-Konto** anmelden.
+   - Bei **„Google hat diese App nicht überprüft"**: **Erweitert** → **Weiter zu Anime Tracker (unsicher)**. Es ist deine eigene App.
+   - Bei „Anime Tracker möchte auf Ihr Google-Konto zugreifen" → **Weiter / Zulassen**.
+   - Es erscheint „✅ Verbunden". Das Browserfenster kannst du schließen.
+4. Zurück in der App: ein **Abgleich-Passwort** festlegen (mind. 8 Zeichen, **gut merken**) → **„Abgleich starten"**.
+   Der PC lädt jetzt einmal deine komplette Liste verschlüsselt hoch.
+
+### C2. Am Handy
+1. In **Chrome** öffnen: **https://jolinahamilton-dev.github.io/anime-tracker/**
+2. Menü **⋮** → **„App installieren"** (bzw. „Zum Startbildschirm hinzufügen"). Ab jetzt startest du den Tracker über das Symbol.
+3. In der App: **⚙️ → „Abgleich mit dem PC" → „Mit Google Drive verbinden"** → **dasselbe Google-Konto** wie am PC
+   (auch hier ggf. „Erweitert → Weiter zu …").
+4. **Dasselbe Abgleich-Passwort** eingeben → **„Abgleich starten"**. Deine Liste erscheint. Fertig.
 
 ## Im Alltag
-- **Abgleich**: automatisch beim Öffnen, alle 15 Minuten und beim Schließen. Ohne Internet geht alles weiter.
+- **Abgleich**: automatisch beim Start, alle 5 Minuten und beim Verlassen der Handy-App. Unter Einstellungen gibt es zusätzlich „Jetzt abgleichen".
+  Ohne Internet geht alles weiter, der Abgleich kommt dann später nach.
 - **Gleichzeitig geändert?** Beim Fortschritt gewinnt die höhere Folge. Bei Status, Bewertung, Notizen usw. gewinnt die letzte Änderung.
 - **Neue Folgen/Staffeln** erkennt jedes Gerät selbst. Am Handy erscheinen sie beim Öffnen der App.
+- **Anmeldung am Handy**: Google erneuert sie beim Öffnen der App automatisch (die Seite lädt dabei kurz neu).
+  Falls doch einmal „Anmeldung abgelaufen" erscheint: in den Einstellungen auf **„Neu verbinden"** tippen.
 - **Der App-Ordner** ist in Google Drive unsichtbar. Unter *Einstellungen → Apps verwalten* siehst du „Anime Tracker“ mit seinem Speicherplatz, nur wenige MB.
-  Dort **nicht auf „Daten löschen“** klicken, sonst ist der Abgleichstand weg. Am PC bleibt aber alles erhalten.
-- **Handy verloren / Browserdaten gelöscht?** Neu installieren, verbinden, koppeln, und alles kommt aus Google Drive zurück.
+  Dort **nicht auf „Daten löschen“** klicken.
+- **Handy verloren / Browserdaten gelöscht?** App neu öffnen, verbinden, Passwort eingeben, und alles kommt aus Google Drive zurück.
+- **Passwort vergessen?** Auf dem PC „Trennen" → im Google-Drive-App-Ordner die Daten löschen (siehe oben) → neu verbinden und ein neues Passwort festlegen.
 - **Zugriff entziehen**: jederzeit unter https://myaccount.google.com/permissions.
 
 ## Häufige Stolpersteine
