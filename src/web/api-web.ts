@@ -1,5 +1,5 @@
 // window.api der Handy-Version – dieselben Methoden wie die Electron-Brücke (src/preload/preload.ts),
-// nur ruft sie die Handler direkt auf statt über IPC. Datei-Import/-Export gibt es am Handy nicht.
+// nur ruft sie die Handler direkt auf statt über IPC. Import/Export laufen über src/web/dateien-web.ts.
 import { hoere } from './electron-shim'
 
 type Handler = (event: unknown, ...args: any[]) => unknown
@@ -20,6 +20,7 @@ const ereignis = (kanal: string) => (cb: (daten: any) => void) => hoere(kanal, c
 
 export function baueApi() {
   return {
+    istHandy: true,
     getEntries: () => invoke('entries:getAll'),
     getEntry: (id: number) => invoke('entries:get', id),
     createEntry: (data: unknown) => invoke('entries:create', data),
@@ -67,5 +68,8 @@ export function baueApi() {
     getAniListRelations: (anilistId: number) => invoke('watchorder:getRelations', anilistId),
     saveWatchOrder: (entryId: number, items: unknown[]) => invoke('watchorder:save', entryId, items),
     deleteWatchOrder: (entryId: number) => invoke('watchorder:delete', entryId),
+
+    exportStarten: (opts: unknown) => invoke('export:start', opts),
+    importCsv: () => invoke('import:csv'),
   }
 }

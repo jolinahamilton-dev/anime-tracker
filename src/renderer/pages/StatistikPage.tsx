@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Page.css'
 import './StatistikPage.css'
@@ -44,6 +44,7 @@ interface Eintrag {
   rating: number | null
   status: string
   genres: string
+  rewatch_count: number | null
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -76,6 +77,8 @@ type DetailFilter =
   | { typ: 'mediatyp'; wert: string; label: string }
   | { typ: 'status'; wert: string; label: string }
   | { typ: 'genre'; wert: string; label: string }
+  | { typ: 'alle'; wert: ''; label: string }
+  | { typ: 'wiederholt'; wert: ''; label: string }
 
 export default function StatistikPage() {
   const navigate = useNavigate()
@@ -91,11 +94,32 @@ export default function StatistikPage() {
     api.getEntries().then(setAlleEintraege)
   }, [])
 
-  function toggleFilter(f: DetailFilter) {
+  // Die Trefferliste steht weit unten → nach dem Antippen dorthin scrollen, „↑ Zurück“ führt
+  // wieder zur angetippten Karte bzw. Zeile
+  const panelRef = useRef<HTMLElement>(null)
+  const herkunft = useRef<HTMLElement | null>(null)
+
+  function toggleFilter(f: DetailFilter, ev?: React.MouseEvent<HTMLElement>) {
+    herkunft.current = ev?.currentTarget ?? null
     setDetailFilter(prev => prev?.typ === f.typ && prev?.wert === f.wert ? null : f)
   }
 
+  useEffect(() => {
+    if (detailFilter) panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [detailFilter])
+
+  function zurueckNachOben() {
+    herkunft.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
+  function schliessen() {
+    zurueckNachOben()
+    setDetailFilter(null)
+  }
+
   const detailEintraege = detailFilter === null ? [] : alleEintraege.filter(e => {
+    if (detailFilter.typ === 'alle') return true
+    if (detailFilter.typ === 'wiederholt') return (e.rewatch_count ?? 0) > 0
     if (detailFilter.typ === 'mediatyp') return e.type === detailFilter.wert
     if (detailFilter.typ === 'status') return e.status === detailFilter.wert
     if (detailFilter.typ === 'genre') {
@@ -135,27 +159,30 @@ export default function StatistikPage() {
         <section className="stat-section">
           <h3 className="section-titel">Übersicht</h3>
           <div className="stat-grid">
-            <div className="stat-karte">
+            <button
+              className={`stat-karte stat-karte--klickbar ${detailFilter?.typ === 'alle' ? 'aktiv' : ''}`}
+              onClick={ev => toggleFilter({ typ: 'alle', wert: '', label: 'Alle Einträge' }, ev)}
+            >
               <span className="stat-zahl">{stats.gesamt}</span>
               <span className="stat-label">Einträge gesamt</span>
-            </div>
+            </button>
             <button
               className={`stat-karte stat-karte--klickbar ${detailFilter?.typ === 'mediatyp' && detailFilter.wert === 'ANIME' ? 'aktiv' : ''}`}
-              onClick={() => toggleFilter({ typ: 'mediatyp', wert: 'ANIME', label: 'Anime' })}
+              onClick={ev => toggleFilter({ typ: 'mediatyp', wert: 'ANIME', label: 'Anime' }, ev)}
             >
               <span className="stat-zahl">{stats.anime}</span>
               <span className="stat-label">Anime</span>
             </button>
             <button
               className={`stat-karte stat-karte--klickbar ${detailFilter?.typ === 'mediatyp' && detailFilter.wert === 'MANGA' ? 'aktiv' : ''}`}
-              onClick={() => toggleFilter({ typ: 'mediatyp', wert: 'MANGA', label: 'Manga' })}
+              onClick={ev => toggleFilter({ typ: 'mediatyp', wert: 'MANGA', label: 'Manga' }, ev)}
             >
               <span className="stat-zahl">{stats.manga}</span>
               <span className="stat-label">Manga</span>
             </button>
             <button
               className={`stat-karte stat-karte--klickbar ${detailFilter?.typ === 'status' && detailFilter.wert === 'completed' ? 'aktiv' : ''}`}
-              onClick={() => toggleFilter({ typ: 'status', wert: 'completed', label: 'Beendet' })}
+              onClick={ev => toggleFilter({ typ: 'status', wert: 'completed', label: 'Beendet' }, ev)}
             >
               <span className="stat-zahl">{stats.beendet}</span>
               <span className="stat-label">Beendet</span>
@@ -178,19 +205,22 @@ export default function StatistikPage() {
             </div>
             <button
               className={`stat-karte stat-karte--klickbar ${detailFilter?.typ === 'status' && detailFilter.wert === 'planned' ? 'aktiv' : ''}`}
-              onClick={() => toggleFilter({ typ: 'status', wert: 'planned', label: 'Geplant' })}
+              onClick={ev => toggleFilter({ typ: 'status', wert: 'planned', label: 'Geplant' }, ev)}
             >
               <span className="stat-zahl">{stats.geplant}</span>
               <span className="stat-label">Geplant (Rückstau)</span>
             </button>
-            <div className="stat-karte">
+            <button
+              className={`stat-karte stat-karte--klickbar ${detailFilter?.typ === 'wiederholt' ? 'aktiv' : ''}`}
+              onClick={ev => toggleFilter({ typ: 'wiederholt', wert: '', label: 'Wiederholt' }, ev)}
+            >
               <span className="stat-zahl">{stats.wiederholungen}</span>
               <span className="stat-label">Wiederholungen</span>
-            </div>
+            </button>
             {stats.topGenre && (
               <button
                 className={`stat-karte stat-karte--klickbar ${detailFilter?.typ === 'genre' && detailFilter.wert === stats.topGenre ? 'aktiv' : ''}`}
-                onClick={() => toggleFilter({ typ: 'genre', wert: stats.topGenre!, label: stats.topGenre! })}
+                onClick={ev => toggleFilter({ typ: 'genre', wert: stats.topGenre!, label: stats.topGenre! }, ev)}
               >
                 <span className="stat-zahl">{stats.topGenre}</span>
                 <span className="stat-label">Top-Genre</span>
@@ -258,7 +288,7 @@ export default function StatistikPage() {
                 <button
                   key={g.genre}
                   className={`status-row status-row--klickbar ${detailFilter?.typ === 'genre' && detailFilter.wert === g.genre ? 'aktiv' : ''}`}
-                  onClick={() => toggleFilter({ typ: 'genre', wert: g.genre, label: g.genre })}
+                  onClick={ev => toggleFilter({ typ: 'genre', wert: g.genre, label: g.genre }, ev)}
                 >
                   <span className="status-name" style={{ color: 'var(--text)' }}>{g.genre}</span>
                   <div className="status-bar-wrap">
@@ -304,7 +334,7 @@ export default function StatistikPage() {
                   <button
                     key={row.status}
                     className={`status-row status-row--klickbar ${aktiv ? 'aktiv' : ''}`}
-                    onClick={() => toggleFilter({ typ: 'status', wert: row.status, label: STATUS_LABEL[row.status] ?? row.status })}
+                    onClick={ev => toggleFilter({ typ: 'status', wert: row.status, label: STATUS_LABEL[row.status] ?? row.status }, ev)}
                   >
                     <span className="status-name" style={{ color: STATUS_FARBE[row.status] ?? 'var(--text-muted)' }}>
                       {STATUS_LABEL[row.status] ?? row.status}
@@ -336,7 +366,7 @@ export default function StatistikPage() {
                   <button
                     key={genre}
                     className={`status-row status-row--klickbar ${aktiv ? 'aktiv' : ''}`}
-                    onClick={() => toggleFilter({ typ: 'genre', wert: genre, label: genre })}
+                    onClick={ev => toggleFilter({ typ: 'genre', wert: genre, label: genre }, ev)}
                   >
                     <span className="status-name" style={{ color: 'var(--text)' }}>{genre}</span>
                     <div className="status-bar-wrap">
@@ -357,10 +387,13 @@ export default function StatistikPage() {
 
         {/* Detail-Panel */}
         {detailFilter && (
-          <section className="stat-section stat-detail-panel">
+          <section className="stat-section stat-detail-panel" ref={panelRef}>
             <div className="section-header">
               <h3 className="section-titel">{detailFilter.label} <span className="achievement-count">{detailEintraege.length}</span></h3>
-              <button className="edit-btn" onClick={() => setDetailFilter(null)}>✕ Schließen</button>
+              <div className="detail-panel-aktionen">
+                <button className="edit-btn" onClick={zurueckNachOben}>↑ Zurück</button>
+                <button className="edit-btn" onClick={schliessen}>✕ Schließen</button>
+              </div>
             </div>
             {detailEintraege.length === 0 ? (
               <p className="empty-hint">Keine Einträge gefunden.</p>

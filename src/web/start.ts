@@ -15,6 +15,7 @@ import { registerStatsHandlers, ergaenzeFolgenlaengen } from '../main/handlers/s
 import { registerSerienHandlers, aktualisiereSerien } from '../main/handlers/serien'
 import { trackAppOpen } from '../main/trackAppOpen'
 import { erstelleSyncDienst } from '../sync/dienst'
+import { registerDateiHandlers } from './dateien-web'
 
 async function start() {
   verarbeiteRueckkehr()
@@ -36,6 +37,7 @@ async function start() {
   }
   const sync = erstelleSyncDienst(webPlattform)
   sync.registriere(registry)
+  registerDateiHandlers(registry)
   ;(window as any).api = baueApi()
   trackAppOpen()
 

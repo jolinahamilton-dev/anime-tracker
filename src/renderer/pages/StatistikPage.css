@@ -358,3 +358,13 @@
   .monats-chart { gap: 3px; height: 120px; }
   .monats-name { font-size: 9px; }
 }
+
+.detail-panel-aktionen {
+  display: flex;
+  gap: 8px;
+}
+
+.stat-detail-panel {
+  scroll-margin-top: 12px;
+}
+

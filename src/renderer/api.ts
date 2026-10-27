@@ -95,16 +95,16 @@ export interface TrackerApi {
   syncJetzt(): Promise<SyncStatus>
   syncTrennen(): Promise<SyncStatus>
 
-  // Nur am PC (Dateidialoge)
+  // Dateien (PC: Windows-Dialoge, Handy: Dateiauswahl bzw. Download)
   exportStarten(opts: unknown): Promise<any>
   importCsv(): Promise<any>
 }
 
 export const api: TrackerApi = (window as any).api
 
-/** Was die aktuelle Plattform kann – z. B. blendet das Handy Datei-Import/-Export aus */
+/** Was die aktuelle Plattform kann */
 export const kann = {
   dateien: typeof (window as any).api?.importCsv === 'function',
 }
 /** Läuft gerade die Handy-Version (Web-App) statt der PC-App? */
-export const istHandyApp = !kann.dateien
+export const istHandyApp = (window as any).api?.istHandy === true

@@ -233,7 +233,7 @@ export default function EinstellungenPage() {
           </dl>
         </section>}
 
-        {/* Import (nur am PC – braucht den Dateidialog) */}
+        {/* Import */}
         {kann.dateien && <section className="einstell-section">
           <h3 className="section-titel">Import</h3>
           <p className="einstell-sub" style={{ marginBottom: 10 }}>
@@ -289,7 +289,7 @@ export default function EinstellungenPage() {
           </button>
         </section>
 
-        {/* Export (nur am PC) */}
+        {/* Export */}
         {kann.dateien && <section className="einstell-section">
           <h3 className="section-titel">Export</h3>
 
