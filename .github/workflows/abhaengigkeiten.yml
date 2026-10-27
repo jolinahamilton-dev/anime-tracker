@@ -1,0 +1,52 @@
+# Aktualisiert die npm-Abhängigkeiten (innerhalb der erlaubten Versionsbereiche), behebt bekannte
+# Sicherheitslücken, baut PC- und Handy-App zur Probe und legt das Ergebnis auf dem Zweig
+# „abhaengigkeiten“ ab. Übernommen wird erst nach Prüfung (Merge nach main). Start nur von Hand.
+name: Abhängigkeiten aktualisieren
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  aktualisieren:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Vorher – bekannte Lücken
+        run: npm audit --omit=optional || true
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+
+      - name: Aktualisieren und Lücken beheben
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+        run: |
+          npm install --package-lock-only --ignore-scripts
+          npm update --ignore-scripts
+          npm audit fix --ignore-scripts || true
+
+      - name: Nachher – verbleibende Lücken
+        run: npm audit || true
+
+      - name: Probe-Build (PC-Oberfläche, Main-Prozess, Handy-App)
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+          npm run build:web
+
+      - name: Ergebnis auf Zweig „abhaengigkeiten“ ablegen
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -B abhaengigkeiten
+          git add package.json package-lock.json
+          git commit -m "Abhängigkeiten aktualisieren (npm update + audit fix)" || echo 'Keine Änderungen'
+          git push --force origin abhaengigkeiten
