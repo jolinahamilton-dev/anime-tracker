@@ -81,6 +81,8 @@ export interface TrackerApi {
   // Einstellungen, Statistik, Achievements
   getMeta(key: string): Promise<string | null>
   setMeta(key: string, value: string): Promise<unknown>
+  /** Nur PC: Fenster-/Taskleistensymbol auf das gewählte Logo setzen */
+  fensterLogo?(id: string): Promise<unknown>
   getStats(): Promise<any>
   getAchievements(): Promise<any[]>
   pruefeAchievements(): Promise<unknown>

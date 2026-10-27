@@ -28,6 +28,44 @@
   align-items: flex-start;
 }
 
+/* Beschriftung oben, Inhalt darunter in voller Breite (z. B. Logo-Auswahl) */
+.einstell-zeile--block {
+  flex-direction: column;
+  align-items: stretch;
+  flex-wrap: nowrap !important; /* wrap aus der Handy-Ansicht macht Spalten-Flexboxen riesig hoch */
+}
+
+.logo-auswahl {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+}
+
+.logo-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.logo-btn img {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+}
+
+.logo-btn:hover { background: var(--border); }
+.logo-btn.aktiv { border-color: var(--accent); color: var(--text); }
+.logo-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 .einstell-info {
   display: flex;
   flex-direction: column;

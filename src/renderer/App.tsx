@@ -12,6 +12,7 @@ import Begruessung from './components/Begruessung'
 import { snackbar } from './meldungen'
 import { useState, useEffect } from 'react'
 import { useSettings } from './hooks/useSettings'
+import { logoBild, useLogo } from './logos'
 import { istTippen, overlayOffen, useTasten } from './tastatur'
 import './styles/App.css'
 import { api } from './api'
@@ -26,6 +27,7 @@ function DetailPageNeu() {
 
 export default function App() {
   useSettings() // lädt Settings und wendet CSS-Variablen an
+  const logo = useLogo()
   const location = useLocation()
   const navigate = useNavigate()
   const showNav = ['/', '/einpflegen', '/news'].includes(location.pathname)
@@ -75,7 +77,7 @@ export default function App() {
         {/* Logo und Name führen von jeder Seite zurück zur Liste */}
         <h1 className="app-title">
           <NavLink to="/" end className="app-title-link" title="Zur Liste (Esc)">
-            <img src="icons/icon-192.png" alt="" className="app-logo" />
+            <img src={logoBild(logo)} alt="" className="app-logo" />
             <span>Anime & Manga Tracker</span>
           </NavLink>
         </h1>

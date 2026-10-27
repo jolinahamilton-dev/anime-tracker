@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { api } from '../api'
+import { setzeLogo, STANDARD_LOGO } from '../logos'
 
 export interface Settings {
   darkMode: boolean
   akzentfarbe: string
+  logo: string
 }
 
-const STANDARD: Settings = { darkMode: true, akzentfarbe: '#e85d8a' }
+const STANDARD: Settings = { darkMode: true, akzentfarbe: '#e85d8a', logo: STANDARD_LOGO }
 // Kopie der Darstellung im localStorage: wird beim Start sofort (synchron) angewendet,
 // damit nicht erst das dunkle Standard-Design aufblitzt, bis die DB geantwortet hat
 const CACHE_KEY = 'darstellung'
@@ -30,6 +32,7 @@ export function anwenden(s: Settings) {
     stil.setProperty('--text', '#f0f0f5')
     stil.setProperty('--text-muted', '#888899')
   }
+  setzeLogo(s.logo)
   try { localStorage.setItem(CACHE_KEY, JSON.stringify(s)) } catch { /* egal */ }
 }
 
@@ -46,11 +49,11 @@ export function useSettings() {
 
   useEffect(() => {
     async function laden() {
-      const dark = await api.getMeta('darkMode')
-      const farbe = await api.getMeta('akzentfarbe')
+      const [dark, farbe, logo] = await Promise.all([api.getMeta('darkMode'), api.getMeta('akzentfarbe'), api.getMeta('logo')])
       const s: Settings = {
         darkMode: dark !== 'false',
         akzentfarbe: farbe ?? STANDARD.akzentfarbe,
+        logo: logo ?? STANDARD.logo,
       }
       setSettings(s)
       anwenden(s)
@@ -66,6 +69,10 @@ export function useSettings() {
     // sobald nur der Dark Mode umgeschaltet wird (Achievement „Individualist")
     if (neu.darkMode !== undefined) await api.setMeta('darkMode', String(aktuell.darkMode))
     if (neu.akzentfarbe !== undefined) await api.setMeta('akzentfarbe', aktuell.akzentfarbe)
+    if (neu.logo !== undefined) {
+      await api.setMeta('logo', aktuell.logo)
+      await api.fensterLogo?.(aktuell.logo)
+    }
   }
 
   return { settings, speichern }

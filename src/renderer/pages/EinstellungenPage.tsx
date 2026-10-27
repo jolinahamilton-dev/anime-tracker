@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSettings } from '../hooks/useSettings'
+import { LOGOS, logoBild } from '../logos'
 import './Page.css'
 import './EinstellungenPage.css'
 import { api, kann, istHandyApp } from '../api'
@@ -261,6 +262,31 @@ export default function EinstellungenPage() {
                 />
                 <span className="einstell-sub">{settings.akzentfarbe}</span>
               </div>
+            </div>
+          </div>
+
+          <div className="einstell-zeile einstell-zeile--top einstell-zeile--block">
+            <div className="einstell-info">
+              <span className="einstell-label">App-Logo</span>
+              <span className="einstell-sub">
+                {istHandyApp
+                  ? 'Erscheint in der Kopfzeile – das Symbol auf dem Startbildschirm bleibt beim Installieren gleich'
+                  : 'Erscheint in der Kopfzeile, im Fenster und in der Taskleiste'}
+              </span>
+            </div>
+            <div className="logo-auswahl" role="radiogroup" aria-label="App-Logo">
+              {LOGOS.map(l => (
+                <button
+                  key={l.id}
+                  role="radio"
+                  aria-checked={settings.logo === l.id}
+                  className={settings.logo === l.id ? 'logo-btn aktiv' : 'logo-btn'}
+                  onClick={() => speichern({ logo: l.id })}
+                >
+                  <img src={logoBild(l.id)} alt="" />
+                  <span>{l.name}</span>
+                </button>
+              ))}
             </div>
           </div>
         </section>

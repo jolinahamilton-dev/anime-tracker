@@ -3,7 +3,7 @@ import { dbGet, dbRun } from '../../db/database'
 import { pruefeAchievements } from './achievements'
 
 // Nur Einstellungen der Oberfläche – Geräte-ID, Abgleich-Zugang und -Stand bleiben für die Seiten unerreichbar
-const ERLAUBT = new Set(['darkMode', 'akzentfarbe'])
+const ERLAUBT = new Set(['darkMode', 'akzentfarbe', 'logo'])
 
 export function registerMetaHandlers(ipcMain: IpcMain) {
   ipcMain.handle('meta:get', (_, key: string) => {

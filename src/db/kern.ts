@@ -175,7 +175,7 @@ export const SYNC_FELDER = {
   watch_order: ['relation_type', 'position', 'is_custom', 'title', 'cover_url', 'progress_episodes', 'item_status', 'neu_seit', 'total_episodes'],
 }
 /** Einstellungen, die auf allen Geräten gleich sein sollen (alles andere in app_meta bleibt lokal) */
-export const SYNC_META = ['akzentfarbe']
+export const SYNC_META = ['akzentfarbe', 'logo']
 
 const NEUE_UUID = 'lower(hex(randomblob(16)))'
 const ZEIT_MS = "CAST(ROUND((julianday('now') - 2440587.5) * 86400000) AS INTEGER)"

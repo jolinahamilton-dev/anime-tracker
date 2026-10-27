@@ -12,7 +12,7 @@ export const SICHERUNG_FORMAT = 'anime-tracker-sicherung'
 const VERSION = 1
 
 /** Lokale Einstellungen und Zähler, die mitgesichert werden (Geräte-ID, Abgleich und Google-Zugang nie) */
-const META_SCHLUESSEL = ['darkMode', 'akzentfarbe', 'darstellung', 'first_open', 'open_days', 'last_export']
+const META_SCHLUESSEL = ['darkMode', 'akzentfarbe', 'logo', 'darstellung', 'first_open', 'open_days', 'last_export']
 
 type Zeile = Record<string, unknown>
 

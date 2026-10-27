@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld('api', {
   // App Meta
   getMeta: (key: string) => ipcRenderer.invoke('meta:get', key),
   setMeta: (key: string, value: string) => ipcRenderer.invoke('meta:set', key, value),
+  fensterLogo: (id: string) => ipcRenderer.invoke('fenster:logo', id),
 
   // Statistiken
   getStats: () => ipcRenderer.invoke('stats:get'),

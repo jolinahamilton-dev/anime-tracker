@@ -1,0 +1,123 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+  <filter id="paint" x="-10%" y="-10%" width="120%" height="120%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="2" seed="7" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <filter id="paintFein" x="-10%" y="-10%" width="120%" height="120%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="5" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <filter id="soft" x="-150%" y="-150%" width="400%" height="400%"><feGaussianBlur stdDeviation="14"/></filter>
+  <filter id="softGross" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="30"/></filter>
+  <filter id="grain">
+    <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="3"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 0.35  0 0 0 0 0.25  0 0 0 0 0.15  0 0 0 0.09 0"/>
+  </filter>
+  <linearGradient id="himmel" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#2a3570"/><stop offset="0.35" stop-color="#6b5a9a"/>
+    <stop offset="0.62" stop-color="#e5939a"/><stop offset="0.85" stop-color="#ffc78a"/><stop offset="1" stop-color="#ffe0a8"/></linearGradient>
+  <linearGradient id="strahl" x1="0" y1="1" x2="1" y2="0">
+    <stop offset="0" stop-color="#fff6c8" stop-opacity="0.9"/><stop offset="1" stop-color="#fff2c0" stop-opacity="0"/></linearGradient>
+  <linearGradient id="strahlKern" x1="0" y1="1" x2="1" y2="0">
+    <stop offset="0" stop-color="#ffffff" stop-opacity="0.9"/><stop offset="0.8" stop-color="#fff8d8" stop-opacity="0"/></linearGradient>
+  <linearGradient id="ruecken" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#3d5390"/><stop offset="0.7" stop-color="#28396a"/><stop offset="1" stop-color="#1c284c"/></linearGradient>
+  <linearGradient id="bauch" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#ffe0c4"/><stop offset="0.6" stop-color="#f1b4a6"/><stop offset="1" stop-color="#b98aa6"/></linearGradient>
+  <linearGradient id="gras" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#93cc6c"/><stop offset="1" stop-color="#3f7f3f"/></linearGradient>
+    <clipPath id="rahmen"><rect width="1024" height="1024" rx="200"/></clipPath>
+  </defs>
+  <g clip-path="url(#rahmen)">
+  <rect width="1024" height="1024" fill="url(#himmel)"/>
+  <circle cx="90" cy="120" r="3" fill="#fff4dc" opacity="0.8"/><circle cx="180" cy="70" r="2.5" fill="#fff4dc" opacity="0.8"/><circle cx="300" cy="150" r="2" fill="#fff4dc" opacity="0.8"/><circle cx="130" cy="230" r="2" fill="#fff4dc" opacity="0.8"/><circle cx="250" cy="40" r="2" fill="#fff4dc" opacity="0.8"/><circle cx="930" cy="160" r="2.5" fill="#fff4dc" opacity="0.8"/><circle cx="410" cy="60" r="2" fill="#fff4dc" opacity="0.8"/><circle cx="700" cy="50" r="2" fill="#fff4dc" opacity="0.8"/>
+  <!-- tiefstehende Sonne links, warmer Schein -->
+  <circle cx="170" cy="720" r="300" fill="#ffc46b" opacity="0.5" filter="url(#softGross)"/>
+  <circle cx="170" cy="735" r="80" fill="#fff3cc" filter="url(#soft)"/>
+
+  <!-- große Haufenwolken im Hintergrund, von links angestrahlt -->
+  <g filter="url(#paint)">
+    <g fill="#9c7499"><circle cx="860" cy="453.6" r="180"/><circle cx="716" cy="525.6" r="144"/><circle cx="1016" cy="513.6" r="156"/><circle cx="608" cy="633.6" r="108"/><circle cx="1136" cy="621.6" r="120"/><circle cx="860" cy="633.6" r="168"/><circle cx="764" cy="357.6" r="108"/><circle cx="956" cy="369.6" r="120"/><circle cx="704" cy="669.6" r="96"/><circle cx="1016" cy="669.6" r="102"/></g>
+    <g fill="#e3a2a0"><circle cx="860" cy="429.6" r="180"/><circle cx="716" cy="501.6" r="144"/><circle cx="1016" cy="489.6" r="156"/><circle cx="608" cy="609.6" r="108"/><circle cx="1136" cy="597.6" r="120"/><circle cx="860" cy="609.6" r="168"/><circle cx="764" cy="333.6" r="108"/><circle cx="956" cy="345.6" r="120"/><circle cx="704" cy="645.6" r="96"/><circle cx="1016" cy="645.6" r="102"/></g>
+    <g fill="#ffd7a6"><circle cx="876.8" cy="403.20000000000005" r="144"/><circle cx="732.8" cy="475.2" r="115.19999999999999"/><circle cx="1032.8" cy="463.20000000000005" r="124.8"/><circle cx="624.8" cy="583.2" r="86.39999999999999"/><circle cx="1152.8" cy="571.2" r="96"/><circle cx="876.8" cy="583.2" r="134.4"/><circle cx="780.8" cy="307.2" r="86.39999999999999"/><circle cx="972.8" cy="319.2" r="96"/></g>
+  </g>
+  <g filter="url(#paint)">
+    <g fill="#a77a9e"><circle cx="120" cy="409" r="75"/><circle cx="60" cy="439" r="60"/><circle cx="185" cy="434" r="65"/><circle cx="15" cy="484" r="45"/><circle cx="235" cy="479" r="50"/><circle cx="120" cy="484" r="70"/><circle cx="80" cy="369" r="45"/><circle cx="160" cy="374" r="50"/><circle cx="55" cy="499" r="40"/><circle cx="185" cy="499" r="42.5"/></g>
+    <g fill="#ecb2a4"><circle cx="120" cy="399" r="75"/><circle cx="60" cy="429" r="60"/><circle cx="185" cy="424" r="65"/><circle cx="15" cy="474" r="45"/><circle cx="235" cy="469" r="50"/><circle cx="120" cy="474" r="70"/><circle cx="80" cy="359" r="45"/><circle cx="160" cy="364" r="50"/><circle cx="55" cy="489" r="40"/><circle cx="185" cy="489" r="42.5"/></g>
+    <g fill="#ffe4b6"><circle cx="127" cy="388" r="60"/><circle cx="67" cy="418" r="48"/><circle cx="192" cy="413" r="52"/><circle cx="22" cy="463" r="36"/><circle cx="242" cy="458" r="40"/><circle cx="127" cy="463" r="56"/><circle cx="87" cy="348" r="36"/><circle cx="167" cy="353" r="40"/></g>
+  </g>
+
+  <!-- Lichtstrahl des Leuchtturms -->
+  <path d="M544 389 L1090 -20 L1090 330 Z" fill="url(#strahl)" filter="url(#soft)"/>
+  <path d="M544 389 L1090 70 L1090 210 Z" fill="url(#strahlKern)" filter="url(#paintFein)"/>
+
+  <!-- Wolkenmeer hinten -->
+  <g filter="url(#paint)">
+    <g fill="#9a6f98"><circle cx="-60" cy="846" r="60"/><circle cx="-2" cy="842" r="79"/><circle cx="56" cy="851" r="75"/><circle cx="119" cy="828" r="105"/><circle cx="215" cy="860" r="70"/><circle cx="271" cy="847" r="104"/><circle cx="345" cy="844" r="122"/><circle cx="434" cy="830" r="89"/><circle cx="516" cy="843" r="75"/><circle cx="581" cy="862" r="78"/><circle cx="649" cy="833" r="97"/><circle cx="728" cy="842" r="76"/><circle cx="798" cy="839" r="71"/><circle cx="871" cy="849" r="116"/><circle cx="989" cy="834" r="101"/><circle cx="1069" cy="858" r="84"/><rect x="-20" y="880" width="1064" height="400"/></g>
+    <g fill="#d99aa0"><circle cx="-64" cy="840" r="55"/><circle cx="-6" cy="834" r="74"/><circle cx="52" cy="844" r="70"/><circle cx="115" cy="817" r="98"/><circle cx="211" cy="853" r="65"/><circle cx="267" cy="837" r="96"/><circle cx="341" cy="832" r="113"/><circle cx="430" cy="821" r="83"/><circle cx="512" cy="836" r="70"/><circle cx="577" cy="854" r="72"/><circle cx="645" cy="823" r="90"/><circle cx="724" cy="834" r="70"/><circle cx="794" cy="832" r="66"/><circle cx="867" cy="837" r="108"/><circle cx="985" cy="824" r="94"/><circle cx="1065" cy="849" r="78"/></g>
+    <g fill="#ffc9a0" opacity="0.85"><circle cx="-72" cy="830" r="43"/><circle cx="-14" cy="821" r="57"/><circle cx="44" cy="832" r="54"/><circle cx="107" cy="800" r="76"/><circle cx="203" cy="842" r="50"/><circle cx="259" cy="820" r="75"/><circle cx="333" cy="813" r="88"/><circle cx="422" cy="807" r="64"/><circle cx="504" cy="824" r="54"/><circle cx="569" cy="841" r="56"/><circle cx="637" cy="808" r="70"/><circle cx="716" cy="822" r="54"/><circle cx="786" cy="821" r="51"/><circle cx="859" cy="819" r="83"/><circle cx="977" cy="807" r="73"/><circle cx="1057" cy="836" r="61"/></g>
+  </g>
+  <!-- Schatten des Mantas auf dem Wolkenmeer -->
+  <ellipse cx="540" cy="900" rx="320" ry="30" fill="#5b3f6e" opacity="0.35" filter="url(#soft)"/>
+
+  <!-- Schwanz -->
+  <path d="M500 556 C520 500 580 470 650 462 C700 456 738 440 770 412 C752 446 716 468 660 476 C596 484 552 512 528 560 Z" fill="#2a3a66" filter="url(#paintFein)"/>
+
+  <!-- Manta -->
+  <g filter="url(#paint)">
+    <path d="M512 536 C446 536 380 512 304 478 C230 446 150 418 86 414 C54 412 42 442 66 468 C118 540 202 596 286 644 C352 682 398 716 424 754 C448 788 480 800 512 800 C544 800 576 788 600 754 C626 716 672 682 738 644 C822 596 906 540 958 468 C982 442 970 412 938 414 C874 418 794 446 720 478 C644 512 578 536 512 536 Z" fill="url(#bauch)"/>
+    <path d="M512 536 C446 536 380 512 304 478 C230 446 150 418 86 414 C54 412 42 442 66 468 C120 522 200 574 286 618 C352 652 398 684 424 720 C448 752 480 764 512 764 C544 764 576 752 600 720 C626 684 672 652 738 618 C824 574 904 522 958 468 C982 442 970 412 938 414 C874 418 794 446 720 478 C644 512 578 536 512 536 Z" fill="url(#ruecken)"/>
+    <!-- Lichtkante der Hinterkante links -->
+    <path d="M512 548 C446 536 380 512 304 478 C230 446 150 418 86 414 C150 432 236 466 316 504 C396 538 456 546 512 546 Z" fill="#f2b48c" opacity="0.8"/>
+    <path d="M100 440 C200 470 300 520 380 580 C320 570 220 520 100 440 Z" fill="#8f8fc4" opacity="0.5"/>
+    <path d="M924 440 C824 470 724 520 644 580 C704 570 804 520 924 440 Z" fill="#6f78b0" opacity="0.4"/>
+    <!-- helle Schulterflecken -->
+    <path d="M330 590 C380 600 420 630 440 676 C400 650 360 628 330 590 Z" fill="#7d86bd" opacity="0.6"/>
+    <path d="M694 590 C644 600 604 630 584 676 C624 650 664 628 694 590 Z" fill="#7d86bd" opacity="0.45"/>
+    <!-- Kopfflossen -->
+    <path d="M470 752 C448 762 432 784 436 806 C440 824 462 826 470 812 C474 804 468 796 462 798 C466 786 482 776 498 770 Z" fill="#26355e"/>
+    <path d="M554 752 C576 762 592 784 588 806 C584 824 562 826 554 812 C550 804 556 796 562 798 C558 786 542 776 526 770 Z" fill="#26355e"/>
+    <path d="M440 790 C436 802 440 814 450 818" stroke="#f0ae84" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.85"/>
+    <path d="M486 790 C500 798 524 798 538 790" stroke="#3a2a48" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.7"/>
+  </g>
+  <!-- Augen -->
+  <circle cx="452" cy="728" r="9" fill="#141b36"/><circle cx="449" cy="725" r="3" fill="#fff4dc"/>
+  <circle cx="572" cy="728" r="9" fill="#141b36"/><circle cx="569" cy="725" r="3" fill="#fff4dc"/>
+
+  <g transform="translate(512 640) scale(1.15) translate(-512 -640)">
+  <!-- Insel auf dem Rücken -->
+  <g filter="url(#paint)">
+    <ellipse cx="514" cy="650" rx="122" ry="16" fill="#141b36" opacity="0.4"/>
+    <path d="M400 638 C412 600 460 586 512 584 C566 582 614 600 626 638 C590 664 434 664 400 638 Z" fill="#6b4a3a"/>
+    <path d="M394 634 C402 588 452 562 512 562 C572 562 622 588 632 632 C586 648 440 650 394 634 Z" fill="url(#gras)"/>
+    <path d="M420 604 C448 580 488 570 516 570" stroke="#cdee90" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.75"/>
+    <circle cx="432" cy="608" r="28" fill="#2f6e35"/><circle cx="454" cy="596" r="22" fill="#3f8243"/><circle cx="446" cy="588" r="12" fill="#9ad46e" opacity="0.85"/>
+    <circle cx="604" cy="614" r="20" fill="#2f6e35"/><circle cx="596" cy="606" r="10" fill="#7fbf63" opacity="0.85"/>
+  </g>
+
+  <!-- Leuchtturm -->
+  <g filter="url(#paintFein)">
+    <path d="M510 614 L522 456 L558 456 L570 614 Z" fill="#f7eee2"/>
+    <path d="M512 586 L568 586 L566 556 L514 556 Z" fill="#d23f35"/>
+    <path d="M517 524 L563 524 L561 494 L519 494 Z" fill="#d23f35"/>
+    <path d="M546 456 L558 456 L570 614 L552 614 Z" fill="#6a4a6e" opacity="0.25"/>
+    <rect x="504" y="444" width="72" height="14" rx="4" fill="#3b3348"/>
+    <rect x="518" y="400" width="44" height="44" fill="#fff1a8"/>
+    <path d="M508 402 L540 364 L572 402 Z" fill="#c8352d"/>
+    <circle cx="540" cy="360" r="5" fill="#3b3348"/>
+  </g>
+  <circle cx="540" cy="422" r="54" fill="#fff0a0" opacity="0.75" filter="url(#soft)"/>
+  <circle cx="540" cy="422" r="14" fill="#ffffff"/>
+
+  </g>
+  <!-- Wolkenmeer vorne -->
+  <g filter="url(#paint)">
+    <g fill="#7d5a86"><circle cx="-60" cy="988" r="74"/><circle cx="12" cy="960" r="84"/><circle cx="100" cy="984" r="109"/><circle cx="180" cy="969" r="108"/><circle cx="282" cy="974" r="114"/><circle cx="380" cy="981" r="138"/><circle cx="480" cy="962" r="111"/><circle cx="588" cy="980" r="89"/><circle cx="661" cy="954" r="125"/><circle cx="785" cy="949" r="148"/><circle cx="905" cy="956" r="90"/><circle cx="979" cy="962" r="109"/><circle cx="1092" cy="950" r="132"/><rect x="-20" y="1010" width="1064" height="400"/></g>
+    <g fill="#c08a9e"><circle cx="-64" cy="980" r="68"/><circle cx="8" cy="951" r="78"/><circle cx="96" cy="973" r="101"/><circle cx="176" cy="959" r="101"/><circle cx="278" cy="963" r="106"/><circle cx="376" cy="967" r="128"/><circle cx="476" cy="951" r="104"/><circle cx="584" cy="971" r="82"/><circle cx="657" cy="941" r="116"/><circle cx="781" cy="934" r="138"/><circle cx="901" cy="947" r="83"/><circle cx="975" cy="951" r="102"/><circle cx="1088" cy="937" r="123"/></g>
+    <g fill="#f4bca2" opacity="0.85"><circle cx="-72" cy="968" r="53"/><circle cx="0" cy="938" r="61"/><circle cx="88" cy="955" r="79"/><circle cx="168" cy="941" r="78"/><circle cx="270" cy="945" r="82"/><circle cx="368" cy="945" r="99"/><circle cx="468" cy="934" r="80"/><circle cx="576" cy="957" r="64"/><circle cx="649" cy="921" r="90"/><circle cx="773" cy="911" r="106"/><circle cx="893" cy="933" r="65"/><circle cx="967" cy="933" r="79"/><circle cx="1080" cy="915" r="95"/></g>
+  </g>
+
+    <rect width="1024" height="1024" filter="url(#grain)"/>
+  </g>
+</svg>

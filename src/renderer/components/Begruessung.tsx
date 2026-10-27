@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, istHandyApp } from '../api'
+import { logoBild, useLogo } from '../logos'
 import './Begruessung.css'
 
 // Einmal beim allerersten Start (leere Liste, kein Abgleich): mit Google anmelden oder ohne Konto loslegen
@@ -8,6 +9,7 @@ export default function Begruessung({ onFertig }: { onFertig: () => void }) {
   const navigate = useNavigate()
   const [beschaeftigt, setBeschaeftigt] = useState(false)
   const geraet = istHandyApp ? 'diesem Handy' : 'diesem PC'
+  const logo = useLogo()
 
   async function mitGoogle() {
     setBeschaeftigt(true)
@@ -30,7 +32,7 @@ export default function Begruessung({ onFertig }: { onFertig: () => void }) {
   return (
     <div className="begruessung" role="dialog" aria-modal="true" aria-labelledby="begruessung-titel">
       <div className="begruessung-karte">
-        <img src="icons/icon-192.png" alt="" className="begruessung-logo" />
+        <img src={logoBild(logo)} alt="" className="begruessung-logo" />
         <h2 id="begruessung-titel">Willkommen beim Anime&nbsp;Tracker</h2>
         <p className="begruessung-text">
           Behalte den Überblick über deine Anime und Manga: Fortschritt, Bewertungen, eigene Listen und neue Folgen.

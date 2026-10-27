@@ -6,6 +6,7 @@ import { registerListHandlers } from './handlers/lists'
 import { registerAchievementHandlers } from './handlers/achievements'
 import { registerNewsHandlers } from './handlers/news'
 import { registerMetaHandlers } from './handlers/meta'
+import { logoIcon, registerLogoHandlers } from './logo'
 import { registerAniListHandlers } from './handlers/anilist'
 import { registerWatchOrderHandlers } from './handlers/watchorder'
 import { aktualisiereNews } from './handlers/news'
@@ -39,6 +40,7 @@ function createWindow() {
     },
     titleBarStyle: 'default',
     title: 'Anime & Manga Tracker',
+    icon: logoIcon(dbGet("SELECT value FROM app_meta WHERE key = 'logo'")?.value),
   })
 
   // Das Fenster darf die App nie verlassen (z. B. wenn eine Datei hineingezogen wird) –
@@ -86,6 +88,7 @@ app.whenReady().then(async () => {
   registerAchievementHandlers(ipcMain)
   registerNewsHandlers(ipcMain)
   registerMetaHandlers(ipcMain)
+  registerLogoHandlers(ipcMain)
   registerAniListHandlers(ipcMain)
   registerWatchOrderHandlers(ipcMain)
   registerStatsHandlers(ipcMain)
