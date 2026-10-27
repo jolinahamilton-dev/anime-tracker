@@ -30,7 +30,7 @@ export default function Begruessung({ onFertig }: { onFertig: () => void }) {
   return (
     <div className="begruessung" role="dialog" aria-modal="true" aria-labelledby="begruessung-titel">
       <div className="begruessung-karte">
-        <div className="begruessung-logo" aria-hidden="true">📺📚</div>
+        <img src="icons/icon-192.png" alt="" className="begruessung-logo" />
         <h2 id="begruessung-titel">Willkommen beim Anime&nbsp;Tracker</h2>
         <p className="begruessung-text">
           Behalte den Überblick über deine Anime und Manga: Fortschritt, Bewertungen, eigene Listen und neue Folgen.
