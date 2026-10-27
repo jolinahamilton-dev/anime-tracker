@@ -56,6 +56,11 @@ export default function App() {
       <header className="top-bar">
         <h1 className="app-title">Anime & Manga Tracker</h1>
         <div className="top-actions">
+          {location.pathname !== '/' && (
+            <NavLink to="/" end className="icon-btn" title="Zur Liste (Esc)" aria-label="Zur Liste">
+              🏠
+            </NavLink>
+          )}
           <NavLink to="/statistiken" className="icon-btn" title="Statistiken (S)" aria-label="Statistiken">
             📊
           </NavLink>

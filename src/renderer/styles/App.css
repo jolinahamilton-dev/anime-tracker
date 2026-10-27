@@ -44,6 +44,10 @@
   background: var(--border);
 }
 
+.icon-btn.active {
+  background: var(--border);
+}
+
 .page-content {
   flex: 1;
   overflow: hidden;
@@ -106,8 +110,15 @@
 .nav-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 @media (max-width: 640px) {
-  .top-bar { height: 48px; padding: 0 12px; padding-top: env(safe-area-inset-top); }
-  .app-title { font-size: 15px; }
-  .icon-btn { width: 44px; height: 44px; }
+  /* Die Statusleiste (safe-area) kommt oben drauf, statt von der Leiste abzugehen */
+  .top-bar {
+    height: auto;
+    min-height: calc(60px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) 12px 0 16px;
+  }
+  .app-title { font-size: 15px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .top-actions { gap: 10px; flex-shrink: 0; }
+  .icon-btn { width: 48px; height: 48px; font-size: 22px; background: var(--bg-card); }
+  .page-header .back-btn { font-size: 15px; min-height: 44px; padding: 10px 14px; }
   .nav-item { min-height: 56px; }
 }
