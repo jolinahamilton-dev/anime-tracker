@@ -71,5 +71,8 @@ export function baueApi() {
 
     exportStarten: (opts: unknown) => invoke('export:start', opts),
     importCsv: () => invoke('import:csv'),
+    sicherungErstellen: () => invoke('sicherung:erstellen'),
+    sicherungWaehlen: () => invoke('sicherung:waehlen'),
+    sicherungEinspielen: () => invoke('sicherung:einspielen'),
   }
 }

@@ -58,6 +58,11 @@ contextBridge.exposeInMainWorld('api', {
   // Import
   importCsv: () => ipcRenderer.invoke('import:csv'),
 
+  // Komplette Sicherung
+  sicherungErstellen: () => ipcRenderer.invoke('sicherung:erstellen'),
+  sicherungWaehlen: () => ipcRenderer.invoke('sicherung:waehlen'),
+  sicherungEinspielen: () => ipcRenderer.invoke('sicherung:einspielen'),
+
   // Serien-Abgleich (neue Folgen/Staffeln)
   syncSerien: () => ipcRenderer.invoke('serien:sync'),
   getNeueStaffeln: () => ipcRenderer.invoke('serien:neueStaffeln'),

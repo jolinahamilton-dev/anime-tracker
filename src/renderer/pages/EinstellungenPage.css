@@ -179,3 +179,24 @@ kbd {
 .sync-passwort { display: flex; gap: 8px; max-width: 420px; }
 .sync-passwort input { flex: 1; min-height: 40px; }
 .sync-knoepfe { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.sicherung-knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.btn-secondary {
+  padding: 12px 24px;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-secondary:hover:not(:disabled) { background: var(--bg-card); }
+.btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+

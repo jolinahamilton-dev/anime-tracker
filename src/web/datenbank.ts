@@ -62,8 +62,9 @@ export async function initDb(): Promise<Database> {
   return db
 }
 
-export function persistDb() {
-  if (db) schreibe(db.export())
+/** Speichert sofort; das Promise ist erfüllt, sobald der Stand im Browser-Speicher liegt */
+export function persistDb(): Promise<void> {
+  return db ? schreibe(db.export()) : Promise.resolve()
 }
 
 export const wiederhergestelltAusBackup = false

@@ -14,6 +14,7 @@ import { persistDb, dbGet } from '../db/database'
 import { registerStatsHandlers, ergaenzeFolgenlaengen } from './handlers/stats'
 import { registerExportHandlers } from './handlers/export'
 import { registerImportHandlers } from './handlers/import'
+import { registerSicherungHandlers } from './handlers/sicherung'
 import { registerSerienHandlers, aktualisiereSerien } from './handlers/serien'
 import { erstelleSyncDienst } from '../sync/dienst'
 import { pcPlattform } from './sync-pc'
@@ -85,6 +86,7 @@ app.whenReady().then(async () => {
   registerStatsHandlers(ipcMain)
   registerExportHandlers(ipcMain)
   registerImportHandlers(ipcMain)
+  registerSicherungHandlers(ipcMain)
   registerSerienHandlers(ipcMain)
   const sync = erstelleSyncDienst(pcPlattform)
   sync.registriere(ipcMain)

@@ -5,6 +5,7 @@ import './Page.css'
 import './EinstellungenPage.css'
 import { api, kann, istHandyApp } from '../api'
 import SyncBereich from '../components/SyncBereich'
+import { bestaetigen } from '../meldungen'
 
 type ExportFormat = 'csv' | 'excel' | 'pdf'
 
@@ -112,6 +113,52 @@ export default function EinstellungenPage() {
     }
     // Importierte Einträge haben noch keine Cover/AniList-Verknüpfung → direkt nachladen
     if (importiert > 0) await startAbgleich()
+  }
+
+  const [sicherungLaeuft, setSicherungLaeuft] = useState(false)
+  const [sicherungMeldung, setSicherungMeldung] = useState('')
+
+  async function sicherungErstellen() {
+    setSicherungLaeuft(true)
+    setSicherungMeldung('')
+    try {
+      const r = await api.sicherungErstellen()
+      if (r.success) setSicherungMeldung(`✅ Gespeichert: ${r.pfad}`)
+    } catch {
+      setSicherungMeldung('❌ Sicherung fehlgeschlagen.')
+    } finally {
+      setSicherungLaeuft(false)
+    }
+  }
+
+  async function sicherungWiederherstellen() {
+    setSicherungMeldung('')
+    // Dateiauswahl zuerst – am Handy darf sie nur direkt nach dem Tippen aufgehen
+    const gewaehlt = await api.sicherungWaehlen()
+    if (gewaehlt.abgebrochen) return
+    if (!gewaehlt.info) { setSicherungMeldung(`❌ ${gewaehlt.fehler ?? 'Datei konnte nicht gelesen werden.'}`); return }
+    const { info } = gewaehlt
+    const datum = new Date(info.erstellt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
+    const ok = await bestaetigen('Sicherung wiederherstellen?', {
+      text: `Sicherung vom ${datum}: ${info.eintraege} Einträge, ${info.listen} Listen, ${info.achievements} Achievements. ` +
+        'Der aktuelle Stand wird dadurch ersetzt – Einträge, die nicht in der Sicherung sind, werden gelöscht. ' +
+        'Ist der Abgleich eingerichtet, übernimmt ihn auch das andere Gerät.',
+      ok: 'Wiederherstellen',
+      gefahr: true,
+    })
+    if (!ok) return
+    setSicherungLaeuft(true)
+    try {
+      const r = await api.sicherungEinspielen()
+      if (r.fehler) { setSicherungMeldung(`❌ ${r.fehler}`); return }
+      // Alle Seiten frisch laden, damit überall der wiederhergestellte Stand zu sehen ist
+      window.location.hash = '#/'
+      window.location.reload()
+    } catch {
+      setSicherungMeldung('❌ Wiederherstellen fehlgeschlagen – der bisherige Stand ist unverändert.')
+    } finally {
+      setSicherungLaeuft(false)
+    }
   }
 
   const [exportFormat, setExportFormat] = useState<ExportFormat>('csv')
@@ -231,6 +278,29 @@ export default function EinstellungenPage() {
               </div>
             ))}
           </dl>
+        </section>}
+
+        {/* Komplette Sicherung */}
+        {kann.dateien && <section className="einstell-section">
+          <h3 className="section-titel">Komplette Sicherung</h3>
+          <p className="einstell-sub" style={{ marginBottom: 10 }}>
+            Speichert alles in einer Datei: Einträge mit Spitznamen, Bewertungen und Fortschritt, eigene Listen,
+            Watch-Order, Achievements und den Stand der Statistik. Damit lässt sich die App auf jedem Gerät
+            (PC oder Handy) genau so wiederherstellen.
+          </p>
+          {sicherungMeldung && (
+            <p className={sicherungMeldung.startsWith('✅') ? 'export-ok' : 'fehler-text'} style={{ marginBottom: 10 }}>
+              {sicherungMeldung}
+            </p>
+          )}
+          <div className="sicherung-knoepfe">
+            <button className="btn-primary" onClick={sicherungErstellen} disabled={sicherungLaeuft}>
+              ⬇ Sicherung speichern
+            </button>
+            <button className="btn-secondary" onClick={sicherungWiederherstellen} disabled={sicherungLaeuft}>
+              ⬆ Sicherung wiederherstellen
+            </button>
+          </div>
         </section>}
 
         {/* Import */}

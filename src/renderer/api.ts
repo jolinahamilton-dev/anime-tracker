@@ -98,6 +98,18 @@ export interface TrackerApi {
   // Dateien (PC: Windows-Dialoge, Handy: Dateiauswahl bzw. Download)
   exportStarten(opts: unknown): Promise<any>
   importCsv(): Promise<any>
+
+  // Komplette Sicherung: wählen prüft die Datei, einspielen ersetzt danach den Stand
+  sicherungErstellen(): Promise<{ success: boolean; pfad?: string }>
+  sicherungWaehlen(): Promise<{ abgebrochen?: boolean; fehler?: string; info?: SicherungInfo }>
+  sicherungEinspielen(): Promise<{ fehler?: string; info?: SicherungInfo }>
+}
+
+export interface SicherungInfo {
+  erstellt: string
+  eintraege: number
+  listen: number
+  achievements: number
 }
 
 export const api: TrackerApi = (window as any).api
