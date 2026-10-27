@@ -1,0 +1,96 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fbd98e"/>
+      <stop offset="45%" stop-color="#f6a96b"/>
+      <stop offset="100%" stop-color="#8fc3e8"/>
+    </linearGradient>
+    <linearGradient id="hillFar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#9fcf8a"/>
+      <stop offset="100%" stop-color="#6fb05c"/>
+    </linearGradient>
+    <linearGradient id="hillMid" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6fae57"/>
+      <stop offset="100%" stop-color="#468040"/>
+    </linearGradient>
+    <linearGradient id="hillNear" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3f8a4a"/>
+      <stop offset="100%" stop-color="#2c6336"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fff6da"/>
+      <stop offset="100%" stop-color="#ffd770"/>
+    </radialGradient>
+    <linearGradient id="trunk" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#6b4a2f"/>
+      <stop offset="100%" stop-color="#43301f"/>
+    </linearGradient>
+    <radialGradient id="leaf" cx="40%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#9fd97a"/>
+      <stop offset="60%" stop-color="#5fa356"/>
+      <stop offset="100%" stop-color="#357a44"/>
+    </radialGradient>
+    <clipPath id="roundFrame">
+      <rect x="0" y="0" width="1024" height="1024" rx="180"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#roundFrame)">
+    <rect width="1024" height="1024" fill="url(#sky)"/>
+
+    <circle cx="512" cy="330" r="150" fill="url(#sun)" opacity="0.9"/>
+
+    <!-- clouds -->
+    <g fill="#ffffff" opacity="0.85">
+      <ellipse cx="200" cy="220" rx="90" ry="34"/>
+      <ellipse cx="260" cy="200" rx="60" ry="26"/>
+      <ellipse cx="800" cy="260" rx="100" ry="30"/>
+      <ellipse cx="860" cy="245" rx="55" ry="22"/>
+    </g>
+
+    <!-- birds -->
+    <g stroke="#3a3a3a" stroke-width="5" fill="none" stroke-linecap="round">
+      <path d="M620 250 q15 -18 30 0 q15 -18 30 0"/>
+      <path d="M700 290 q12 -14 24 0 q12 -14 24 0"/>
+    </g>
+
+    <!-- far hills -->
+    <path d="M0 560 Q160 480 340 540 T680 530 T1024 560 L1024 1024 L0 1024 Z" fill="url(#hillFar)"/>
+
+    <!-- mid hills -->
+    <path d="M0 660 Q220 580 480 650 T1024 630 L1024 1024 L0 1024 Z" fill="url(#hillMid)"/>
+
+    <!-- near hills / foreground -->
+    <path d="M0 800 Q260 720 520 790 T1024 760 L1024 1024 L0 1024 Z" fill="url(#hillNear)"/>
+
+    <!-- winding path -->
+    <path d="M520 1024 C500 900 580 860 540 760 C500 680 600 640 560 560"
+          fill="none" stroke="#e8d9a8" stroke-width="26" stroke-linecap="round" opacity="0.85"/>
+
+    <!-- big ghibli-style tree -->
+    <g transform="translate(300,560)">
+      <path d="M0 360 C-10 280 -6 200 0 140 C6 200 10 280 0 360 Z" fill="url(#trunk)"/>
+      <path d="M0 220 C-40 200 -70 160 -60 120" stroke="#43301f" stroke-width="14" fill="none" stroke-linecap="round"/>
+      <path d="M0 200 C40 175 65 140 55 100" stroke="#43301f" stroke-width="14" fill="none" stroke-linecap="round"/>
+      <circle cx="-10" cy="60" r="150" fill="url(#leaf)"/>
+      <circle cx="90" cy="20" r="110" fill="url(#leaf)"/>
+      <circle cx="-110" cy="20" r="100" fill="url(#leaf)"/>
+      <circle cx="0" cy="-70" r="120" fill="url(#leaf)"/>
+    </g>
+
+    <!-- small huts -->
+    <g>
+      <g transform="translate(700,830)">
+        <rect x="-40" y="-10" width="80" height="50" fill="#7a5a3c"/>
+        <polygon points="-50,-10 0,-55 50,-10" fill="#c1503a"/>
+      </g>
+      <g transform="translate(790,870)">
+        <rect x="-26" y="-8" width="52" height="34" fill="#8a6a48"/>
+        <polygon points="-32,-8 0,-38 32,-8" fill="#a8462f"/>
+      </g>
+    </g>
+
+    <!-- soft vignette -->
+    <rect width="1024" height="1024" fill="black" opacity="0.04"/>
+  </g>
+</svg>

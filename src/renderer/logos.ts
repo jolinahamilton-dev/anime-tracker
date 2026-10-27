@@ -3,6 +3,7 @@ import { useSyncExternalStore } from 'react'
 // Gleiche Namen wie src/main/logo.ts; die Bilder liegen in public/logos (Quellen: build/logos/*.svg)
 export const LOGOS = [
   { id: 'buecherhuegel', name: 'Bücherhügel' },
+  { id: 'original', name: 'Original' },
   { id: 'himmelswal', name: 'Himmelswal' },
   { id: 'buecherkatze', name: 'Bücherkatze' },
   { id: 'igel', name: 'Herbstigel' },
@@ -25,8 +26,12 @@ export function setzeLogo(id: string | null | undefined) {
   const neu = gueltig(id)
   if (neu === aktuell) return
   aktuell = neu
-  // Web-App: Tab-Symbol mitziehen (das Symbol auf dem Startbildschirm bleibt das installierte)
-  document.querySelector<HTMLLinkElement>('link[rel="icon"]')?.setAttribute('href', logoBild(neu))
+  // Web-App: Tab-Symbol, Manifest und iPhone-Symbol mitziehen – beim Hinzufügen zum Startbildschirm
+  // nimmt das Handy dann das gewählte Logo (eine schon installierte App behält ihr Symbol)
+  const link = (rel: string, href: string) => document.querySelector(`link[rel="${rel}"]`)?.setAttribute('href', href)
+  link('icon', logoBild(neu))
+  link('manifest', `manifest-${neu}.webmanifest`)
+  link('apple-touch-icon', `logos/${neu}-touch.png`)
   hoerer.forEach(f => f())
 }
 

@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 
 // Gleiche Namen wie src/renderer/logos.ts – nur bekannte Namen werden zu Dateipfaden
-const LOGO_IDS = ['buecherhuegel', 'himmelswal', 'buecherkatze', 'igel', 'manta', 'frosch', 'sommerhuegel', 'sternennacht']
+const LOGO_IDS = ['buecherhuegel', 'original', 'himmelswal', 'buecherkatze', 'igel', 'manta', 'frosch', 'sommerhuegel', 'sternennacht']
 
 /** Fenster-/Taskleistensymbol zum gewählten Logo; undefined = Symbol der .exe */
 export function logoIcon(id: unknown) {

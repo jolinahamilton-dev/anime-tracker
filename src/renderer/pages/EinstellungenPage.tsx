@@ -270,7 +270,7 @@ export default function EinstellungenPage() {
               <span className="einstell-label">App-Logo</span>
               <span className="einstell-sub">
                 {istHandyApp
-                  ? 'Erscheint in der Kopfzeile – das Symbol auf dem Startbildschirm bleibt beim Installieren gleich'
+                  ? 'Erscheint in der Kopfzeile und auf dem Startbildschirm, wenn du die App (neu) dort hinzufügst'
                   : 'Erscheint in der Kopfzeile, im Fenster und in der Taskleiste'}
               </span>
             </div>

@@ -1,0 +1,26 @@
+{
+  "name": "Anime & Manga Tracker",
+  "short_name": "Anime Tracker",
+  "description": "Deine Anime- und Manga-Liste – auch unterwegs, mit Cloud-Sicherung",
+  "lang": "de",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f0f13",
+  "theme_color": "#0f0f13",
+  "icons": [
+    {
+      "src": "logos/buecherkatze.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "logos/buecherkatze-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
