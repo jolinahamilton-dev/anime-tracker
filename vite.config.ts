@@ -6,7 +6,7 @@ import path from 'path'
 // (AniList-Cover per https), sonst nichts. Netzanfragen laufen alle über den Main-Prozess.
 // Im Dev-Modus braucht Vite Inline-Skripte für Hot-Reload, daher dort nicht aktiv.
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; " +
-  "img-src 'self' https: data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'"
+  "img-src 'self' data: https://*.anilist.co https://img.anili.st; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'"
 
 function cspPlugin(): Plugin {
   return {

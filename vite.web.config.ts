@@ -7,7 +7,7 @@ import path from 'path'
 // Content-Security-Policy (GitHub Pages kann keine Header setzen, das <meta> wirkt trotzdem): nur eigene
 // Skripte (+ WebAssembly für SQLite), Netz nur zu AniList und Google Drive. Im Dev-Modus nicht aktiv.
 const CSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; " +
-  "img-src 'self' https: data: blob:; " +
+  "img-src 'self' data: blob: https://*.anilist.co https://img.anili.st; " +
   'connect-src \'self\' https://graphql.anilist.co https://www.googleapis.com https://oauth2.googleapis.com; ' +
   "worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'"
 

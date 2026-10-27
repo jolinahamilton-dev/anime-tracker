@@ -36,18 +36,22 @@
         lokal auf deinem Gerät gespeichert (am PC in einer Datei, am Handy im Speicher des Browsers).</li>
       <li><strong>Suchanfragen und Titel-IDs</strong> werden an <a href="https://anilist.co">AniList</a> geschickt, um
         Cover, Beschreibungen, Folgenzahlen und Sendetermine abzurufen. Dabei wird kein Konto und keine persönliche
-        Angabe übertragen.</li>
+        Angabe übertragen (AniList sieht wie jeder Server deine IP-Adresse).</li>
+      <li><strong>Sicherungsdateien und Exporte</strong> (JSON, CSV, Excel, PDF) erstellt die App nur, wenn du sie
+        anforderst; sie werden auf deinem Gerät gespeichert (am Handy im Ordner „Downloads“) und sind nicht verschlüsselt.</li>
     </ul>
   </section>
 
   <section>
-    <h2>Abgleich über Google Drive (freiwillig)</h2>
+    <h2>Cloud-Sicherung über Google Drive (freiwillig)</h2>
     <ul>
-      <li>Wenn du „Mit Google Drive verbinden“ wählst, meldest du dich bei Google an und erlaubst der App den Zugriff
+      <li>Wenn du „Mit Google anmelden“ wählst, meldest du dich bei Google an und erlaubst der App den Zugriff
         auf ihren <strong>eigenen, versteckten App-Ordner</strong> (Berechtigung <code>drive.appdata</code>).
         Auf deine übrigen Dateien, Fotos oder Dokumente hat die App <strong>keinen</strong> Zugriff.</li>
+      <li>Zur Anzeige „Angemeldet als …“ liest die App die <strong>E-Mail-Adresse</strong> deines Google-Kontos aus
+        (über dieselbe Berechtigung). Sie wird nur auf deinem Gerät gespeichert und beim Abmelden gelöscht.</li>
       <li>In diesem Ordner liegen ausschließlich deine Tracker-Daten – <strong>Ende-zu-Ende-verschlüsselt</strong>.
-        Der Schlüssel wird auf jedem Gerät aus deinem Abgleich-Passwort berechnet und nie übertragen;
+        Der Schlüssel wird auf jedem Gerät aus deinem Sicherungs-Passwort berechnet und nie übertragen;
         weder Google noch sonst jemand kann die Inhalte ohne dieses Passwort lesen.</li>
       <li>Die Anmeldedaten (Zugriffstoken) werden nur auf deinem Gerät gespeichert. Es gibt keinen Server des Projekts,
         der Daten empfängt oder speichert.</li>
@@ -65,7 +69,9 @@
         <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a> entziehen.</li>
       <li>Die Daten im App-Ordner löschst du in Google Drive unter <em>Einstellungen → Apps verwalten → Anime Tracker →
         Ausgeblendete App-Daten löschen</em>.</li>
-      <li>Lokale Daten verschwinden, wenn du die App deinstallierst bzw. die Website-Daten im Browser löschst.</li>
+      <li>Am Handy verschwinden die lokalen Daten, wenn du die Website-Daten im Browser löschst (bzw. die App vom
+        Startbildschirm entfernst). Am PC bleiben sie beim Deinstallieren erhalten; sie liegen im Ordner
+        <code>%APPDATA%\anime-tracker</code> und lassen sich dort von Hand löschen.</li>
     </ul>
   </section>
 
