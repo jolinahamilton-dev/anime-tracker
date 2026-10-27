@@ -124,8 +124,10 @@ export function registerWatchOrderHandlers(ipcMain: IpcMain) {
         const db = inDb.get(item.related_anilist_id)
         const total = db?.total_episodes ?? item.total_episodes ?? null
         // Seite kennt die neue Folgenzahl noch nicht → „fertig" bezog sich auf die alte Zahl
-        const status = item.item_status === 'completed' && item.total_episodes != null && total != null && total > item.total_episodes
+        let status = item.item_status === 'completed' && item.total_episodes != null && total != null && total > item.total_episodes
           ? 'started' : (item.item_status ?? 'planned')
+        // Alle Folgen gesehen (z. B. 25/25) → fertig, auch wenn der Status nicht von Hand gesetzt wurde
+        if (total && (item.progress_episodes ?? 0) >= total) status = 'completed'
         const progress = status === 'completed' && total ? total : (item.progress_episodes ?? 0)
         return {
           ...item, total_episodes: total, progress_episodes: progress, item_status: status,

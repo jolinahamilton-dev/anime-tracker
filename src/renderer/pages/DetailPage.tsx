@@ -262,10 +262,14 @@ export default function DetailPage() {
     const clamped = Math.max(0, progress)
     await speichereWatchItems(watchItems.map((item, i) => {
       if (i !== idx) return item
-      // Unter das Maximum verringert → nicht mehr „fertig" (sonst setzt der
-      // Speicher-Handler den Fortschritt wieder auf das Maximum zurück)
-      const nichtMehrFertig = item.item_status === 'completed' && item.total_episodes != null && clamped < item.total_episodes
-      return { ...item, progress_episodes: clamped, ...(nichtMehrFertig ? { item_status: 'started' as const } : {}) }
+      // Bis zur letzten Folge gezählt → „fertig" (Rahmen); unter das Maximum verringert → nicht mehr
+      // „fertig" (sonst setzt der Speicher-Handler den Fortschritt wieder auf das Maximum zurück)
+      const total = item.total_episodes
+      const status: WatchItem['item_status'] = total && clamped >= total ? 'completed'
+        : item.item_status === 'completed' && total != null ? 'started'
+        : item.item_status === 'planned' && clamped > 0 ? 'started'
+        : item.item_status
+      return { ...item, progress_episodes: clamped, item_status: status }
     }))
   }
 

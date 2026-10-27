@@ -145,6 +145,12 @@ export function migrateSchema(db: Database) {
   db.run('DELETE FROM watch_order WHERE entry_id NOT IN (SELECT id FROM entries)')
 
   richteSyncEin(db, entryCols)
+
+  // Staffeln, deren Folgen alle gesehen sind (z. B. 25/25), die aber nie als fertig markiert wurden
+  // (früher setzte das nur „+“ auf der Karte, nicht die Detailseite) – läuft nach richteSyncEin,
+  // damit die Korrektur protokolliert und aufs andere Gerät übertragen wird
+  db.run(`UPDATE watch_order SET item_status = 'completed'
+    WHERE item_status != 'completed' AND total_episodes > 0 AND progress_episodes >= total_episodes`)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

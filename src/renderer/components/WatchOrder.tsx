@@ -63,10 +63,16 @@ export default function WatchOrder({ items, onAendern, onReset }: Props) {
       if (changes.item_status === 'completed' && updated.total_episodes) {
         updated = { ...updated, progress_episodes: updated.total_episodes }
       }
-      // Unter das Maximum verringert → nicht mehr „fertig"
-      if (changes.progress_episodes !== undefined && updated.item_status === 'completed' &&
-          updated.total_episodes && updated.progress_episodes < updated.total_episodes) {
-        updated = { ...updated, item_status: 'started' }
+      if (changes.progress_episodes !== undefined) {
+        // Bis zur letzten Folge gezählt → „fertig"; darunter verringert → nicht mehr „fertig";
+        // vom geplanten Stand aus weitergezählt → „schaut"
+        if (updated.total_episodes && updated.progress_episodes >= updated.total_episodes) {
+          updated = { ...updated, item_status: 'completed' }
+        } else if (updated.item_status === 'completed' && updated.total_episodes) {
+          updated = { ...updated, item_status: 'started' }
+        } else if (updated.item_status === 'planned' && updated.progress_episodes > 0) {
+          updated = { ...updated, item_status: 'started' }
+        }
       }
       return updated
     }))

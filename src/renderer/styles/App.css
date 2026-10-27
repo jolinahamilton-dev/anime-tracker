@@ -23,6 +23,30 @@
   letter-spacing: 0.02em;
 }
 
+.app-title-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 4px 8px 4px 4px;
+  margin-left: -4px;
+  border-radius: var(--radius-sm);
+  color: inherit;
+  text-decoration: none;
+  min-width: 0;
+}
+
+.app-title-link span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-title-link:hover { background: var(--border); }
+.app-title-link:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.app-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
 .top-actions {
   display: flex;
   gap: 8px;

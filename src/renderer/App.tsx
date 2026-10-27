@@ -72,13 +72,14 @@ export default function App() {
   return (
     <div className="app">
       <header className="top-bar">
-        <h1 className="app-title">Anime & Manga Tracker</h1>
+        {/* Logo und Name führen von jeder Seite zurück zur Liste */}
+        <h1 className="app-title">
+          <NavLink to="/" end className="app-title-link" title="Zur Liste (Esc)">
+            <img src="icons/icon-192.png" alt="" className="app-logo" />
+            <span>Anime & Manga Tracker</span>
+          </NavLink>
+        </h1>
         <div className="top-actions">
-          {location.pathname !== '/' && (
-            <NavLink to="/" end className="icon-btn" title="Zur Liste (Esc)" aria-label="Zur Liste">
-              🏠
-            </NavLink>
-          )}
           <NavLink to="/statistiken" className="icon-btn" title="Statistiken (S)" aria-label="Statistiken">
             📊
           </NavLink>
