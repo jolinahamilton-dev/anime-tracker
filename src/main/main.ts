@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import path from 'path'
 import { initDb, wiederhergestelltAusBackup } from '../db/database'
 import { registerEntryHandlers } from './handlers/entries'
@@ -15,6 +15,7 @@ import { registerStatsHandlers, ergaenzeFolgenlaengen } from './handlers/stats'
 import { registerExportHandlers } from './handlers/export'
 import { registerImportHandlers } from './handlers/import'
 import { registerSicherungHandlers } from './handlers/sicherung'
+import { registerBegruessungHandlers } from './handlers/begruessung'
 import { registerSerienHandlers, aktualisiereSerien } from './handlers/serien'
 import { erstelleSyncDienst } from '../sync/dienst'
 import { pcPlattform } from './sync-pc'
@@ -43,7 +44,11 @@ function createWindow() {
   // Das Fenster darf die App nie verlassen (z. B. wenn eine Datei hineingezogen wird) –
   // fremde Seiten bekämen sonst ebenfalls Zugriff auf window.api
   win.webContents.on('will-navigate', (e) => e.preventDefault())
-  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  // Neue Fenster nie in der App; nur die eigene Datenschutzseite darf im System-Browser aufgehen
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url === 'https://jolinahamilton-dev.github.io/anime-tracker/datenschutz.html') shell.openExternal(url)
+    return { action: 'deny' }
+  })
   // Kamera, Mikrofon, Standort usw. braucht die App nie
   win.webContents.session.setPermissionRequestHandler((_wc, _recht, antwort) => antwort(false))
 
@@ -87,6 +92,7 @@ app.whenReady().then(async () => {
   registerExportHandlers(ipcMain)
   registerImportHandlers(ipcMain)
   registerSicherungHandlers(ipcMain)
+  registerBegruessungHandlers(ipcMain)
   registerSerienHandlers(ipcMain)
   const sync = erstelleSyncDienst(pcPlattform)
   sync.registriere(ipcMain)

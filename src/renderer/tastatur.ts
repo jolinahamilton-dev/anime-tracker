@@ -9,7 +9,7 @@ export function istTippen(e: KeyboardEvent): boolean {
 
 /** Ist gerade ein Overlay offen (Rückfrage, Bild-Vergrößerung, Filter-Fenster)? */
 export function overlayOffen(): boolean {
-  return !!document.querySelector('.dialog-hintergrund, .bild-overlay, .sheet-hintergrund')
+  return !!document.querySelector('.dialog-hintergrund, .bild-overlay, .sheet-hintergrund, .begruessung')
 }
 
 /** Tastendruck-Handler, der immer den aktuellen Stand der Seite sieht */

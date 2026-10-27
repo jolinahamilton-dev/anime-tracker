@@ -27,6 +27,14 @@ export interface SyncStatus {
   laeuft: boolean
   letzterAbgleich: string | null
   fehler: string | null
+  /** E-Mail-Adresse des verbundenen Google-Kontos (nur zur Anzeige, bleibt auf dem Gerät) */
+  konto: string | null
+}
+
+export interface KontoInfo {
+  konto: string | null
+  /** Liegt in diesem Drive schon eine Sicherung (dann Passwort eingeben statt festlegen)? */
+  hatSicherung: boolean
 }
 
 const MAX_EIGENE_LOGS = 40
@@ -45,14 +53,28 @@ export function erstelleSyncDienst(plattform: SyncPlattform) {
   let laeuft = false
   let fehler: string | null = null
 
-  const letzterAbgleich = () => (dbGet("SELECT value FROM app_meta WHERE key = 'sync_letzter'")?.value as string) ?? null
+  const meta = (key: string) => (dbGet('SELECT value FROM app_meta WHERE key = ?', [key])?.value as string) ?? null
+  const setzeMeta = (key: string, wert: string | null) => {
+    if (wert === null) getDb().run('DELETE FROM app_meta WHERE key = ?', [key])
+    else getDb().run('INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)', [key, wert])
+    schedulePersist()
+  }
 
   async function status(): Promise<SyncStatus> {
+    const verbunden = await plattform.istVerbunden()
     return {
-      verbunden: await plattform.istVerbunden(),
+      verbunden,
       passwortGesetzt: !!(await plattform.ladeSchluessel()),
-      laeuft, letzterAbgleich: letzterAbgleich(), fehler,
+      laeuft, letzterAbgleich: meta('sync_letzter'), fehler,
+      konto: verbunden ? meta('sync_konto') : null,
     }
+  }
+
+  /** Nach dem Verbinden: welches Konto, und gibt es dort schon eine Sicherung? */
+  async function kontoInfo(): Promise<KontoInfo> {
+    const [konto, dateien] = await Promise.all([ablage.konto().catch(() => null), ablage.liste()])
+    if (konto) setzeMeta('sync_konto', konto)
+    return { konto: konto ?? meta('sync_konto'), hatSicherung: dateien.some(d => d.name === 'salz.json') }
   }
 
   /** Das gültige salz.json – haben zwei Geräte gleichzeitig eins angelegt, gilt das ältere */
@@ -85,7 +107,7 @@ export function erstelleSyncDienst(plattform: SyncPlattform) {
       if (!s) throw new Error('salz.json fehlt nach dem Anlegen')
       schluessel ??= await leiteSchluesselAb(passwort, s.salz)
       if (!(await passtSchluessel(schluessel, s.pruef))) {
-        return { ok: false, fehler: 'Das Passwort passt nicht zu dem, das auf dem anderen Gerät festgelegt wurde.' }
+        return { ok: false, fehler: 'Das Passwort passt nicht zu der Sicherung in diesem Google-Konto.' }
       }
       // Neuer Schlüssel = neuer Anfang: alles hochladen, alle anderen Geräte von vorn einspielen
       setzeAbgleichZurueck()
@@ -178,8 +200,7 @@ export function erstelleSyncDienst(plattform: SyncPlattform) {
         for (const n of dateien.filter(n => n.geraet === eigene && n.bis <= gs.bisNr)) await ablage.loesche(n.datei.id)
       }
 
-      getDb().run('INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)', ['sync_letzter', new Date().toISOString()])
-      schedulePersist()
+      setzeMeta('sync_letzter', new Date().toISOString())
       fehler = probleme.length ? probleme.join(' ') : null
       if (geaendert.size) plattform.benachrichtige([...geaendert])
     } catch (e: any) {
@@ -199,9 +220,13 @@ export function erstelleSyncDienst(plattform: SyncPlattform) {
     })
     ipcMain.handle('sync:passwort', (_, passwort: string) => setzePasswort(String(passwort ?? '')))
     ipcMain.handle('sync:jetzt', () => abgleichen())
+    ipcMain.handle('sync:konto', async () => {
+      try { return await kontoInfo() } catch (e: any) { fehler = e?.message ?? String(e); return null }
+    })
     ipcMain.handle('sync:trennen', async () => {
       await plattform.trennen()
       await plattform.speichereSchluessel(null)
+      setzeMeta('sync_konto', null)
       // Beim erneuten Verbinden (evtl. mit geleertem Drive oder neuem Passwort) wieder alles hochladen
       setzeAbgleichZurueck()
       fehler = null

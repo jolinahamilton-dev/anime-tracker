@@ -36,6 +36,15 @@ export interface SyncStatus {
   laeuft: boolean
   letzterAbgleich: string | null
   fehler: string | null
+  konto: string | null
+}
+
+export interface StartInfo {
+  willkommenGesehen: boolean
+  eintraege: number
+  ersterStart: string | null
+  letzteSicherung: string | null
+  erinnertAm: string | null
 }
 
 type Abmelden = () => void
@@ -94,6 +103,14 @@ export interface TrackerApi {
   syncPasswort(passwort: string): Promise<{ ok: boolean; neu?: boolean; fehler?: string }>
   syncJetzt(): Promise<SyncStatus>
   syncTrennen(): Promise<SyncStatus>
+  /** Nach dem Verbinden: Konto und ob dort schon eine Sicherung liegt; null bei Fehler */
+  syncKonto(): Promise<{ konto: string | null; hatSicherung: boolean } | null>
+
+  // Begrüßung beim ersten Start, Erinnerung an die Sicherung
+  startInfo(): Promise<StartInfo>
+  startMerke(was: 'willkommen' | 'erinnert'): Promise<{ success: boolean }>
+  /** Nur Handy: schützt der Browser den Speicher vor automatischem Löschen? (null = unbekannt) */
+  speicherDauerhaft?(): Promise<boolean | null>
 
   // Dateien (PC: Windows-Dialoge, Handy: Dateiauswahl bzw. Download)
   exportStarten(opts: unknown): Promise<any>

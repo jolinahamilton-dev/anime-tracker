@@ -1,6 +1,7 @@
 // window.api der Handy-Version – dieselben Methoden wie die Electron-Brücke (src/preload/preload.ts),
 // nur ruft sie die Handler direkt auf statt über IPC. Import/Export laufen über src/web/dateien-web.ts.
 import { hoere } from './electron-shim'
+import { speicherDauerhaft } from './datenbank'
 
 type Handler = (event: unknown, ...args: any[]) => unknown
 const handler = new Map<string, Handler>()
@@ -63,6 +64,11 @@ export function baueApi() {
     syncPasswort: (passwort: string) => invoke('sync:passwort', passwort),
     syncJetzt: () => invoke('sync:jetzt'),
     syncTrennen: () => invoke('sync:trennen'),
+    syncKonto: () => invoke('sync:konto'),
+
+    startInfo: () => invoke('start:info'),
+    startMerke: (was: string) => invoke('start:merke', was),
+    speicherDauerhaft: () => speicherDauerhaft(),
 
     getWatchOrder: (entryId: number) => invoke('watchorder:get', entryId),
     getAniListRelations: (anilistId: number) => invoke('watchorder:getRelations', anilistId),

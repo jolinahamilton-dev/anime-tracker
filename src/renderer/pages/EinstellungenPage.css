@@ -200,3 +200,6 @@ kbd {
 .btn-secondary:hover:not(:disabled) { background: var(--bg-card); }
 .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
 
+
+.hinweis-text { color: #f5a623; }
+

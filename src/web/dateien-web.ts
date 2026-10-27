@@ -3,7 +3,7 @@
 import { importiereCsv } from '../main/handlers/import-kern'
 import { erstelleExport, merkeExport, ExportOptions } from '../main/handlers/export-kern'
 import { persistDb } from './datenbank'
-import { sicherungAlsDatei, leseSicherung, spieleSicherungEin, Sicherung } from '../main/handlers/sicherung-kern'
+import { sicherungAlsDatei, leseSicherung, spieleSicherungEin, merkeSicherung, Sicherung } from '../main/handlers/sicherung-kern'
 
 /** Öffnet die Dateiauswahl; null, wenn abgebrochen. Muss direkt aus einem Tippen heraus aufgerufen werden. */
 function waehleDatei(accept: string): Promise<File | null> {
@@ -48,6 +48,7 @@ export function registerDateiHandlers(registry: { handle(kanal: string, fn: (...
   registry.handle('sicherung:erstellen', async () => {
     const { name, mime, daten } = sicherungAlsDatei()
     speichereDownload(name, new Blob([daten as BlobPart], { type: mime }))
+    merkeSicherung()
     return { success: true, pfad: `${name} (im Ordner „Downloads“)` }
   })
 

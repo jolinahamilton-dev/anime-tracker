@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api, istHandyApp, SyncStatus } from '../api'
 import { bestaetigen, snackbar } from '../meldungen'
 import { meldeAenderung } from '../aktionen'
 import { MIN_PASSWORT } from '../../sync/krypto'
 
-// Einstellungen → Abgleich zwischen PC und Handy über Google Drive (gleich auf beiden Geräten)
+// Einstellungen → Konto & Cloud-Sicherung: Anmeldung mit Google, Sicherung in Google Drive und
+// Abgleich zwischen den Geräten (gleich auf PC und Handy, funktioniert auch mit nur einem Gerät)
 export default function SyncBereich() {
   const [status, setStatus] = useState<SyncStatus | null>(null)
   const [passwort, setPasswort] = useState('')
@@ -12,7 +13,26 @@ export default function SyncBereich() {
   const [beschaeftigt, setBeschaeftigt] = useState(false)
   const [meldung, setMeldung] = useState('')
 
-  useEffect(() => { api.syncStatus().then(setStatus) }, [])
+  // undefined = noch nicht geprüft, null = Prüfung fehlgeschlagen
+  const [konto, setKonto] = useState<{ konto: string | null; hatSicherung: boolean } | null | undefined>(undefined)
+  const [speicherUnsicher, setSpeicherUnsicher] = useState(false)
+  const bereichRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    api.syncStatus().then(setStatus)
+    api.speicherDauerhaft?.().then(d => setSpeicherUnsicher(d === false))
+  }, [])
+
+  // Gerade angemeldet, Passwort fehlt noch: Konto prüfen und den Bereich ins Bild holen
+  const passwortSchritt = !!status?.verbunden && !status.passwortGesetzt && !status.fehler?.includes('abgelaufen')
+  useEffect(() => {
+    if (!passwortSchritt) return
+    bereichRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    api.syncKonto().then(k => {
+      setKonto(k)
+      api.syncStatus().then(setStatus)
+    })
+  }, [passwortSchritt])
   // Während ein Abgleich läuft, Stand nachladen
   useEffect(() => {
     if (!status?.laeuft) return
@@ -33,7 +53,7 @@ export default function SyncBereich() {
     setBeschaeftigt(false)
     if (!r.ok) { setMeldung('❌ ' + r.fehler); return }
     setPasswort('')
-    snackbar(r.neu ? 'Abgleich eingerichtet – deine Liste liegt jetzt verschlüsselt in Google Drive' : 'Passwort stimmt – deine Liste wurde übernommen')
+    snackbar(r.neu ? 'Cloud-Sicherung eingerichtet – deine Liste liegt jetzt verschlüsselt in deinem Google Drive' : 'Passwort stimmt – deine Liste wurde übernommen')
     setStatus(await api.syncStatus())
     meldeAenderung()
   }
@@ -46,38 +66,56 @@ export default function SyncBereich() {
   }
 
   async function trennen() {
-    const ja = await bestaetigen('Abgleich trennen?', {
-      text: 'Die Daten auf diesem Gerät bleiben erhalten. Zum erneuten Verbinden brauchst du wieder dein Abgleich-Passwort.',
-      ok: 'Trennen', gefahr: true,
+    const ja = await bestaetigen('Von Google abmelden?', {
+      text: 'Die Liste auf diesem Gerät und die Sicherung in Google Drive bleiben erhalten, es wird nur nicht mehr gesichert. ' +
+        'Zum erneuten Anmelden brauchst du wieder dein Sicherungs-Passwort.',
+      ok: 'Abmelden', gefahr: true,
     })
-    if (ja) setStatus(await api.syncTrennen())
+    if (ja) { setStatus(await api.syncTrennen()); setKonto(undefined) }
   }
 
   if (!status) return null
-  const anderes = istHandyApp ? 'PC' : 'Handy'
   const abgelaufen = status.fehler?.includes('abgelaufen')
 
   return (
-    <section className="einstell-section">
-      <h3 className="section-titel">Abgleich mit dem {anderes}</h3>
+    <section className="einstell-section" ref={bereichRef}>
+      <h3 className="section-titel">Konto & Cloud-Sicherung</h3>
 
       {!status.verbunden || abgelaufen ? (
         <>
           <p className="einstell-sub" style={{ marginBottom: 10 }}>
             {abgelaufen
-              ? 'Die Anmeldung bei Google ist abgelaufen.'
-              : `PC und Handy gleichen deine Liste über einen versteckten App-Ordner in deinem Google Drive ab – verschlüsselt, auch wenn das andere Gerät aus ist. Die App sieht nur diesen Ordner, nicht deine Dateien.`}
+              ? 'Die Anmeldung bei Google ist abgelaufen – dein Passwort bleibt gespeichert, nur neu anmelden.'
+              : 'Melde dich mit deinem Google-Konto an: Deine Liste wird dann automatisch und verschlüsselt in einem versteckten ' +
+                'App-Ordner in deinem eigenen Google Drive gesichert und zwischen deinen Geräten (Handy, PC) abgeglichen. ' +
+                'Die App sieht nur diesen Ordner, nicht deine Dateien. Jede Person braucht ihr eigenes Google-Konto.'}
           </p>
+          {!abgelaufen && speicherUnsicher && (
+            <p className="einstell-sub hinweis-text" style={{ marginBottom: 10 }}>
+              ⚠ Dieser Browser schützt die Daten nicht dauerhaft. Installiere die App auf dem Startbildschirm und nutze die
+              Cloud-Sicherung oder speichere regelmäßig eine Sicherungsdatei.
+            </p>
+          )}
           <button className="btn-primary" onClick={verbinden} disabled={beschaeftigt}>
-            {beschaeftigt ? 'Warte auf Google …' : abgelaufen ? '🔄 Neu verbinden' : '☁ Mit Google Drive verbinden'}
+            {beschaeftigt ? 'Warte auf Google …' : abgelaufen ? '🔄 Neu anmelden' : '☁ Mit Google anmelden'}
           </button>
         </>
       ) : !status.passwortGesetzt ? (
         <>
           <p className="einstell-sub" style={{ marginBottom: 10 }}>
-            ✅ Mit Google Drive verbunden. Jetzt das <strong>Abgleich-Passwort</strong>: Auf dem ersten Gerät legst du es fest,
-            auf dem {anderes} gibst du später <strong>dasselbe</strong> ein. Damit wird alles verschlüsselt – ohne das Passwort
-            kann niemand die Daten lesen, auch Google nicht. <strong>Gut merken</strong> (mind. {MIN_PASSWORT} Zeichen).
+            ✅ Angemeldet{status.konto && <> als <strong>{status.konto}</strong></>}.{' '}
+            {konto === undefined
+              ? 'Prüfe, ob es schon eine Sicherung gibt …'
+              : konto === null
+                ? <>Gib dein <strong>Sicherungs-Passwort</strong> ein – oder lege eins fest (mind. {MIN_PASSWORT} Zeichen),
+                    wenn du die Cloud-Sicherung zum ersten Mal nutzt. Gut aufschreiben!</>
+              : konto.hatSicherung
+                ? <>In diesem Google-Konto liegt schon eine Sicherung. Gib dein <strong>Sicherungs-Passwort</strong> ein,
+                    dann wird deine Liste übernommen und mit diesem Gerät zusammengeführt.</>
+                : <>Lege jetzt ein <strong>Sicherungs-Passwort</strong> fest (mind. {MIN_PASSWORT} Zeichen). Damit wird alles
+                    verschlüsselt – ohne das Passwort kann niemand die Daten lesen, auch Google nicht. Auf weiteren Geräten
+                    gibst du <strong>dasselbe</strong> ein. <strong>Unbedingt aufschreiben</strong> – ohne Passwort lässt sich
+                    die Sicherung nicht wiederherstellen.</>}
           </p>
           <div className="sync-passwort">
             <input
@@ -85,29 +123,30 @@ export default function SyncBereich() {
               value={passwort}
               onChange={e => setPasswort(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && passwort.length >= MIN_PASSWORT) passwortSetzen() }}
-              placeholder="Abgleich-Passwort"
-              autoComplete="new-password"
-              aria-label="Abgleich-Passwort"
+              placeholder="Sicherungs-Passwort"
+              autoComplete={konto?.hatSicherung ? 'current-password' : 'new-password'}
+              aria-label="Sicherungs-Passwort"
             />
             <button className="dialog-btn" onClick={() => setZeigen(!zeigen)} aria-label={zeigen ? 'Passwort verbergen' : 'Passwort zeigen'}>
               {zeigen ? '🙈' : '👁'}
             </button>
           </div>
           <button className="btn-primary" style={{ marginTop: 10 }} onClick={passwortSetzen} disabled={beschaeftigt || passwort.length < MIN_PASSWORT}>
-            {beschaeftigt ? 'Wird eingerichtet …' : 'Abgleich starten'}
+            {beschaeftigt ? 'Wird eingerichtet …' : konto?.hatSicherung ? 'Sicherung übernehmen' : 'Sicherung starten'}
           </button>
         </>
       ) : (
         <>
           <p className="einstell-sub" style={{ marginBottom: 10 }}>
-            ✅ Abgleich aktiv – automatisch beim Start und alle 5 Minuten.
+            ✅ Cloud-Sicherung aktiv{status.konto && <> für <strong>{status.konto}</strong></>} – automatisch beim Start,
+            alle 5 Minuten und beim Schließen.
             {status.letzterAbgleich && <> Zuletzt: {new Date(status.letzterAbgleich).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}.</>}
           </p>
           <div className="sync-knoepfe">
             <button className="btn-primary" onClick={jetzt} disabled={beschaeftigt || status.laeuft}>
               {beschaeftigt || status.laeuft ? 'Gleicht ab …' : '🔄 Jetzt abgleichen'}
             </button>
-            <button className="dialog-btn" onClick={trennen}>Trennen</button>
+            <button className="dialog-btn" onClick={trennen}>Abmelden</button>
           </div>
         </>
       )}

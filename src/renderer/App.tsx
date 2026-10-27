@@ -8,6 +8,8 @@ import StatistikPage from './pages/StatistikPage'
 import AchievementToast from './components/AchievementToast'
 import SerienToast from './components/SerienToast'
 import Meldungen from './components/Meldungen'
+import Begruessung from './components/Begruessung'
+import { snackbar } from './meldungen'
 import { useState, useEffect } from 'react'
 import { useSettings } from './hooks/useSettings'
 import { istTippen, overlayOffen, useTasten } from './tastatur'
@@ -34,6 +36,22 @@ export default function App() {
     lade()
     const interval = setInterval(lade, 60_000)
     return () => clearInterval(interval)
+  }, [])
+
+  // Erster Start → Begrüßung; sonst ohne Cloud-Sicherung alle 14 Tage an eine Sicherungsdatei erinnern
+  const [begruessung, setBegruessung] = useState(false)
+  useEffect(() => {
+    Promise.all([api.startInfo(), api.syncStatus()]).then(([info, sync]) => {
+      if (!info.willkommenGesehen && info.eintraege === 0 && !sync.verbunden) { setBegruessung(true); return }
+      if (sync.passwortGesetzt || info.eintraege < 5) return
+      const tage = (iso: string | null) => iso ? (Date.now() - new Date(iso).getTime()) / 86_400_000 : Infinity
+      if (tage(info.letzteSicherung ?? info.ersterStart) < 14 || tage(info.erinnertAm) < 7) return
+      api.startMerke('erinnert')
+      snackbar(info.letzteSicherung
+        ? `Letzte Sicherung vor ${Math.floor(tage(info.letzteSicherung))} Tagen – deine Liste liegt nur auf diesem Gerät.`
+        : 'Deine Liste liegt nur auf diesem Gerät – lege eine Sicherung an oder melde dich mit Google an.',
+        { label: 'Sichern', ausfuehren: () => navigate('/einstellungen') }, 12_000)
+    }).catch(console.error)
   }, [])
 
   // Badge zurücksetzen wenn News-Tab besucht
@@ -80,6 +98,8 @@ export default function App() {
           <Route path="/statistiken" element={<StatistikPage />} />
         </Routes>
       </main>
+
+      {begruessung && <Begruessung onFertig={() => setBegruessung(false)} />}
 
       <AchievementToast />
       <SerienToast />

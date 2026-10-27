@@ -59,5 +59,11 @@ export function drive(holeToken: () => Promise<string>) {
     async loesche(id: string): Promise<void> {
       await anfrage(`${API}/${id}`, { method: 'DELETE' })
     },
+
+    /** E-Mail-Adresse des angemeldeten Kontos (geht ohne zusätzliche Berechtigung) */
+    async konto(): Promise<string | null> {
+      const j = await (await anfrage('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)')).json()
+      return typeof j?.user?.emailAddress === 'string' ? j.user.emailAddress : null
+    },
   }
 }

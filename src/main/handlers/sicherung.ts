@@ -1,6 +1,6 @@
 import { IpcMain, dialog, BrowserWindow } from 'electron'
 import fs from 'fs'
-import { sicherungAlsDatei, leseSicherung, spieleSicherungEin, Sicherung } from './sicherung-kern'
+import { sicherungAlsDatei, leseSicherung, spieleSicherungEin, merkeSicherung, Sicherung } from './sicherung-kern'
 
 // Gewählte, geprüfte Sicherung bis zur Bestätigung in der Oberfläche
 let ausgewaehlt: Sicherung | null = null
@@ -15,6 +15,7 @@ export function registerSicherungHandlers(ipcMain: IpcMain) {
     })
     if (result.canceled || !result.filePath) return { success: false }
     fs.writeFileSync(result.filePath, datei.daten)
+    merkeSicherung()
     return { success: true, pfad: result.filePath }
   })
 

@@ -67,4 +67,9 @@ export function persistDb(): Promise<void> {
   return db ? schreibe(db.export()) : Promise.resolve()
 }
 
+/** Schützt der Browser die Daten vor automatischem Löschen bei Speicherknappheit? null = unbekannt */
+export async function speicherDauerhaft(): Promise<boolean | null> {
+  try { return (await navigator.storage?.persisted?.()) ?? null } catch { return null }
+}
+
 export const wiederhergestelltAusBackup = false

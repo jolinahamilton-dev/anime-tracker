@@ -58,6 +58,10 @@ contextBridge.exposeInMainWorld('api', {
   // Import
   importCsv: () => ipcRenderer.invoke('import:csv'),
 
+  // Begrüßung, Erinnerung an die Sicherung
+  startInfo: () => ipcRenderer.invoke('start:info'),
+  startMerke: (was: string) => ipcRenderer.invoke('start:merke', was),
+
   // Komplette Sicherung
   sicherungErstellen: () => ipcRenderer.invoke('sicherung:erstellen'),
   sicherungWaehlen: () => ipcRenderer.invoke('sicherung:waehlen'),
@@ -78,6 +82,7 @@ contextBridge.exposeInMainWorld('api', {
   syncPasswort: (passwort: string) => ipcRenderer.invoke('sync:passwort', passwort),
   syncJetzt: () => ipcRenderer.invoke('sync:jetzt'),
   syncTrennen: () => ipcRenderer.invoke('sync:trennen'),
+  syncKonto: () => ipcRenderer.invoke('sync:konto'),
 
   // Watch Order
   getWatchOrder: (entryId: number) => ipcRenderer.invoke('watchorder:get', entryId),

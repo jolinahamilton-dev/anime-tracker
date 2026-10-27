@@ -68,6 +68,12 @@ export function erstelleSicherung(): Sicherung {
   }
 }
 
+/** Zeitpunkt der letzten Sicherung (für die Erinnerung) – erst aufrufen, wenn die Datei gespeichert ist */
+export function merkeSicherung() {
+  getDb().run("INSERT OR REPLACE INTO app_meta (key, value) VALUES ('last_backup', ?)", [new Date().toISOString()])
+  schedulePersist()
+}
+
 export function sicherungAlsDatei(): { name: string; mime: string; daten: Uint8Array } {
   const s = erstelleSicherung()
   const d = new Date()
