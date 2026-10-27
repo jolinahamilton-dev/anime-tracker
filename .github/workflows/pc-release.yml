@@ -60,6 +60,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $v = '${{ steps.version.outputs.version }}'
+          # checkout holt den Tag ohne seine Nachricht – vollständig nachladen, damit --notes-from-tag die Änderungsliste nimmt
+          git fetch --force origin "refs/tags/${{ github.ref_name }}:refs/tags/${{ github.ref_name }}"
           gh release create '${{ github.ref_name }}' "release/Anime-Tracker-Setup-$v.exe" "release/anime-tracker-$v-win.zip" `
             --title "Anime Tracker $v" --notes-from-tag
 

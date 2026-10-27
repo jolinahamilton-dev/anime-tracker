@@ -106,36 +106,46 @@ Dann **Erweitert** → **Weiter zu Anime Tracker (unsicher)** klicken. Es ist de
 
 ---
 
-## Teil C: Einrichten (erst PC, dann Handy)
+## Teil C: Einrichten (ab Version 1.4.0)
 
-### C1. Am PC (zuerst!)
-1. **Anime Tracker Setup 1.3.0** installieren (über die alte Version, deine Daten bleiben).
-2. App öffnen → **⚙️ Einstellungen → „Abgleich mit dem Handy" → „Mit Google Drive verbinden"**.
-3. Der Browser öffnet sich. Mit **deinem Google-Konto** anmelden.
-   - Bei **„Google hat diese App nicht überprüft"**: **Erweitert** → **Weiter zu Anime Tracker (unsicher)**. Es ist deine eigene App.
-   - Bei „Anime Tracker möchte auf Ihr Google-Konto zugreifen" → **Weiter / Zulassen**.
-   - Es erscheint „✅ Verbunden". Das Browserfenster kannst du schließen.
-4. Zurück in der App: ein **Abgleich-Passwort** festlegen (mind. 12 Zeichen, **gut merken**, z. B. drei, vier zufällige Wörter) → **„Abgleich starten"**.
-   Der PC lädt jetzt einmal deine komplette Liste verschlüsselt hoch.
+Ab 1.4.0 heißt der Bereich in den Einstellungen **„Konto & Cloud-Sicherung“** und das Passwort **Sicherungs-Passwort**
+(früher „Abgleich-Passwort“ – es ist dasselbe). Welches Gerät zuerst kommt, ist egal; es geht auch mit **nur einem Gerät**.
 
-### C2. Am Handy
-1. In **Chrome** öffnen: **https://jolinahamilton-dev.github.io/anime-tracker/**
-2. Menü **⋮** → **„App installieren"** (bzw. „Zum Startbildschirm hinzufügen"). Ab jetzt startest du den Tracker über das Symbol.
-3. In der App: **⚙️ → „Abgleich mit dem PC" → „Mit Google Drive verbinden"** → **dasselbe Google-Konto** wie am PC
-   (auch hier ggf. „Erweitert → Weiter zu …").
-4. **Dasselbe Abgleich-Passwort** eingeben → **„Abgleich starten"**. Deine Liste erscheint. Fertig.
+### C1. Erstes Gerät (PC oder Handy)
+1. Handy: In **Chrome** **https://jolinahamilton-dev.github.io/anime-tracker/** öffnen → **⋮ → „App installieren“**,
+   ab dann über das Symbol starten. PC: App über UniGetUI/Scoop installieren.
+2. Beim allerersten Start (leere Liste) erscheint die **Begrüßung** → **„☁ Mit Google anmelden“**.
+   Sonst: **⚙️ → „Konto & Cloud-Sicherung“ → „☁ Mit Google anmelden“**.
+3. Mit dem **eigenen Google-Konto** anmelden.
+   - Bei **„Google hat diese App nicht überprüft“**: **Erweitert** → **Weiter zu Anime Tracker (unsicher)**.
+   - Dann **Zulassen**. (PC: Es erscheint „✅ Verbunden“, das Browserfenster kannst du schließen.)
+4. Zurück in der App steht **„Angemeldet als …“**. Ein **Sicherungs-Passwort** festlegen (mind. 12 Zeichen,
+   z. B. vier zufällige Wörter) → **„Sicherung starten“**. **Passwort aufschreiben** – ohne es lässt sich nichts wiederherstellen.
 
+### C2. Weiteres Gerät oder Wiederherstellen (neues Handy, Daten gelöscht)
+1. Wie C1, Schritte 1–3, mit **demselben Google-Konto**.
+2. Die App erkennt die vorhandene Sicherung („In diesem Google-Konto liegt schon eine Sicherung“) →
+   **dasselbe Sicherungs-Passwort** eingeben → **„Sicherung übernehmen“**. Die Liste erscheint.
+
+### C3. Eine andere Person (eigene Liste)
+- Sie macht C1 auf ihrem Handy – mit **ihrem eigenen** Google-Konto und **eigenem** Passwort. Ihre Daten liegen in
+  ihrem Drive, getrennt von deinen. **Nie ein gemeinsames Google-Konto nutzen**, sonst werden die Listen zusammengeführt.
+- Ohne Google geht es auch: Begrüßung → **„Ohne Konto starten“**. Dann ab und zu unter
+  **⚙️ → „Komplette Sicherung“ → „⬇ Sicherung speichern“** eine Datei anlegen (die App erinnert alle 14 Tage daran).
+- Voraussetzung bei dir: In der Google Cloud Console (Projekt „Anime Tracker“ → **Google Auth Platform → Zielgruppe**)
+  muss der Status **„In Produktion“** sein. Im Status „Testen“ dürfen sich nur eingetragene Testnutzer anmelden,
+  und die Anmeldung läuft alle 7 Tage ab.
 ## Im Alltag
 - **Abgleich**: automatisch beim Start, alle 5 Minuten und beim Verlassen der Handy-App. Unter Einstellungen gibt es zusätzlich „Jetzt abgleichen".
   Ohne Internet geht alles weiter, der Abgleich kommt dann später nach.
 - **Gleichzeitig geändert?** Beim Fortschritt gewinnt die höhere Folge. Bei Status, Bewertung, Notizen usw. gewinnt die letzte Änderung.
 - **Neue Folgen/Staffeln** erkennt jedes Gerät selbst. Am Handy erscheinen sie beim Öffnen der App.
 - **Anmeldung am Handy**: Google erneuert sie beim Öffnen der App automatisch (die Seite lädt dabei kurz neu).
-  Falls doch einmal „Anmeldung abgelaufen" erscheint: in den Einstellungen auf **„Neu verbinden"** tippen.
+  Falls doch einmal „Anmeldung abgelaufen" erscheint: in den Einstellungen auf **„Neu anmelden"** tippen.
 - **Der App-Ordner** ist in Google Drive unsichtbar. Unter *Einstellungen → Apps verwalten* siehst du „Anime Tracker“ mit seinem Speicherplatz, nur wenige MB.
   Dort **nicht auf „Daten löschen“** klicken.
 - **Handy verloren / Browserdaten gelöscht?** App neu öffnen, verbinden, Passwort eingeben, und alles kommt aus Google Drive zurück.
-- **Passwort vergessen?** Auf dem PC „Trennen" → im Google-Drive-App-Ordner die Daten löschen (siehe oben) → neu verbinden und ein neues Passwort festlegen. Am Handy meldet die App danach, dass das Passwort geändert wurde: dort einfach das neue eingeben.
+- **Passwort vergessen?** In den Einstellungen „Abmelden" → im Google-Drive-App-Ordner die Daten löschen (siehe oben) → neu verbinden und ein neues Passwort festlegen. Am Handy meldet die App danach, dass das Passwort geändert wurde: dort einfach das neue eingeben.
 - **Zugriff entziehen**: jederzeit unter https://myaccount.google.com/permissions.
 
 ## Häufige Stolpersteine

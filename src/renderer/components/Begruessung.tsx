@@ -12,9 +12,11 @@ export default function Begruessung({ onFertig }: { onFertig: () => void }) {
   async function mitGoogle() {
     setBeschaeftigt(true)
     await api.startMerke('willkommen')
-    // Handy: leitet zu Google weiter und kommt in den Einstellungen zurück (Passwort-Schritt).
-    // PC: Anmeldung im Browser, danach geht es in den Einstellungen weiter.
     await api.syncVerbinden()
+    // Handy: Die Seite wird gerade zu Google weitergeleitet und kommt in den Einstellungen zurück –
+    // hier nichts mehr ändern, ein Seitenwechsel könnte die Weiterleitung abbrechen
+    if (istHandyApp) return
+    // PC: Anmeldung lief im Browser, in den Einstellungen geht es mit dem Passwort weiter
     setBeschaeftigt(false)
     onFertig()
     navigate('/einstellungen')
