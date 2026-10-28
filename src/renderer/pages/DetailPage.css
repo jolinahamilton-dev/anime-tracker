@@ -51,7 +51,7 @@
 
 .loeschen-btn {
   font-size: 13px;
-  color: #e85d5d;
+  color: var(--text-rot);
   padding: 6px 12px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
@@ -136,7 +136,7 @@
 
 /* ── Typ-Farbkodierung ── */
 .typ-anime {
-  color: #4a9eff;
+  color: var(--text-blau);
   border: 1px solid color-mix(in srgb, #4a9eff 50%, transparent);
   background: rgba(74, 158, 255, 0.12);
   padding: 2px 8px;
@@ -148,7 +148,7 @@
 }
 
 .typ-manga {
-  color: #a259ff;
+  color: var(--text-lila);
   border: 1px solid color-mix(in srgb, #a259ff 50%, transparent);
   background: rgba(162, 89, 255, 0.12);
   padding: 2px 8px;
@@ -293,9 +293,9 @@
   letter-spacing: 0.03em;
 }
 
-.staffel-relation-gruen { color: #4adb6f; }
+.staffel-relation-gruen { color: var(--text-gruen); }
 .staffel-relation-grau  { color: var(--text-muted); }
-.staffel-relation-lila  { color: #a259ff; }
+.staffel-relation-lila  { color: var(--text-lila); }
 
 .staffel-counter-steuer {
   display: flex;
@@ -305,7 +305,7 @@
 }
 
 .staffel-counter-check {
-  color: #4adb6f;
+  color: var(--text-gruen);
   font-weight: 700;
   font-size: 14px;
   margin-left: 4px;
@@ -407,7 +407,7 @@
 }
 
 .staffel-check {
-  color: #4adb6f;
+  color: var(--text-gruen);
 }
 
 .rezension-text {
@@ -450,3 +450,12 @@
   .staffel-counter-zeile { flex-wrap: wrap; row-gap: 6px; }
   .staffel-counter-info { flex-basis: 100%; }
 }
+
+/* ── Nächste Ausstrahlung (nur abonnierte, laufende Anime) ── */
+.detail-naechste {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.detail-naechste-wann { color: var(--text); font-weight: 600; }
+.detail-naechste--heute .detail-naechste-wann { color: var(--text-gruen); }

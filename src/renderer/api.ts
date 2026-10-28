@@ -122,6 +122,16 @@ export interface TrackerApi {
   sicherungErstellen(): Promise<{ success: boolean; pfad?: string }>
   sicherungWaehlen(): Promise<{ abgebrochen?: boolean; fehler?: string; info?: SicherungInfo }>
   sicherungEinspielen(): Promise<{ fehler?: string; info?: SicherungInfo }>
+  /** Stand vor der letzten Wiederherstellung (Sicherheitskopie) samt Vergleich; null = keiner da */
+  sicherungVorher(): Promise<SicherungInfo | null>
+  /** Spielt die Sicherheitskopie wieder ein („Rückgängig“); der Stand davor wird zur neuen Kopie */
+  sicherungZurueckholen(): Promise<{ fehler?: string; info?: SicherungInfo }>
+  /** Nur Handy: automatische Kopien im Browser-Speicher, neueste zuerst; geladenAus = Datum der Kopie,
+   *  mit der gestartet wurde, weil der Hauptstand beschädigt war (sonst null) */
+  lokaleKopien?(): Promise<{ kopien: LokaleKopie[]; geladenAus: string | null }>
+  /** Nur Handy: Kopie prüfen und mit dem aktuellen Stand vergleichen (für die Rückfrage) */
+  lokaleKopiePruefen?(nr: number): Promise<{ fehler?: string; info?: SicherungInfo }>
+  lokaleKopieEinspielen?(nr: number): Promise<{ fehler?: string; info?: SicherungInfo }>
 }
 
 export interface SicherungInfo {
@@ -129,6 +139,19 @@ export interface SicherungInfo {
   eintraege: number
   listen: number
   achievements: number
+  /** Vergleich mit dem aktuellen Stand */
+  aktuell?: number
+  /** jetzt vorhanden, in der Sicherung nicht enthalten → gingen verloren */
+  fehlen?: number
+  fehlendeTitel?: string[]
+  /** nur in der Sicherung, kämen hinzu */
+  neu?: number
+}
+
+export interface LokaleKopie {
+  nr: number
+  erstellt: string
+  eintraege: number
 }
 
 export const api: TrackerApi = (window as any).api

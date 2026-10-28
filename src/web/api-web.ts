@@ -2,6 +2,7 @@
 // nur ruft sie die Handler direkt auf statt über IPC. Import/Export laufen über src/web/dateien-web.ts.
 import { hoere } from './electron-shim'
 import { speicherDauerhaft } from './datenbank'
+import { ablage, vorDemEinspielen, vorherInfo, zurueckholen, kopieListe, kopiePruefen, kopieEinspielen } from './sicherung-web'
 
 type Handler = (event: unknown, ...args: any[]) => unknown
 const handler = new Map<string, Handler>()
@@ -79,6 +80,22 @@ export function baueApi() {
     importCsv: () => invoke('import:csv'),
     sicherungErstellen: () => invoke('sicherung:erstellen'),
     sicherungWaehlen: () => invoke('sicherung:waehlen'),
-    sicherungEinspielen: () => invoke('sicherung:einspielen'),
+    // Vor dem Einspielen den bisherigen Stand als Sicherheitskopie ablegen (für „Rückgängig“)
+    sicherungEinspielen: async () => {
+      const zuruecklegen = await vorDemEinspielen()
+      try {
+        const r: any = await invoke('sicherung:einspielen')
+        if (!r?.info) await zuruecklegen()
+        return r
+      } catch (e) {
+        await zuruecklegen()
+        throw e
+      }
+    },
+    sicherungVorher: () => vorherInfo(ablage),
+    sicherungZurueckholen: () => zurueckholen(),
+    lokaleKopien: () => kopieListe(),
+    lokaleKopiePruefen: (nr: number) => kopiePruefen(nr),
+    lokaleKopieEinspielen: (nr: number) => kopieEinspielen(nr),
   }
 }

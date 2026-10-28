@@ -17,6 +17,7 @@ export function anwenden(s: Settings) {
   const stil = document.documentElement.style
   stil.setProperty('--accent', s.akzentfarbe)
   stil.setProperty('--accent-hover', s.akzentfarbe + 'cc')
+  document.documentElement.dataset.theme = s.darkMode ? 'dark' : 'light' // für die hellen Schriftfarben (global.css)
   if (!s.darkMode) {
     stil.setProperty('--bg', '#f5f5f8')
     stil.setProperty('--bg-card', '#ffffff')

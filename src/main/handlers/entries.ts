@@ -152,13 +152,82 @@ function weiterschauen() {
   return ergebnis
 }
 
+/** Nächste ausgestrahlte Folge je AniList-ID (aus dem News-Cache, gefüllt nur für Abos) */
+function naechsteAusstrahlungen(): Map<number, { episode: number; airing_at: number }> {
+  const jetzt = Math.floor(Date.now() / 1000)
+  // SQLite: bei MIN() kommen die übrigen Spalten aus derselben Zeile
+  const zeilen = dbAll('SELECT anilist_id, episode, MIN(airing_at) AS airing_at FROM news_cache WHERE airing_at > ? GROUP BY anilist_id', [jetzt])
+  return new Map(zeilen.map(z => [z.anilist_id as number, { episode: z.episode as number, airing_at: z.airing_at as number }]))
+}
+
+/**
+ * Ergänzt Einträge um die aktuelle Staffel (dieselbe, die „+1" und „Weiterschauen" zählen) und die
+ * nächste Ausstrahlung. Alle Watch-Order-Zeilen und Termine mit je EINER Abfrage, Gruppierung in JS.
+ */
+function ergaenzeEintraege(eintraege: Zeile[], woZeilen: Zeile[]): Zeile[] {
+  const hauptlinie = new Map<number, Zeile[]>()
+  for (const z of woZeilen) {
+    if (!HAUPTLINIE.has(String(z.relation_type))) continue
+    const liste = hauptlinie.get(z.entry_id as number)
+    if (liste) liste.push(z); else hauptlinie.set(z.entry_id as number, [z])
+  }
+  const termine = naechsteAusstrahlungen()
+
+  return eintraege.map(e => {
+    if (e.type !== 'ANIME') return e
+    const zeilen = hauptlinie.get(e.id as number) ?? []
+    const extra: Zeile = {}
+
+    // Aktuelle Staffel – nur bei mehr als einer (schon erschienenen) Staffel in der Hauptlinie
+    let aktuell: Zeile | null = null
+    const erschienen = zeilen.filter(z => z.media_status !== 'NOT_YET_RELEASED')
+    if (erschienen.length > 1) {
+      let idx = aktuelleStaffel(zeilen)
+      if (idx < 0) idx = zeilen.indexOf(erschienen[erschienen.length - 1]) // alles gesehen → letzte Staffel
+      aktuell = zeilen[idx]
+      const anzahl = erschienen.length
+      Object.assign(extra, {
+        staffel_titel: aktuell.title ?? null,
+        staffel_nr: Math.max(1, Math.min(anzahl, zeilen.slice(0, idx + 1).filter(z => z.media_status !== 'NOT_YET_RELEASED').length)),
+        staffel_anzahl: anzahl,
+        staffel_gesehen: (aktuell.progress_episodes as number) ?? 0,
+        staffel_total: (aktuell.total_episodes as number | null) ?? null,
+      })
+    }
+
+    // Nächste Folge: bevorzugt die der aktuellen Staffel, sonst die früheste der Serie (z. B. Start der nächsten Staffel)
+    if (e.abonniert && termine.size) {
+      let treffer: { episode: number; airing_at: number } | undefined
+      let staffel: Zeile | null = null
+      if (aktuell) { treffer = termine.get(aktuell.related_anilist_id as number); staffel = aktuell }
+      if (!treffer) {
+        const kandidaten: [number, Zeile | null][] = zeilen.map(z => [z.related_anilist_id as number, z])
+        if (e.anilist_id != null) kandidaten.push([e.anilist_id as number, null])
+        for (const [aid, z] of kandidaten) {
+          const t = termine.get(aid)
+          if (t && (!treffer || t.airing_at < treffer.airing_at)) { treffer = t; staffel = z }
+        }
+      }
+      if (treffer) {
+        extra.naechste_folge = treffer.episode
+        extra.naechste_folge_um = treffer.airing_at
+        extra.naechste_folge_staffel = zeilen.length > 1 ? staffel?.title ?? null : null
+      }
+    }
+    return Object.keys(extra).length ? { ...e, ...extra } : e
+  })
+}
+
 export function registerEntryHandlers(ipcMain: IpcMain) {
   ipcMain.handle('entries:getAll', () => {
-    return dbAll('SELECT * FROM entries ORDER BY updated_at DESC')
+    return ergaenzeEintraege(dbAll('SELECT * FROM entries ORDER BY updated_at DESC'),
+      dbAll('SELECT * FROM watch_order ORDER BY entry_id, position'))
   })
 
   ipcMain.handle('entries:get', (_, id: number) => {
-    return dbGet('SELECT * FROM entries WHERE id = ?', [id])
+    const e = dbGet('SELECT * FROM entries WHERE id = ?', [id])
+    if (!e) return e
+    return ergaenzeEintraege([e], dbAll('SELECT * FROM watch_order WHERE entry_id = ? ORDER BY position', [id]))[0]
   })
 
   ipcMain.handle('entries:create', (event, data: Record<string, unknown>) => {

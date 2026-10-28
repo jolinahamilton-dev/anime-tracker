@@ -13,7 +13,8 @@
     "icon": "electron scripts/generate-icon.js",
     "logos": "electron scripts/generate-logos.js",
     "dist": "npm run build && electron-builder --win --config.directories.output=\"%TEMP%\\anime-tracker-release\"",
-    "preview": "electron ."
+    "preview": "electron .",
+    "test": "node scripts/test.js"
   },
   "build": {
     "appId": "com.jolina.anime-tracker",

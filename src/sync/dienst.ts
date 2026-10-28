@@ -1,7 +1,7 @@
 // Ablauf des Abgleichs über Google Drive und die zugehörigen Handler (sync:*).
 // Plattformunabhängig – Anmeldung und Schlüssel-Ablage liefert die Plattform (PC bzw. Handy).
 import type { IpcMain } from 'electron'
-import { drive, DriveDatei } from './drive'
+import { drive, DriveDatei, DriveFehler } from './drive'
 import { entschluessele, erzeugePruefwert, leiteSchluesselAb, MIN_PASSWORT, neuesSalz, passtSchluessel, verschluessele } from './krypto'
 import {
   eigeneGeraeteId, gesamtstand, hochgeladenBis, letzteNr, LogZeile, neueEigeneAenderungen, setzeAbgleichZurueck,
@@ -38,6 +38,11 @@ export interface KontoInfo {
 }
 
 const MAX_EIGENE_LOGS = 40
+
+/** Datei geladen, aber nicht entschlüsselbar (beschädigt oder mit einem alten Passwort angelegt) */
+class Unlesbar extends Error {
+  constructor(datei: string, public ursache: unknown) { super(`${datei} ließ sich nicht entschlüsseln`) }
+}
 
 interface Name { art: 'stand' | 'log'; geraet: string; von: number; bis: number; datei: DriveDatei }
 function zerlege(d: DriveDatei): Name | null {
@@ -141,7 +146,12 @@ export function erstelleSyncDienst(plattform: SyncPlattform) {
 
       const eigene = eigeneGeraeteId()
       const dateien = alle.map(zerlege).filter((n): n is Name => !!n)
-      const lade = async <T>(n: Name) => entschluessele<T>(schluessel, await ablage.lade(n.datei.id), n.datei.name)
+      // Herunterladen und Entschlüsseln getrennt: Netz-/Drive-Fehler gehen unverändert durch,
+      // nur was sich nicht entschlüsseln lässt, wird zu „Unlesbar“
+      const lade = async <T>(n: Name) => {
+        const inhalt = await ablage.lade(n.datei.id)
+        try { return await entschluessele<T>(schluessel, inhalt, n.datei.name) } catch (e) { throw new Unlesbar(n.datei.name, e) }
+      }
 
       // 1) Änderungen der anderen Geräte einspielen. Eine unlesbare Datei hält nur dieses Gerät an –
       //    es geht genau dort weiter, sobald sie lesbar ist; alle anderen Geräte laufen normal.
@@ -153,9 +163,16 @@ export function erstelleSyncDienst(plattform: SyncPlattform) {
         const logs = dateien.filter(n => n.geraet === g && n.art === 'log').sort((a, b) => a.von - b.von)
         const neue: LogZeile[] = []
         try {
-          // Gesamtstand nötig: Gerät noch nie gesehen, oder die nötigen Einzeldateien wurden schon zusammengefasst
-          const luecke = bekannt !== null && !logs.some(l => l.von <= bekannt! + 1 && l.bis > bekannt!) && logs.some(l => l.bis > bekannt!)
-          if (stand && (bekannt === null || luecke) && stand.bis > (bekannt ?? -1)) {
+          // Gesamtstand nötig: Gerät noch nie gesehen, oder die nötigen Einzeldateien wurden schon zusammengefasst.
+          // Die Nummern sind die sync_log-Nummern des Geräts g – nicht fortlaufend, denn dazwischen liegen dort
+          // eingespielte fremde Zeilen (log_g_5_5, dann log_g_9_9 ohne Lücke). Lückenlos geht es weiter, wenn eine
+          // vorhandene Datei von g genau bei `bekannt` endet (die Dateien bilden eine Kette) oder eine Einzeldatei
+          // `bekannt` überdeckt. Sonst wurde die Datei, bis zu der wir g kennen, beim Aufräumen gelöscht – auch
+          // wenn danach keine neuere Einzeldatei mehr liegt; dann gilt der neuere Gesamtstand.
+          const anschluss = bekannt !== null && (
+            dateien.some(n => n.geraet === g && n.bis === bekannt) ||
+            logs.some(l => l.von <= bekannt! + 1 && l.bis > bekannt!))
+          if (stand && !anschluss && stand.bis > (bekannt ?? -1)) {
             const s = await lade<{ zeilen: LogZeile[] }>(stand)
             spieleEin(s.zeilen, { geraet: g, bisNr: stand.bis }).forEach(id => geaendert.add(id))
             bekannt = stand.bis
@@ -166,8 +183,18 @@ export function erstelleSyncDienst(plattform: SyncPlattform) {
             neue.push(...(await lade<{ zeilen: LogZeile[] }>(l)).zeilen.filter(z => z.geraet === g))
           }
         } catch (e) {
-          console.error(`Abgleich: Datei von Gerät ${g} unlesbar`, e)
-          probleme.push('Eine Datei des anderen Geräts ließ sich nicht entschlüsseln (beschädigt oder mit einem alten Passwort angelegt) und wurde übersprungen.')
+          if (e instanceof Unlesbar) {
+            console.error(`Abgleich: Datei von Gerät ${g} unlesbar`, e)
+            probleme.push('Eine Datei des anderen Geräts ließ sich nicht entschlüsseln (beschädigt oder mit einem alten Passwort angelegt) und wurde übersprungen.')
+          } else if (e instanceof DriveFehler && e.status === 404) {
+            // Inzwischen gelöscht (das andere Gerät räumt gerade auf) – beim nächsten Abgleich mit frischer Liste weiter
+            console.warn(`Abgleich: Datei von Gerät ${g} inzwischen gelöscht, später erneut`)
+          } else if (e instanceof DriveFehler) {
+            throw e // Anmeldung abgelaufen, Drive-Störung: der ganze Abgleich schlägt mit der echten Meldung fehl
+          } else {
+            console.error(`Abgleich: Änderungen von Gerät ${g} nicht eingespielt`, e)
+            probleme.push(`Änderungen des anderen Geräts ließen sich nicht einspielen (${(e as any)?.message ?? e}).`)
+          }
         }
         if (neue.length) spieleEin(neue).forEach(id => geaendert.add(id))
       }

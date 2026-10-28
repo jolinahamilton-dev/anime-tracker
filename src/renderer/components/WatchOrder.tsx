@@ -43,6 +43,12 @@ const RELATION_LABEL: Record<string, string> = {
   OTHER: 'Sonstiges',
 }
 
+// Staffeln der Hauptgeschichte; alles andere (Side Stories, Alternativen, Spin-offs …) ist eingeklappt,
+// solange man es nicht angefangen hat – zählt auch für „+1" und die Übersicht nicht mit
+const HAUPTLINIE = new Set(['MAIN', 'PREQUEL', 'SEQUEL'])
+const istNebensache = (item: WatchItem) =>
+  !HAUPTLINIE.has(item.relation_type) && item.item_status === 'planned' && !item.progress_episodes
+
 const ITEM_STATUS_LABEL: Record<string, string> = {
   planned: 'Geplant',
   started: 'Schaut',
@@ -53,7 +59,10 @@ export default function WatchOrder({ items, onAendern, onReset }: Props) {
   // Während des Ziehens nur eine Vorschau umsortieren; übernommen wird erst beim Drop
   const [vorschau, setVorschau] = useState<WatchItem[] | null>(null)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [alleZeigen, setAlleZeigen] = useState(false)
   const angezeigt = vorschau ?? items
+  const versteckt = items.filter(istNebensache).length
+  const sichtbar = (item: WatchItem) => alleZeigen || !istNebensache(item)
 
   function updateItem(index: number, changes: Partial<WatchItem>) {
     onAendern(items.map((item, i) => {
@@ -115,7 +124,7 @@ export default function WatchOrder({ items, onAendern, onReset }: Props) {
       </div>
       {/* Drop auf der ganzen Liste annehmen – auch im Spalt zwischen zwei Einträgen */}
       <div className="watch-liste" onDragOver={e => e.preventDefault()} onDrop={onDrop}>
-        {angezeigt.map((item, i) => (
+        {angezeigt.map((item, i) => sichtbar(item) && (
           <div
             key={item.related_anilist_id}
             className={[
@@ -128,7 +137,7 @@ export default function WatchOrder({ items, onAendern, onReset }: Props) {
             onDragOver={e => onDragOver(e, i)}
             onDragEnd={onDragEnd}
           >
-            <span className="watch-pos">{i + 1}</span>
+            <span className="watch-pos">{angezeigt.slice(0, i + 1).filter(sichtbar).length}</span>
             {item.cover_url && (
               <img src={item.cover_url} alt="" className="watch-cover" />
             )}
@@ -175,6 +184,11 @@ export default function WatchOrder({ items, onAendern, onReset }: Props) {
           </div>
         ))}
       </div>
+      {versteckt > 0 && (
+        <button className="watch-mehr" onClick={() => setAlleZeigen(!alleZeigen)} aria-expanded={alleZeigen}>
+          {alleZeigen ? 'Nebengeschichten ausblenden' : `+ ${versteckt} Nebengeschichte${versteckt === 1 ? '' : 'n'} (Side Stories, Alternativen …)`}
+        </button>
+      )}
     </div>
   )
 }

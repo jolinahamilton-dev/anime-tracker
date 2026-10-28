@@ -10,6 +10,17 @@
   gap: 6px;
 }
 
+.watch-mehr {
+  margin-top: 8px;
+  width: 100%;
+  padding: 8px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.watch-mehr:hover { color: var(--accent); border-color: var(--accent); }
+
 .watch-item {
   display: flex;
   align-items: center;

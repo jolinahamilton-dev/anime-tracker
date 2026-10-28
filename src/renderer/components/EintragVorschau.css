@@ -124,7 +124,7 @@
 
 .favorit-btn.aktiv {
   border-color: #f5c518;
-  color: #f5c518;
+  color: var(--text-gelb);
 }
 
 .btn-primary {

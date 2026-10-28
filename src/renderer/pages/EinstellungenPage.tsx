@@ -5,9 +5,15 @@ import { LOGOS, logoBild } from '../logos'
 import { installieren, useInstallierbar } from '../installieren'
 import './Page.css'
 import './EinstellungenPage.css'
-import { api, kann, istHandyApp } from '../api'
+import { api, kann, istHandyApp, SicherungInfo, LokaleKopie } from '../api'
 import SyncBereich from '../components/SyncBereich'
-import { bestaetigen } from '../meldungen'
+import { bestaetigen, snackbar } from '../meldungen'
+
+/** Merkt sich über das Neuladen hinweg, dass gerade wiederhergestellt wurde (für den Hinweis mit „Rückgängig“) */
+const NACH_WIEDERHERSTELLUNG = 'nach-wiederherstellung'
+
+const datumZeit = (iso: string) => new Date(iso).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
+const anzahl = (n: number) => `${n} ${n === 1 ? 'Eintrag' : 'Einträge'}`
 
 type ExportFormat = 'csv' | 'excel' | 'pdf'
 
@@ -134,34 +140,83 @@ export default function EinstellungenPage() {
     }
   }
 
-  async function sicherungWiederherstellen() {
-    setSicherungMeldung('')
-    // Dateiauswahl zuerst – am Handy darf sie nur direkt nach dem Tippen aufgehen
-    const gewaehlt = await api.sicherungWaehlen()
-    if (gewaehlt.abgebrochen) return
-    if (!gewaehlt.info) { setSicherungMeldung(`❌ ${gewaehlt.fehler ?? 'Datei konnte nicht gelesen werden.'}`); return }
-    const { info } = gewaehlt
-    const datum = new Date(info.erstellt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
-    const ok = await bestaetigen('Sicherung wiederherstellen?', {
-      text: `Sicherung vom ${datum}: ${info.eintraege} Einträge, ${info.listen} Listen, ${info.achievements} Achievements. ` +
-        'Der aktuelle Stand wird dadurch ersetzt – Einträge, die nicht in der Sicherung sind, werden gelöscht. ' +
-        'Ist der Abgleich eingerichtet, übernimmt ihn auch das andere Gerät.',
-      ok: 'Wiederherstellen',
-      gefahr: true,
-    })
-    if (!ok) return
+  // Stand vor der letzten Wiederherstellung (Sicherheitskopie) und – nur Handy – automatische Kopien
+  const [vorher, setVorher] = useState<SicherungInfo | null>(null)
+  const [kopien, setKopien] = useState<LokaleKopie[]>([])
+  const [geladenAusKopie, setGeladenAusKopie] = useState<string | null>(null)
+
+  useEffect(() => {
+    api.sicherungVorher?.().then(setVorher).catch(() => {})
+    api.lokaleKopien?.().then(r => { setKopien(r.kopien); setGeladenAusKopie(r.geladenAus) }).catch(() => {})
+    // Nach dem Neuladen: Hinweis mit „Rückgängig“ (die Sicherheitskopie bleibt auch danach über den Knopf erreichbar)
+    let nachricht: string | null = null
+    try { nachricht = sessionStorage.getItem(NACH_WIEDERHERSTELLUNG); sessionStorage.removeItem(NACH_WIEDERHERSTELLUNG) } catch { /* egal */ }
+    if (nachricht) snackbar(nachricht, { label: 'Rückgängig', ausfuehren: () => { zurueckholen(false) } }, 20000)
+  }, [])
+
+  /** Rückfrage mit dem Vergleich zum aktuellen Stand – eine falsche (alte) Sicherung soll sofort auffallen */
+  function frageNachVergleich(titel: string, wovon: string, info: SicherungInfo, ok: string) {
+    const teile = [`${wovon} vom ${datumZeit(info.erstellt)}: ${anzahl(info.eintraege)}, ${info.listen} Listen, ${info.achievements} Achievements.`]
+    if (info.aktuell !== undefined) {
+      teile.push(`Deine Liste hat jetzt ${anzahl(info.aktuell)}.`)
+      if (info.fehlen) {
+        const titelListe = info.fehlendeTitel?.length
+          ? ` (${info.fehlendeTitel.join(', ')}${info.fehlen > info.fehlendeTitel.length ? ', …' : ''})` : ''
+        teile.push(`⚠ ${anzahl(info.fehlen)} von jetzt ${info.fehlen === 1 ? 'fehlt' : 'fehlen'} darin und ${info.fehlen === 1 ? 'ginge' : 'gingen'} verloren${titelListe}.`)
+      } else {
+        teile.push('Kein jetziger Eintrag geht verloren.')
+      }
+      if (info.neu) teile.push(`${anzahl(info.neu)} ${info.neu === 1 ? 'käme' : 'kämen'} hinzu.`)
+    }
+    teile.push('Der aktuelle Stand wird ersetzt, lässt sich danach aber mit „Rückgängig“ zurückholen. ' +
+      'Ist der Abgleich eingerichtet, übernimmt ihn auch das andere Gerät.')
+    return bestaetigen(titel, { text: teile.join(' '), ok, gefahr: true })
+  }
+
+  /** Führt eine Wiederherstellung aus und lädt danach alle Seiten frisch (Hinweis mit „Rückgängig“ folgt) */
+  async function stelleWiederHer(aktion: () => Promise<{ fehler?: string; info?: SicherungInfo }>, nachricht: string) {
     setSicherungLaeuft(true)
+    setSicherungMeldung('')
     try {
-      const r = await api.sicherungEinspielen()
-      if (r.fehler) { setSicherungMeldung(`❌ ${r.fehler}`); return }
+      const r = await aktion()
+      if (!r.info) { setSicherungMeldung(`❌ ${r.fehler ?? 'Wiederherstellen fehlgeschlagen.'}`); return }
+      try { sessionStorage.setItem(NACH_WIEDERHERSTELLUNG, `${nachricht} (${anzahl(r.info.eintraege)})`) } catch { /* nur der Hinweis fehlt */ }
       // Alle Seiten frisch laden, damit überall der wiederhergestellte Stand zu sehen ist
-      window.location.hash = '#/'
       window.location.reload()
     } catch {
       setSicherungMeldung('❌ Wiederherstellen fehlgeschlagen – der bisherige Stand ist unverändert.')
     } finally {
       setSicherungLaeuft(false)
     }
+  }
+
+  async function sicherungWiederherstellen() {
+    setSicherungMeldung('')
+    // Dateiauswahl zuerst – am Handy darf sie nur direkt nach dem Tippen aufgehen
+    const gewaehlt = await api.sicherungWaehlen()
+    if (gewaehlt.abgebrochen) return
+    if (!gewaehlt.info) { setSicherungMeldung(`❌ ${gewaehlt.fehler ?? 'Datei konnte nicht gelesen werden.'}`); return }
+    if (!await frageNachVergleich('Sicherung wiederherstellen?', 'Sicherung', gewaehlt.info, 'Wiederherstellen')) return
+    await stelleWiederHer(() => api.sicherungEinspielen(), 'Sicherung wiederhergestellt')
+  }
+
+  /** Stand vor der letzten Wiederherstellung zurückholen – aus dem Hinweis direkt, über den Knopf mit Rückfrage */
+  async function zurueckholen(fragen: boolean) {
+    if (fragen) {
+      const info = await api.sicherungVorher()
+      if (!info) { setVorher(null); setSicherungMeldung('❌ Es gibt keinen Stand vor einer Wiederherstellung.'); return }
+      if (!await frageNachVergleich('Vorherigen Stand zurückholen?', 'Stand', info, 'Zurückholen')) return
+    }
+    await stelleWiederHer(() => api.sicherungZurueckholen(), 'Vorheriger Stand zurückgeholt')
+  }
+
+  async function kopieEinspielen(nr: number) {
+    if (!api.lokaleKopiePruefen || !api.lokaleKopieEinspielen) return
+    setSicherungMeldung('')
+    const geprueft = await api.lokaleKopiePruefen(nr)
+    if (!geprueft.info) { setSicherungMeldung(`❌ ${geprueft.fehler ?? 'Kopie konnte nicht gelesen werden.'}`); return }
+    if (!await frageNachVergleich('Automatische Kopie einspielen?', 'Kopie', geprueft.info, 'Einspielen')) return
+    await stelleWiederHer(() => api.lokaleKopieEinspielen!(nr), 'Automatische Kopie eingespielt')
   }
 
   const [exportFormat, setExportFormat] = useState<ExportFormat>('csv')
@@ -338,6 +393,41 @@ export default function EinstellungenPage() {
               ⬆ Sicherung wiederherstellen
             </button>
           </div>
+
+          {vorher && <div className="sicherung-vorher">
+            <p className="einstell-sub">
+              Vor jeder Wiederherstellung wird der bisherige Stand aufgehoben – zuletzt vom {datumZeit(vorher.erstellt)} ({anzahl(vorher.eintraege)}).
+            </p>
+            <button className="btn-secondary" onClick={() => zurueckholen(true)} disabled={sicherungLaeuft}>
+              ↶ Stand vor der letzten Wiederherstellung zurückholen
+            </button>
+          </div>}
+
+          {istHandyApp && <div className="sicherung-kopien">
+            <span className="einstell-label">Automatische Kopien auf diesem Handy</span>
+            <p className="einstell-sub">
+              Höchstens eine pro Tag, die letzten drei werden aufbewahrt – auch ohne Abgleich. Ist der Speicher der App
+              beschädigt, startet sie automatisch mit der neuesten Kopie.
+            </p>
+            {geladenAusKopie && (
+              <p className="fehler-text">
+                Der Speicher der App war beschädigt – geladen wurde die Kopie vom {datumZeit(geladenAusKopie)}.
+                Änderungen danach fehlen eventuell (ist der Abgleich eingerichtet, kommen sie vom anderen Gerät zurück).
+              </p>
+            )}
+            {kopien.length === 0
+              ? <p className="einstell-sub">Noch keine Kopie vorhanden.</p>
+              : <ul className="kopien-liste">
+                  {kopien.map(k => (
+                    <li key={k.nr} className="kopie-zeile">
+                      <span>{datumZeit(k.erstellt)} · {anzahl(k.eintraege)}</span>
+                      <button className="btn-secondary" onClick={() => kopieEinspielen(k.nr)} disabled={sicherungLaeuft}>
+                        Einspielen
+                      </button>
+                    </li>
+                  ))}
+                </ul>}
+          </div>}
         </section>}
 
         {/* Import */}

@@ -13,7 +13,7 @@
 
 .stern:hover:not(:disabled),
 .stern.aktiv {
-  color: #f5c518;
+  color: var(--stern-gelb);
 }
 
 .stern:hover:not(:disabled) {

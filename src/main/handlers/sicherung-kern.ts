@@ -5,8 +5,9 @@
 // Einspielen ersetzt den Stand: vorhandene Einträge (gleiche uuid) werden überschrieben, fehlende
 // angelegt, nicht enthaltene gelöscht. Das läuft über die normalen Trigger, landet also im
 // Änderungsprotokoll – der Abgleich überträgt den wiederhergestellten Stand aufs andere Gerät.
+// Vor dem Einspielen wird der bisherige Stand als Sicherheitskopie abgelegt (siehe VorherAblage).
 import { getDb, schedulePersist } from '../../db/database'
-import type { SqlValue } from 'sql.js'
+import type { Database, SqlValue } from 'sql.js'
 
 export const SICHERUNG_FORMAT = 'anime-tracker-sicherung'
 const VERSION = 1
@@ -34,10 +35,17 @@ export interface SicherungInfo {
   eintraege: number
   listen: number
   achievements: number
+  /** Vergleich mit dem aktuellen Stand – damit eine falsche (alte) Sicherung sofort auffällt */
+  aktuell?: number
+  /** Jetzt vorhanden, in der Sicherung nicht enthalten → gingen beim Einspielen verloren */
+  fehlen?: number
+  fehlendeTitel?: string[]
+  /** Nur in der Sicherung, kämen hinzu */
+  neu?: number
 }
 
-function alle(sql: string, params: SqlValue[] = []): Zeile[] {
-  const stmt = getDb().prepare(sql)
+function alle(sql: string, params: SqlValue[] = [], d: Database = getDb()): Zeile[] {
+  const stmt = d.prepare(sql)
   stmt.bind(params)
   const rows: Zeile[] = []
   while (stmt.step()) rows.push(stmt.getAsObject() as Zeile)
@@ -49,21 +57,23 @@ function spalten(tabelle: string): string[] {
   return getDb().exec(`PRAGMA table_info(${tabelle})`)[0]?.values.map(r => String(r[1])) ?? []
 }
 
-export function erstelleSicherung(): Sicherung {
+/** Stand der App als Sicherung; mit d auch aus einer anderen Datenbank (z. B. einer lokalen Kopie) */
+export function erstelleSicherung(d: Database = getDb()): Sicherung {
+  const alle_ = (sql: string, params: SqlValue[] = []) => alle(sql, params, d)
   const ohneId = (r: Zeile) => { const { id: _, ...rest } = r; return rest }
   return {
     format: SICHERUNG_FORMAT,
     version: VERSION,
     erstellt: new Date().toISOString(),
-    entries: alle('SELECT * FROM entries ORDER BY title').map(ohneId),
-    custom_lists: alle('SELECT * FROM custom_lists ORDER BY id').map(ohneId),
-    list_entries: alle(`SELECT l.uuid AS list_uuid, e.uuid AS entry_uuid FROM list_entries le
+    entries: alle_('SELECT * FROM entries ORDER BY title').map(ohneId),
+    custom_lists: alle_('SELECT * FROM custom_lists ORDER BY id').map(ohneId),
+    list_entries: alle_(`SELECT l.uuid AS list_uuid, e.uuid AS entry_uuid FROM list_entries le
       JOIN custom_lists l ON l.id = le.list_id JOIN entries e ON e.id = le.entry_id`) as any,
-    watch_order: alle(`SELECT e.uuid AS entry_uuid, w.* FROM watch_order w JOIN entries e ON e.id = w.entry_id
+    watch_order: alle_(`SELECT e.uuid AS entry_uuid, w.* FROM watch_order w JOIN entries e ON e.id = w.entry_id
       ORDER BY w.entry_id, w.position`).map(({ entry_id: _, ...rest }) => rest),
-    achievements: alle('SELECT * FROM achievements'),
-    media_dauer: alle('SELECT * FROM media_dauer'),
-    app_meta: alle(`SELECT key, value FROM app_meta WHERE key IN (${META_SCHLUESSEL.map(() => '?').join(', ')})`,
+    achievements: alle_('SELECT * FROM achievements'),
+    media_dauer: alle_('SELECT * FROM media_dauer'),
+    app_meta: alle_(`SELECT key, value FROM app_meta WHERE key IN (${META_SCHLUESSEL.map(() => '?').join(', ')})`,
       META_SCHLUESSEL) as any,
   }
 }
@@ -95,9 +105,67 @@ export function leseSicherung(text: string): { sicherung: Sicherung; info: Siche
   for (const k of ['custom_lists', 'list_entries', 'watch_order', 'achievements', 'media_dauer', 'app_meta'] as const) {
     if (!Array.isArray(s[k])) (s as any)[k] = []
   }
+  return { sicherung: s, info: infoMitVergleich(s) }
+}
+
+function kurzInfo(s: Sicherung): SicherungInfo {
+  return { erstellt: s.erstellt, eintraege: s.entries.length, listen: s.custom_lists.length, achievements: s.achievements.length }
+}
+
+/** Eckdaten der Sicherung plus Vergleich mit dem aktuellen Stand (für die Rückfrage vor dem Einspielen) */
+export function infoMitVergleich(s: Sicherung): SicherungInfo {
+  const inSicherung = new Set(s.entries.map(e => e.uuid as string))
+  const jetzt = alle('SELECT uuid, title, nickname FROM entries ORDER BY title')
+  const fehlend = jetzt.filter(e => !inSicherung.has(e.uuid as string))
+  const vorhanden = new Set(jetzt.map(e => e.uuid as string))
   return {
-    sicherung: s,
-    info: { erstellt: s.erstellt, eintraege: s.entries.length, listen: s.custom_lists.length, achievements: s.achievements.length },
+    ...kurzInfo(s),
+    aktuell: jetzt.length,
+    fehlen: fehlend.length,
+    fehlendeTitel: [...new Set(fehlend.map(e => String(e.nickname || e.title)))].slice(0, 5),
+    neu: s.entries.filter(e => !vorhanden.has(e.uuid as string)).length,
+  }
+}
+
+/**
+ * Ablage für die Sicherheitskopie vor dem Einspielen (PC: Datei, Handy: Browser-Speicher).
+ * Sie ist selbst eine Sicherung – „Rückgängig" spielt sie ganz normal ein, läuft also genauso
+ * über das Änderungsprotokoll und den Abgleich wie das Einspielen davor.
+ */
+export interface VorherAblage {
+  lies(): Promise<string | null>
+  schreib(text: string): Promise<void>
+}
+
+/** Spielt die Sicherung ein, nachdem der aktuelle Stand als Sicherheitskopie abgelegt ist */
+export async function spieleMitKopieEin(s: Sicherung, ablage: VorherAblage): Promise<SicherungInfo> {
+  const bisher = await ablage.lies().catch(() => null)
+  await ablage.schreib(JSON.stringify(erstelleSicherung()))
+  try {
+    return spieleSicherungEin(s)
+  } catch (e) {
+    // Einspielen gescheitert (Stand unverändert) → alte Sicherheitskopie nicht verlieren
+    if (bisher) await ablage.schreib(bisher).catch(() => {})
+    throw e
+  }
+}
+
+/** Eckdaten der Sicherheitskopie samt Vergleich; null, wenn es keine (lesbare) gibt */
+export async function vorherInfo(ablage: VorherAblage): Promise<SicherungInfo | null> {
+  const text = await ablage.lies()
+  if (!text) return null
+  try { return leseSicherung(text).info } catch { return null }
+}
+
+/** Holt den Stand vor der letzten Wiederherstellung zurück. Der Stand davor wird wiederum zur
+ *  Sicherheitskopie – auch das Zurückholen lässt sich also rückgängig machen. */
+export async function holeVorherZurueck(ablage: VorherAblage): Promise<{ fehler?: string; info?: SicherungInfo }> {
+  const text = await ablage.lies()
+  if (!text) return { fehler: 'Es gibt keinen Stand vor einer Wiederherstellung.' }
+  try {
+    return { info: await spieleMitKopieEin(leseSicherung(text).sicherung, ablage) }
+  } catch (e: any) {
+    return { fehler: String(e?.message ?? e) }
   }
 }
 
@@ -204,5 +272,5 @@ export function spieleSicherungEin(s: Sicherung): SicherungInfo {
     throw e
   }
   schedulePersist()
-  return { erstellt: s.erstellt, eintraege: s.entries.length, listen: s.custom_lists.length, achievements: s.achievements.length }
+  return kurzInfo(s)
 }

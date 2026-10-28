@@ -26,6 +26,18 @@ export interface Entry {
   uuid: string // geräteübergreifend eindeutig (für den Handy-Abgleich)
   created_at: string
   updated_at: string
+  // ── Nur gelesen (entries:getAll/get berechnen sie, keine DB-Spalten) ──
+  // Aktuelle Staffel der Hauptlinie (Prequel/Haupt/Sequels) – dieselbe, die „+1" zählt;
+  // nur gesetzt, wenn die Hauptlinie mehr als eine Staffel hat
+  staffel_titel?: string | null
+  staffel_nr?: number // 1-basiert
+  staffel_anzahl?: number // ohne nur angekündigte Staffeln
+  staffel_gesehen?: number
+  staffel_total?: number | null
+  // Nächste Ausstrahlung (aus dem News-Cache, nur für abonnierte Anime)
+  naechste_folge?: number
+  naechste_folge_um?: number // Unix-Sekunden
+  naechste_folge_staffel?: string | null // Staffeltitel, falls die Serie mehrere Staffeln hat
 }
 
 export interface CustomList {

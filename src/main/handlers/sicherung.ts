@@ -1,9 +1,23 @@
-import { IpcMain, dialog, BrowserWindow } from 'electron'
+import { IpcMain, dialog, BrowserWindow, app } from 'electron'
 import fs from 'fs'
-import { sicherungAlsDatei, leseSicherung, spieleSicherungEin, merkeSicherung, Sicherung } from './sicherung-kern'
+import path from 'path'
+import {
+  sicherungAlsDatei, leseSicherung, merkeSicherung, Sicherung, VorherAblage, spieleMitKopieEin, vorherInfo, holeVorherZurueck,
+} from './sicherung-kern'
 
 // Gewählte, geprüfte Sicherung bis zur Bestätigung in der Oberfläche
 let ausgewaehlt: Sicherung | null = null
+
+// Stand vor der letzten Wiederherstellung – neben der Datenbank im Benutzerordner
+const vorherDatei = () => path.join(app.getPath('userData'), 'vor-wiederherstellung.json')
+const ablage: VorherAblage = {
+  async lies() { try { return fs.readFileSync(vorherDatei(), 'utf8') } catch { return null } },
+  async schreib(text) {
+    // Erst vollständig schreiben, dann umbenennen – ein Absturz trifft nie die alte Kopie
+    fs.writeFileSync(vorherDatei() + '.tmp', text)
+    fs.renameSync(vorherDatei() + '.tmp', vorherDatei())
+  },
+}
 
 export function registerSicherungHandlers(ipcMain: IpcMain) {
   ipcMain.handle('sicherung:erstellen', async event => {
@@ -37,8 +51,11 @@ export function registerSicherungHandlers(ipcMain: IpcMain) {
 
   ipcMain.handle('sicherung:einspielen', async () => {
     if (!ausgewaehlt) return { fehler: 'Keine Sicherung ausgewählt.' }
-    const info = spieleSicherungEin(ausgewaehlt)
+    const info = await spieleMitKopieEin(ausgewaehlt, ablage)
     ausgewaehlt = null
     return { info }
   })
+
+  ipcMain.handle('sicherung:vorher', () => vorherInfo(ablage))
+  ipcMain.handle('sicherung:zurueckholen', () => holeVorherZurueck(ablage))
 }

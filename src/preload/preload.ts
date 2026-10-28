@@ -67,6 +67,8 @@ contextBridge.exposeInMainWorld('api', {
   sicherungErstellen: () => ipcRenderer.invoke('sicherung:erstellen'),
   sicherungWaehlen: () => ipcRenderer.invoke('sicherung:waehlen'),
   sicherungEinspielen: () => ipcRenderer.invoke('sicherung:einspielen'),
+  sicherungVorher: () => ipcRenderer.invoke('sicherung:vorher'),
+  sicherungZurueckholen: () => ipcRenderer.invoke('sicherung:zurueckholen'),
 
   // Serien-Abgleich (neue Folgen/Staffeln)
   syncSerien: () => ipcRenderer.invoke('serien:sync'),

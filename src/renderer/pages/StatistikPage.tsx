@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import './Page.css'
 import './StatistikPage.css'
 import { api } from '../api'
+import { STATUS_TEXTFARBE } from '../components/EintragKarte'
 
 interface Stats {
   gesamt: number
@@ -336,7 +337,7 @@ export default function StatistikPage() {
                     className={`status-row status-row--klickbar ${aktiv ? 'aktiv' : ''}`}
                     onClick={ev => toggleFilter({ typ: 'status', wert: row.status, label: STATUS_LABEL[row.status] ?? row.status }, ev)}
                   >
-                    <span className="status-name" style={{ color: STATUS_FARBE[row.status] ?? 'var(--text-muted)' }}>
+                    <span className="status-name" style={{ color: STATUS_TEXTFARBE[row.status] ?? 'var(--text-muted)' }}>
                       {STATUS_LABEL[row.status] ?? row.status}
                     </span>
                     <div className="status-bar-wrap">

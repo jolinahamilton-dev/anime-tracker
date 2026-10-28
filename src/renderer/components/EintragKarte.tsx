@@ -12,6 +12,40 @@ export const STATUS_FARBE: Record<string, string> = {
   paused: '#95a5a6',
 }
 
+/** Statusfarbe als Schrift – im hellen Design dunklere Varianten (global.css), damit lesbar */
+export const STATUS_TEXTFARBE: Record<string, string> = {
+  started: 'var(--text-blau)',
+  ongoing: 'var(--text-gruen)',
+  completed: 'var(--text-lila)',
+  planned: 'var(--text-orange)',
+  dropped: 'var(--text-rot-status)',
+  paused: 'var(--text-grau)',
+}
+
+const WOCHENTAG = ['So.', 'Mo.', 'Di.', 'Mi.', 'Do.', 'Fr.', 'Sa.']
+const uhrzeit = (d: Date) => d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+
+/**
+ * „Folge 8 heute 17:30" / „Folge 8 morgen" / „Folge 8 in 3 Tagen" – gezählt in Kalendertagen.
+ * `lang` = vollständiger Termin für den Tooltip („Fr., 31.10., 17:30 Uhr").
+ */
+export function naechsteFolgeText(entry: Entry, jetzt = new Date()): { kurz: string; lang: string; datum: string; heute: boolean } | null {
+  if (entry.naechste_folge == null || entry.naechste_folge_um == null) return null
+  const termin = new Date(entry.naechste_folge_um * 1000)
+  if (termin <= jetzt) return null
+  const tagStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const tage = Math.round((tagStart(termin) - tagStart(jetzt)) / 86_400_000)
+  const wann = tage <= 0 ? `heute ${uhrzeit(termin)}` : tage === 1 ? 'morgen' : `in ${tage} Tagen`
+  const datum = `${WOCHENTAG[termin.getDay()]}, ${termin.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}, ${uhrzeit(termin)} Uhr`
+  const staffel = entry.naechste_folge_staffel ? `${entry.naechste_folge_staffel} · ` : ''
+  return {
+    kurz: `Folge ${entry.naechste_folge} ${wann}`,
+    lang: `Nächste Folge: ${staffel}Folge ${entry.naechste_folge} am ${datum}`,
+    datum,
+    heute: tage <= 0,
+  }
+}
+
 const STATUS_LABEL: Record<string, string> = {
   started: 'Angefangen',
   ongoing: 'Ongoing',
@@ -37,9 +71,14 @@ export default function EintragKarte({ entry, onClick, ansicht = 'kacheln', onVe
   const aboMoeglich = entry.type === 'ANIME' && entry.anilist_id != null && !!onAboUmschalten
   const plusMoeglich = !!onPlusEins && entry.status !== 'completed' && entry.status !== 'dropped'
   const einheit = entry.type === 'ANIME' ? 'Folge' : 'Kapitel'
-  const fortschritt = entry.type === 'ANIME'
-    ? { aktuell: entry.progress_episodes, gesamt: entry.total_episodes }
-    : { aktuell: entry.progress_chapters, gesamt: entry.total_chapters }
+  // Anime mit mehreren Staffeln: Fortschritt der aktuellen Staffel (dieselbe, die „+1" zählt)
+  const staffel = entry.type === 'ANIME' && entry.staffel_nr != null && entry.staffel_anzahl != null ? entry : null
+  const fortschritt = staffel
+    ? { aktuell: staffel.staffel_gesehen ?? 0, gesamt: staffel.staffel_total ?? null }
+    : entry.type === 'ANIME'
+      ? { aktuell: entry.progress_episodes, gesamt: entry.total_episodes }
+      : { aktuell: entry.progress_chapters, gesamt: entry.total_chapters }
+  const naechste = entry.type === 'ANIME' ? naechsteFolgeText(entry) : null
 
   const prozent = fortschritt.gesamt
     ? Math.min(100, Math.round((fortschritt.aktuell / fortschritt.gesamt) * 100))
@@ -92,18 +131,32 @@ export default function EintragKarte({ entry, onClick, ansicht = 'kacheln', onVe
         <div className="karte-titel-block">
           <p className="karte-titel">{entry.title}</p>
           {entry.nickname && <p className="karte-nickname">„{entry.nickname}"</p>}
+          {naechste && (
+            <p className={naechste.heute ? 'karte-naechste karte-naechste--heute' : 'karte-naechste'} title={naechste.lang}>
+              <span aria-hidden="true">📅 </span>{naechste.kurz}
+            </p>
+          )}
         </div>
         <span className={`karte-typ-inline typ-${entry.type.toLowerCase()}`}>{entry.type}</span>
-        <span className="karte-status" style={{ color: STATUS_FARBE[entry.status] }}>
+        <span className="karte-status" style={{ color: STATUS_TEXTFARBE[entry.status] }}>
           {STATUS_LABEL[entry.status]}
           {entry.rewatch_count > 0 && <span className="karte-rewatch" title={`${entry.rewatch_count}× wiederholt`}> ↻{entry.rewatch_count}</span>}
         </span>
-        {prozent !== null ? (
+        {prozent !== null || staffel ? (
           <div className="karte-progress">
-            <div className="progress-bar">
-              <div className="progress-fill" style={{ width: `${prozent}%` }} />
-            </div>
-            <span className="progress-text">{fortschritt.aktuell}/{fortschritt.gesamt}</span>
+            {prozent !== null && (
+              <div className="progress-bar">
+                <div className="progress-fill" style={{ width: `${prozent}%` }} />
+              </div>
+            )}
+            <span className="progress-text">
+              {staffel && (
+                <span className="karte-staffel" title={staffel.staffel_titel ?? undefined}>
+                  Staffel {staffel.staffel_nr}/{staffel.staffel_anzahl}<span className="karte-staffel-trenner"> · </span>
+                </span>
+              )}
+              {fortschritt.aktuell}/{fortschritt.gesamt ?? '?'}
+            </span>
           </div>
         ) : ansicht === 'liste' && <div className="karte-progress" />}
         {entry.rating ? (

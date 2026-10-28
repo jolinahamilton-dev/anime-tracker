@@ -3,6 +3,8 @@
 import { defineConfig, Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import fs from 'fs'
+import { createHash } from 'crypto'
 
 // Content-Security-Policy (GitHub Pages kann keine Header setzen, das <meta> wirkt trotzdem): nur eigene
 // Skripte (+ WebAssembly für SQLite), Netz nur zu AniList und Google Drive. Im Dev-Modus nicht aktiv.
@@ -20,11 +22,34 @@ function cspPlugin(): Plugin {
   }
 }
 
+// Service Worker (public/sw.js): Version und Liste der gebauten Dateien hineinschreiben. So ändert sich sw.js
+// mit jedem Build (→ Handy holt das Update), der Worker lädt den ganzen Build vorab und prüft, dass die
+// Startseite dazu passt. public/ ist beim writeBundle schon ins Ausgabeverzeichnis kopiert.
+function swBuildPlugin(): Plugin {
+  const hash = (text: string) => createHash('sha256').update(text).digest('hex')
+  return {
+    name: 'sw-build',
+    apply: 'build',
+    writeBundle(options, bundle) {
+      const html = bundle['index.html']
+      if (!html || html.type !== 'asset') throw new Error('sw-build: index.html fehlt im Build')
+      const index = hash(String(html.source))
+      const dateien = Object.keys(bundle).filter(d => d !== 'index.html' && !d.endsWith('.map')).sort()
+      const version = hash(index + dateien.join('\n')).slice(0, 12)
+      const ziel = path.join(options.dir!, 'sw.js')
+      const quelle = fs.readFileSync(ziel, 'utf8')
+      const marker = /\/\*BUILD\*\/[\s\S]*?\/\*BUILD\*\//
+      if (!marker.test(quelle)) throw new Error('sw-build: Marker /*BUILD*/ in sw.js fehlt')
+      fs.writeFileSync(ziel, quelle.replace(marker, () => JSON.stringify({ version, index, dateien })))
+    },
+  }
+}
+
 export default defineConfig({
   root: path.resolve(__dirname, 'web'),
   base: '/anime-tracker/',
   publicDir: path.resolve(__dirname, 'public'),
-  plugins: [react(), cspPlugin()],
+  plugins: [react(), cspPlugin(), swBuildPlugin()],
   resolve: {
     alias: [
       { find: /^electron$/, replacement: path.resolve(__dirname, 'src/web/electron-shim.ts') },

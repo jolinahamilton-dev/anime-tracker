@@ -82,7 +82,7 @@
 .ws-stand { font-size: 11px; color: var(--text-muted); display: flex; gap: 6px; align-items: center; }
 
 .ws-offen {
-  color: #4adb6f;
+  color: var(--text-gruen);
   font-weight: 700;
 }
 

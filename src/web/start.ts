@@ -1,7 +1,7 @@
 // Einstieg der Handy-Version (Web-App): Datenbank im Browser laden, dieselben Handler wie am PC
 // registrieren, window.api bereitstellen – danach startet die unveränderte Oberfläche.
 import { stilleErneuerung, verarbeiteRueckkehr, webPlattform } from './sync-web'
-import { initDb, persistDb } from './datenbank'
+import { initDb, persistDb, wiederhergestelltAusKopie } from './datenbank'
 import { registry, baueApi } from './api-web'
 import { BrowserWindow } from './electron-shim'
 import { registerEntryHandlers } from '../main/handlers/entries'
@@ -45,7 +45,13 @@ async function start() {
 
   await import('../renderer/main')
 
-  const { hinweis } = await import('../renderer/meldungen')
+  const { hinweis, snackbar } = await import('../renderer/meldungen')
+  if (wiederhergestelltAusKopie) {
+    hinweis('Liste aus Kopie geladen', `Der Speicher der App war beschädigt. Geladen wurde die Kopie vom ` +
+      `${new Date(wiederhergestelltAusKopie).toLocaleString('de-DE')} – Änderungen danach fehlen, falls sie nicht über ` +
+      `den Abgleich zurückkommen. Weitere Kopien findest du unter Einstellungen → Sicherung.`)
+  }
+  window.addEventListener('neue-version', () => snackbar('Neue Version der App geladen', { label: 'Neu laden', ausfuehren: () => location.reload() }, 15000))
   let gemeldet = false
   window.addEventListener('speicherfehler', e => {
     if (gemeldet) return
@@ -81,7 +87,20 @@ async function start() {
   })
 
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
-    navigator.serviceWorker.register(import.meta.env.BASE_URL + 'sw.js').catch(console.error)
+    // Neue Version übernommen (sw.js aktiviert, alte Seite läuft noch) → als Ereignis „neue-version" weiterreichen;
+    // die Oberfläche kann darauf z. B. einen Neu-laden-Hinweis zeigen. Spätestens beim nächsten Start ist sie da.
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data?.typ === 'neue-version') window.dispatchEvent(new CustomEvent('neue-version', { detail: e.data.version }))
+    })
+    navigator.serviceWorker.register(import.meta.env.BASE_URL + 'sw.js').then(reg => {
+      // Handy-Apps laufen oft tagelang im Hintergrund weiter: beim Zurückkehren höchstens stündlich nach Updates sehen
+      let geprueft = Date.now()
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'visible' || Date.now() - geprueft < 60 * 60 * 1000) return
+        geprueft = Date.now()
+        reg.update().catch(() => {})
+      })
+    }).catch(console.error)
   }
 }
 

@@ -155,7 +155,7 @@
   transition: all 0.12s;
 }
 
-.listen-tab-del:hover { background: rgba(232,93,93,0.15); color: #e85d5d; }
+.listen-tab-del:hover { background: rgba(232,93,93,0.15); color: var(--text-rot); }
 
 .listen-neu-eingabe {
   display: flex;
@@ -189,9 +189,9 @@
   transition: all 0.12s;
 }
 
-.listen-neu-ok { color: #4adb6f; }
+.listen-neu-ok { color: var(--text-gruen); }
 .listen-neu-ok:hover { border-color: #4adb6f; background: rgba(74,219,111,0.1); }
-.listen-neu-ab { color: #e85d5d; }
+.listen-neu-ab { color: var(--text-rot); }
 .listen-neu-ab:hover { border-color: #e85d5d; background: rgba(232,93,93,0.1); }
 
 .karten-grid {
@@ -242,7 +242,7 @@
   border-radius: var(--radius-sm);
   border: 1px solid #e85d5d;
   background: rgba(232, 93, 93, 0.08);
-  color: #e85d5d;
+  color: var(--text-rot);
   font-size: 12px;
   cursor: pointer;
   white-space: nowrap;
@@ -256,7 +256,7 @@
 
 .listen-tab-verwalten.aktiv {
   border-color: #4adb6f;
-  color: #4adb6f;
+  color: var(--text-gruen);
   background: rgba(74, 219, 111, 0.1);
 }
 

@@ -4,6 +4,7 @@ import { Entry, EntryStatus } from '../../types'
 import Sterne from '../components/Sterne'
 import WatchOrder, { WatchItem, istNeueStaffel } from '../components/WatchOrder'
 import BildVergroesserung from '../components/BildVergroesserung'
+import { naechsteFolgeText } from '../components/EintragKarte'
 import { sitzung } from '../listenZustand'
 import './Page.css'
 import './DetailPage.css'
@@ -71,11 +72,14 @@ export default function DetailPage() {
   const [alleIds, setAlleIds] = useState<number[]>([])
 
   const [coverGross, setCoverGross] = useState(false)
+  // Nächste Ausstrahlung: kommt nur mit getEntry (nicht mit dem Ergebnis von update/setAbo) – daher eigener Zustand
+  const [naechsteFolge, setNaechsteFolge] = useState<ReturnType<typeof naechsteFolgeText>>(null)
 
   const ladeNeu = useCallback(async () => {
     const e = await api.getEntry(entryId)
     if (!e) return // gerade gelöscht
     setEntry(e)
+    setNaechsteFolge(naechsteFolgeText(e))
     const items: WatchItem[] = await api.getWatchOrder(entryId)
     setWatchItems([...items].sort((a, b) => a.position - b.position))
   }, [entryId])
@@ -104,6 +108,7 @@ export default function DetailPage() {
     ;(async () => {
       const e: Entry = await api.getEntry(entryId)
       setEntry(e)
+      setNaechsteFolge(e.type === 'ANIME' ? naechsteFolgeText(e) : null)
       setRezension(e.review ?? '')
       setNickname(e.nickname ?? '')
       api.getLists().then(setListen)
@@ -350,6 +355,12 @@ export default function DetailPage() {
                 {entry.nickname ? `„${entry.nickname}"` : '+ Spitzname hinzufügen'}
               </button>
             )}
+            {naechsteFolge && entry.abonniert ? (
+              <p className={naechsteFolge.heute ? 'detail-naechste detail-naechste--heute' : 'detail-naechste'} title={naechsteFolge.lang}>
+                <span aria-hidden="true">📅 </span><span className="detail-naechste-wann">{naechsteFolge.kurz}</span>
+                {!naechsteFolge.heute && <> · {naechsteFolge.datum}</>}
+              </p>
+            ) : null}
             {genres.length > 0 && (
               <div className="ergebnis-genres">
                 {genres.map(g => <span key={g} className="genre-tag">{g}</span>)}

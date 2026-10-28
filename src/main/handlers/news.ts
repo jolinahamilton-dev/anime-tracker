@@ -63,8 +63,11 @@ export async function aktualisiereNews() {
   const jetzt = Math.floor(Date.now() / 1000)
   const schedules = await fetchAiringSchedule(ids, jetzt - ZWEI_MONATE_SEKUNDEN, jetzt + ZWEI_WOCHEN_SEKUNDEN)
 
+  // Verschobene Folgen: Termin aktualisieren (sonst zeigte die Karte „Folge 8 morgen" für einen alten Termin);
+  // „gesehen" bleibt erhalten
   for (const s of schedules) {
-    dbRun('INSERT OR IGNORE INTO news_cache (anilist_id, episode, airing_at, seen) VALUES (?, ?, ?, 0)',
+    dbRun(`INSERT INTO news_cache (anilist_id, episode, airing_at, seen) VALUES (?, ?, ?, 0)
+      ON CONFLICT(anilist_id, episode) DO UPDATE SET airing_at = excluded.airing_at WHERE airing_at <> excluded.airing_at`,
       [s.mediaId, s.episode, s.airingAt])
   }
 }

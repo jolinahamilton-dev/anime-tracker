@@ -95,7 +95,7 @@
 
 .favorit-btn.aktiv {
   border-color: #f5c518;
-  color: #f5c518;
+  color: var(--text-gelb);
 }
 
 .abo-btn { margin-left: 8px; }
@@ -149,16 +149,16 @@
 
 .ergebnis-typ.typ-anime,
 .karte-typ.typ-anime {
-  color: #4a9eff;
+  color: var(--text-blau);
 }
 
 .ergebnis-typ.typ-manga,
 .karte-typ.typ-manga {
-  color: #a259ff;
+  color: var(--text-lila);
 }
 
 .fehler-text {
-  color: #e85d5d;
+  color: var(--text-rot);
   font-size: 13px;
 }
 

@@ -9,6 +9,32 @@
   --text-muted: #888899;
   --radius: 12px;
   --radius-sm: 8px;
+
+  /* Signalfarben als SCHRIFT (Status-Labels, Chips, Haken, Fehlertexte).
+     Flächen, Punkte und Rahmen behalten die kräftigen Grundfarben. */
+  --text-blau: #4a9eff;
+  --text-gruen: #4adb6f;
+  --text-lila: #a259ff;
+  --text-orange: #f5a623;
+  --text-rot: #e85d5d;
+  --text-rot-status: #e74c3c; /* „Abgebrochen“ */
+  --text-grau: #95a5a6;
+  --text-gelb: #f5c518;
+  --stern-gelb: #f5c518;
+}
+
+/* Helles Design: dunklere Schriftvarianten (WCAG AA, ≥ 4,5:1 auf #fff, #f5f5f8, #ececf0 und
+   getönten Chip-Flächen; Sterne als Grafik ≥ 3:1). data-theme setzt useSettings.ts. */
+:root[data-theme="light"] body {
+  --text-blau: #0063d6;
+  --text-gruen: #187931;
+  --text-lila: #8321ff;
+  --text-orange: #925d07;
+  --text-rot: #c81c1c;
+  --text-rot-status: #c12818;
+  --text-grau: #5b6c6d;
+  --text-gelb: #806606;
+  --stern-gelb: #a07f07;
 }
 
 * {

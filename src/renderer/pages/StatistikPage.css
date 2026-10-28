@@ -59,7 +59,7 @@
 
 .stat-wert {
   font-size: 18px;
-  color: #f5c518;
+  color: var(--text-gelb);
 }
 
 .stat-wert.muted {
@@ -250,12 +250,12 @@
   letter-spacing: 0.04em;
 }
 
-.detail-eintrag-typ.typ-anime { color: #4a9eff; }
-.detail-eintrag-typ.typ-manga { color: #a259ff; }
+.detail-eintrag-typ.typ-anime { color: var(--text-blau); }
+.detail-eintrag-typ.typ-manga { color: var(--text-lila); }
 
 .detail-eintrag-rating {
   font-size: 11px;
-  color: #f5c518;
+  color: var(--stern-gelb);
   flex-shrink: 0;
 }
 
@@ -352,7 +352,7 @@
 
 .monats-zahl { font-size: 11px; font-weight: 600; color: var(--text-muted); }
 .monats-name { font-size: 10px; color: var(--text-muted); }
-.stat-sterne { color: #f5c518 !important; letter-spacing: 1px; }
+.stat-sterne { color: var(--stern-gelb) !important; letter-spacing: 1px; }
 
 @media (max-width: 640px) {
   .monats-chart { gap: 3px; height: 120px; }
