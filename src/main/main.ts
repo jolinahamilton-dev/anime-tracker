@@ -6,7 +6,7 @@ import { registerListHandlers } from './handlers/lists'
 import { registerAchievementHandlers } from './handlers/achievements'
 import { registerNewsHandlers } from './handlers/news'
 import { registerMetaHandlers } from './handlers/meta'
-import { logoIcon, registerLogoHandlers } from './logo'
+import { aktualisiereVerknuepfungen, logoIcon, registerLogoHandlers } from './logo'
 import { registerAniListHandlers } from './handlers/anilist'
 import { registerWatchOrderHandlers } from './handlers/watchorder'
 import { aktualisiereNews } from './handlers/news'
@@ -102,6 +102,10 @@ app.whenReady().then(async () => {
   const win = createWindow()
 
   trackAppOpen()
+
+  // Verknüpfungssymbole zum gewählten Logo (auch nach Scoop-Updates oder Logo-Wechsel auf dem Handy);
+  // etwas später, damit der Start nicht wartet
+  setTimeout(() => aktualisiereVerknuepfungen(dbGet("SELECT value FROM app_meta WHERE key = 'logo'")?.value), 3000)
 
   // News und Serien-Abgleich beim Start und alle 6 Stunden (nacheinander, schont das AniList-Limit)
   const abgleich = () => aktualisiereSerien(BrowserWindow.getAllWindows()[0] ?? null)

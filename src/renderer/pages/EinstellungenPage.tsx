@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSettings } from '../hooks/useSettings'
 import { LOGOS, logoBild } from '../logos'
+import { installieren, useInstallierbar } from '../installieren'
 import './Page.css'
 import './EinstellungenPage.css'
 import { api, kann, istHandyApp } from '../api'
@@ -53,6 +54,7 @@ const VORAUSWAHL_FARBEN = [
 export default function EinstellungenPage() {
   const navigate = useNavigate()
   const { settings, speichern } = useSettings()
+  const installierbar = useInstallierbar()
 
   const [importLaeuft, setImportLaeuft] = useState(false)
   const [importMeldung, setImportMeldung] = useState('')
@@ -271,7 +273,7 @@ export default function EinstellungenPage() {
               <span className="einstell-sub">
                 {istHandyApp
                   ? 'Erscheint in der Kopfzeile und auf dem Startbildschirm, wenn du die App (neu) dort hinzufügst'
-                  : 'Erscheint in der Kopfzeile, im Fenster und in der Taskleiste'}
+                  : 'Erscheint in der Kopfzeile, im Fenster, im Startmenü und in der Taskleiste (dort spätestens nach einem Neustart der App)'}
               </span>
             </div>
             <div className="logo-auswahl" role="radiogroup" aria-label="App-Logo">
@@ -288,6 +290,15 @@ export default function EinstellungenPage() {
                 </button>
               ))}
             </div>
+            {istHandyApp && <div className="logo-handy-hinweis">
+              {installierbar
+                ? <button className="btn-secondary" onClick={installieren}>Mit diesem Logo zum Startbildschirm hinzufügen</button>
+                : <p className="einstell-sub">
+                    <strong>Startbildschirm:</strong> Ein neues Logo übernimmt das Handy nur beim Hinzufügen. Vorher
+                    abgleichen oder sichern (beim Entfernen löscht das iPhone die Daten der App), dann die App entfernen
+                    und im Browser neu zum Startbildschirm hinzufügen.
+                  </p>}
+            </div>}
           </div>
         </section>
 

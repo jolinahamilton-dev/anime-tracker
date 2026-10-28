@@ -66,6 +66,9 @@
 .logo-btn.aktiv { border-color: var(--accent); color: var(--text); }
 .logo-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+.logo-handy-hinweis { padding-top: 4px; }
+.logo-handy-hinweis .btn-secondary { width: 100%; }
+
 .einstell-info {
   display: flex;
   flex-direction: column;

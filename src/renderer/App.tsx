@@ -13,6 +13,7 @@ import { snackbar } from './meldungen'
 import { useState, useEffect } from 'react'
 import { useSettings } from './hooks/useSettings'
 import { logoBild, useLogo } from './logos'
+import './installieren' // fängt das Installationsangebot des Browsers früh ab
 import { istTippen, overlayOffen, useTasten } from './tastatur'
 import './styles/App.css'
 import { api } from './api'
