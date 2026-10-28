@@ -1,6 +1,6 @@
 {
   "name": "anime-tracker",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "Lokaler Desktop-Tracker für Anime & Manga mit AniList-Integration",
   "main": "dist/main/main/main.js",
   "scripts": {
