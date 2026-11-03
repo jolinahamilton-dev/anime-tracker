@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, ReactNode } from 'react'
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Page.css'
 import './StatistikPage.css'
@@ -113,6 +113,10 @@ function merkeOffenePanels(liste: string[]) {
   try { sessionStorage.setItem(PANEL_SCHLUESSEL, JSON.stringify(liste)) } catch {}
 }
 
+// Trefferliste, Genre-Ansicht und Scrollposition: beim Zurückkommen von einem Titel wie vorher
+const sitzung: { filter: DetailFilter | null; genreAufgeklappt: boolean; scroll: number } =
+  { filter: null, genreAufgeklappt: false, scroll: 0 }
+
 function Panel({ id, titel, info, offen, onToggle, children }: {
   id: string
   titel: string
@@ -189,9 +193,22 @@ export default function StatistikPage() {
   const navigate = useNavigate()
   const [stats, setStats] = useState<Stats | null>(null)
   const [alleEintraege, setAlleEintraege] = useState<Eintrag[]>([])
-  const [detailFilter, setDetailFilter] = useState<DetailFilter | null>(null)
-  const [genreAufgeklappt, setGenreAufgeklappt] = useState(false)
+  const [detailFilter, setDetailFilter] = useState<DetailFilter | null>(sitzung.filter)
+  const [genreAufgeklappt, setGenreAufgeklappt] = useState(sitzung.genreAufgeklappt)
   const [offen, setOffen] = useState<string[]>(ladeOffenePanels)
+  const inhaltRef = useRef<HTMLDivElement>(null)
+  const wiederhergestellt = useRef(false)
+
+  useEffect(() => { sitzung.filter = detailFilter; sitzung.genreAufgeklappt = genreAufgeklappt }, [detailFilter, genreAufgeklappt])
+  // Sobald alles geladen ist (Seite hat ihre volle Höhe), an die alte Stelle springen
+  useLayoutEffect(() => {
+    if (wiederhergestellt.current || !stats || !alleEintraege.length || !inhaltRef.current) return
+    wiederhergestellt.current = true
+    inhaltRef.current.scrollTop = sitzung.scroll
+  }, [stats, alleEintraege])
+
+  // Titel öffnen: Detailseite merkt sich, dass „Zurück“ hierher führt
+  const oeffneTitel = (id: number) => navigate(`/detail/${id}`, { state: { zurueck: 1 } })
 
   useEffect(() => {
     api.getStats().then(setStats)
@@ -218,7 +235,11 @@ export default function StatistikPage() {
   }
   const istFilter = (typ: DetailFilter['typ'], wert = '') => detailFilter?.typ === typ && detailFilter.wert === wert
 
+  const ersterFilter = useRef(detailFilter)
   useEffect(() => {
+    // Der beim Zurückkommen wiederhergestellte Filter springt nicht – dort gilt die alte Scrollposition
+    if (detailFilter === ersterFilter.current) return
+    ersterFilter.current = null
     if (detailFilter) panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [detailFilter])
 
@@ -273,7 +294,7 @@ export default function StatistikPage() {
         <h2>Statistiken</h2>
       </div>
 
-      <div className="statistik-inhalt">
+      <div className="statistik-inhalt" ref={inhaltRef} onScroll={e => { sitzung.scroll = e.currentTarget.scrollTop }}>
 
         {/* Kurzüberblick */}
         <section className="stat-section" aria-label="Überblick">
@@ -361,7 +382,7 @@ export default function StatistikPage() {
                     <button
                       key={m.id}
                       className="status-row status-row--klickbar top-manga-zeile"
-                      onClick={() => navigate(`/detail/${m.id}`)}
+                      onClick={() => oeffneTitel(m.id)}
                       title={`${m.title}: ${m.gesamt ? `${m.kapitel} von ${m.gesamt} Kapiteln` : `${m.kapitel} Kapitel`}`}
                     >
                       <span className="status-name top-manga-titel">{m.title}</span>
@@ -572,7 +593,7 @@ export default function StatistikPage() {
                   <button
                     key={e.id}
                     className="detail-eintrag-zeile"
-                    onClick={() => navigate(`/detail/${e.id}`)}
+                    onClick={() => oeffneTitel(e.id)}
                   >
                     {e.cover_url
                       ? <img src={e.cover_url} alt="" className="detail-eintrag-cover" />

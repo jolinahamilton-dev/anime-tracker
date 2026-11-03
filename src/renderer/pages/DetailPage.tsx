@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { Entry, EntryStatus } from '../../types'
 import Sterne from '../components/Sterne'
 import WatchOrder, { WatchItem, istNeueStaffel, istNebensache } from '../components/WatchOrder'
@@ -59,6 +59,11 @@ const STATUS_LABEL: Record<EntryStatus, string> = {
 export default function DetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  // Von der Statistik geöffnet: „Zurück“ geht so viele Schritte zurück, wie seitdem geblättert wurde –
+  // dort ist dann alles wie vorher (Trefferliste, Scrollposition); sonst zur Liste
+  const zurueck = (useLocation().state as { zurueck?: number } | null)?.zurueck
+  const zurueckGehen = () => zurueck ? navigate(-zurueck) : navigate('/')
+  const zuEintrag = (ziel: number) => navigate(`/detail/${ziel}`, { state: zurueck ? { zurueck: zurueck + 1 } : undefined })
   const entryId = Number(id)
 
   const [entry, setEntry] = useState<Entry | null>(null)
@@ -149,7 +154,7 @@ export default function DetailPage() {
   const aktuellerIdx = alleIds.indexOf(entryId)
   const vorherige = aktuellerIdx > 0 ? alleIds[aktuellerIdx - 1] : null
   const naechste = aktuellerIdx >= 0 && aktuellerIdx < alleIds.length - 1 ? alleIds[aktuellerIdx + 1] : null
-  const blaettern = (ziel: number | null) => { if (ziel !== null) navigate(`/detail/${ziel}`) }
+  const blaettern = (ziel: number | null) => { if (ziel !== null) zuEintrag(ziel) }
 
   // Tastenkürzel: ← → blättern, + − Fortschritt, Esc zurück zur Liste
   useTasten(e => {
@@ -158,7 +163,7 @@ export default function DetailPage() {
     else if (e.key === 'ArrowRight') blaettern(naechste)
     else if (e.key === '+' || e.key === 'Add') aendereFortschritt(entryId, 1)
     else if (e.key === '-' || e.key === 'Subtract') aendereFortschritt(entryId, -1)
-    else if (e.key === 'Escape') navigate('/')
+    else if (e.key === 'Escape') zurueckGehen()
     else return
     e.preventDefault()
   })
@@ -300,11 +305,11 @@ export default function DetailPage() {
   return (
     <div className="page detail-seite" {...wischen}>
       <div className="page-header">
-        <button className="back-btn" onClick={() => navigate('/')}>← Zurück</button>
+        <button className="back-btn" onClick={zurueckGehen}>← Zurück</button>
         <div className="detail-nav">
           <button
             className="detail-nav-btn"
-            onClick={() => vorherige && navigate(`/detail/${vorherige}`)}
+            onClick={() => blaettern(vorherige)}
             disabled={vorherige === null}
             title="Vorheriger Eintrag (←)"
             aria-label="Vorheriger Eintrag"
@@ -312,7 +317,7 @@ export default function DetailPage() {
           {aktuellerIdx >= 0 && <span className="detail-nav-pos">{aktuellerIdx + 1} / {alleIds.length}</span>}
           <button
             className="detail-nav-btn"
-            onClick={() => naechste && navigate(`/detail/${naechste}`)}
+            onClick={() => blaettern(naechste)}
             disabled={naechste === null}
             title="Nächster Eintrag (→)"
             aria-label="Nächster Eintrag"
