@@ -206,3 +206,40 @@ test('Dunkelmodus: ein neues Gerät übernimmt den Wert, der vor dem Abgleich de
   assert.equal(pc.eins("SELECT value FROM app_meta WHERE key = 'darkMode'")?.value, 'true')
   assert.ok(pc.meldungen.length > 0, 'nur Einstellung geändert – trotzdem benachrichtigt')
 })
+
+test('Kein Interesse: Ausblendungen beider Geräte werden vereinigt, auch auf einem neuen Gerät', async () => {
+  const path = require('path')
+  const vorschlaege = require(path.join(process.env.ANIME_TRACKER_TEST_BUILD, 'main/handlers/vorschlaege.js'))
+  const { geraet } = await erstelleUmgebung()
+  const pc = geraet('pc'), handy = geraet('handy')
+  pc.neuerEintrag('Frieren')
+  await sync(pc)
+  await sync(handy)
+
+  // Zwischengespeicherte Vorschläge: der ausgeblendete Titel verschwindet sofort daraus
+  const vorschlag = id => ({ media: { id, type: 'ANIME', title: { romaji: `Titel ${id}`, native: null, english: null } }, quelle: 'saison', grund: '', gewicht: 1, score: null, zeitraum: null })
+  pc.aendere("INSERT INTO app_meta (key, value) VALUES ('vorschlaege_cache', ?)",
+    [JSON.stringify({ stand: new Date().toISOString(), empfehlungen: [vorschlag(101), vorschlag(303)], adaptionen: [], saison: [vorschlag(101)] })])
+
+  // Beide blenden unabhängig voneinander etwas aus, bevor sie sich abgleichen
+  pc.aktiv(); vorschlaege.blendeVorschlagAus(101)
+  handy.aktiv(); vorschlaege.blendeVorschlagAus(202)
+  handy.aktiv(); vorschlaege.blendeVorschlagAus(202) // doppelt schadet nicht
+
+  const cache = JSON.parse(pc.eins("SELECT value FROM app_meta WHERE key = 'vorschlaege_cache'").value)
+  assert.deepEqual(cache.empfehlungen.map(v => v.media.id), [303])
+  assert.deepEqual(cache.saison, [])
+  assert.equal(pc.eins("SELECT COUNT(*) AS n FROM sync_log WHERE zeile = 'vorschlaege_cache'").n, 0, 'Zwischenspeicher wird nicht abgeglichen')
+
+  await sync(pc)
+  await sync(handy)
+  await sync(pc)
+  const ids = g => g.alle('SELECT anilist_id FROM vorschlag_aus ORDER BY anilist_id').map(r => r.anilist_id)
+  assert.deepEqual(ids(pc), [101, 202])
+  assert.deepEqual(ids(handy), [101, 202])
+
+  // Neues Gerät bekommt beide über Gesamtstand und Einzeldateien
+  const tablet = geraet('tablet')
+  await sync(tablet)
+  assert.deepEqual(ids(tablet), [101, 202])
+})

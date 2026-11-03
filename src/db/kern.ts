@@ -140,6 +140,13 @@ export function migrateSchema(db: Database) {
   // Statistik, wird nicht synchronisiert
   db.run('CREATE TABLE IF NOT EXISTS media_dauer (anilist_id INTEGER PRIMARY KEY, minuten INTEGER NOT NULL)')
 
+  // Vorschläge mit „Kein Interesse“ – wird wie die Achievements als Vereinigung abgeglichen
+  // (ausgeblendet ist ausgeblendet), damit keine Ausblendung eines anderen Geräts verloren geht
+  db.run(`CREATE TABLE IF NOT EXISTS vorschlag_aus (
+    anilist_id INTEGER PRIMARY KEY,
+    zeit TEXT NOT NULL DEFAULT (datetime('now'))
+  )`)
+
   // Reste gelöschter Einträge entfernen (früher hat entries:delete sie nicht mitgelöscht)
   db.run('DELETE FROM list_entries WHERE entry_id NOT IN (SELECT id FROM entries)')
   db.run('DELETE FROM watch_order WHERE entry_id NOT IN (SELECT id FROM entries)')
@@ -266,6 +273,9 @@ function richteSyncEin(db: Database, entryCols: unknown[]) {
   // Achievements (Vereinigung) und gemeinsame Einstellungen
   db.run(`CREATE TRIGGER sync_achievements_neu AFTER INSERT ON achievements WHEN ${NICHT_PAUSIERT} BEGIN
     ${log('achievements', 'NEW.id', 'unlocked_at', 'NEW.unlocked_at')}
+  END`)
+  db.run(`CREATE TRIGGER sync_vorschlag_aus_neu AFTER INSERT ON vorschlag_aus WHEN ${NICHT_PAUSIERT} BEGIN
+    ${log('vorschlag_aus', 'CAST(NEW.anilist_id AS TEXT)', 'zeit', 'NEW.zeit')}
   END`)
   db.run(`CREATE TRIGGER sync_app_meta_neu AFTER INSERT ON app_meta
     WHEN ${NICHT_PAUSIERT} AND NEW.key IN (${SYNC_META.map(k => `'${k}'`).join(', ')}) BEGIN

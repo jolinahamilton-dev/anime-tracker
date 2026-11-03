@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AniListSearchResult, EntryStatus } from '../../types'
+import { AniListSearchResult, Entry, EntryStatus } from '../../types'
 import Sterne from './Sterne'
 import './EintragVorschau.css'
 import { snackbar } from '../meldungen'
@@ -10,17 +10,48 @@ import { sucheZuruecksetzen } from '../einpflegenZustand'
 interface Props {
   data: AniListSearchResult
   onZurueck: () => void
+  /** Vorausgewählter Status – bei 'planned' (aus „✨ Für dich“) steht auch „Geplant“ zur Wahl */
+  startStatus?: EntryStatus
+  /** Statt zur Liste bzw. zum vorhandenen Eintrag zu springen, entscheidet der Aufrufer */
+  onHinzugefuegt?: (entry: Entry, schonVorhanden: boolean) => void
 }
 
 const STATUS_LABEL: Partial<Record<EntryStatus, string>> = {
+  planned: 'Geplant',
   started: 'Angefangen',
   completed: 'Beendet',
   ongoing: 'Ongoing',
 }
 
-export default function EintragVorschau({ data, onZurueck }: Props) {
+/** Felder für api.createEntry aus einem AniList-Treffer (Fortschritt 0) – auch für „+ Geplant“ in den Vorschlägen */
+export function eintragAusAniList(data: AniListSearchResult, status: EntryStatus): Partial<Entry> {
+  return {
+    anilist_id: data.id,
+    type: data.type,
+    title: data.title.romaji,
+    cover_url: data.coverImage.large,
+    genres: JSON.stringify(data.genres),
+    description: data.description?.replace(/<[^>]*>/g, '') ?? '',
+    total_episodes: data.episodes ?? null,
+    total_chapters: data.chapters ?? null,
+    total_volumes: data.volumes ?? null,
+    progress_episodes: 0,
+    progress_chapters: 0,
+    progress_volumes: 0,
+    status,
+    rating: null,
+    is_favorite: 0,
+    review: null,
+  }
+}
+
+export default function EintragVorschau({ data, onZurueck, startStatus, onHinzugefuegt }: Props) {
   const navigate = useNavigate()
-  const [status, setStatus] = useState<EntryStatus>('started')
+  const [status, setStatus] = useState<EntryStatus>(startStatus ?? 'started')
+  const statusAuswahl: EntryStatus[] = startStatus === 'planned'
+    ? ['planned', 'started', 'ongoing', 'completed']
+    : ['started', 'ongoing', 'completed']
+  const geplant = status === 'planned'
   const [fortschritt, setFortschritt] = useState(0)
   const [kapitel, setKapitel] = useState(0)
   const [baende, setBaende] = useState(0)
@@ -35,23 +66,19 @@ export default function EintragVorschau({ data, onZurueck }: Props) {
     setSpeichern(true)
     try {
       const ergebnis = await api.createEntry({
-        anilist_id: data.id,
-        type: data.type,
-        title: data.title.romaji,
-        cover_url: data.coverImage.large,
-        genres: JSON.stringify(data.genres),
+        ...eintragAusAniList(data, status),
         description: beschreibung,
-        total_episodes: data.episodes ?? null,
-        total_chapters: data.chapters ?? null,
-        total_volumes: data.volumes ?? null,
-        progress_episodes: isAnime ? fortschritt : 0,
-        progress_chapters: !isAnime ? kapitel : 0,
-        progress_volumes: !isAnime ? baende : 0,
-        status,
+        // „Geplant“: Zähler sind ausgeblendet → kein versehentlich stehengebliebener Fortschritt
+        progress_episodes: isAnime && !geplant ? fortschritt : 0,
+        progress_chapters: !isAnime && !geplant ? kapitel : 0,
+        progress_volumes: !isAnime && !geplant ? baende : 0,
         rating: bewertung,
         is_favorite: favorit ? 1 : 0,
-        review: null,
       })
+      if (onHinzugefuegt) {
+        onHinzugefuegt(ergebnis, !!ergebnis.schonVorhanden)
+        return
+      }
       if (ergebnis.schonVorhanden) {
         // Gleicher AniList-Titel ist schon in der Liste → keinen Doppelten anlegen, dorthin springen
         snackbar(`„${ergebnis.title}" ist schon in deiner Liste`)
@@ -96,11 +123,12 @@ export default function EintragVorschau({ data, onZurueck }: Props) {
           <div className="formular-zeile">
             <label>Status</label>
             <div className="status-buttons">
-              {(['started', 'ongoing', 'completed'] as EntryStatus[]).map(s => (
+              {statusAuswahl.map(s => (
                 <button
                   key={s}
                   className={status === s ? 'filter-btn active' : 'filter-btn'}
                   onClick={() => setStatus(s)}
+                  aria-pressed={status === s}
                 >
                   {STATUS_LABEL[s]}
                 </button>
@@ -108,7 +136,7 @@ export default function EintragVorschau({ data, onZurueck }: Props) {
             </div>
           </div>
 
-          {isAnime ? (
+          {geplant ? null : isAnime ? (
             <div className="formular-zeile">
               <label>Folgen gesehen</label>
               <div className="zaehler-row">

@@ -3,6 +3,7 @@
 // liefert hier eine eigene Umsetzung derselben Schnittstelle (z. B. Datenbank im Browser) –
 // alle Seiten und Komponenten bleiben dabei unverändert.
 import type { Entry, EntryStatus, AchievementUebersicht, NeuesAchievement } from '../types'
+import type { VorschlagAntwort } from '../types'
 
 export interface CustomListMitEintraegen {
   id: number
@@ -94,6 +95,11 @@ export interface TrackerApi {
   searchAniList(query: string, type: string): Promise<any>
   abgleichAniList(): Promise<any>
   onAbgleichFortschritt(cb: (p: { aktuell: number; gesamt: number; titel: string }) => void): Abmelden
+
+  // Vorschläge („✨ Für dich“): höchstens einmal am Tag neu berechnet, außer mit neuBerechnen
+  getVorschlaege(neuBerechnen?: boolean): Promise<VorschlagAntwort>
+  /** „Kein Interesse“ – wird mit den anderen Geräten abgeglichen */
+  vorschlagAusblenden(anilistId: number): Promise<void>
 
   // Watch-Order
   getWatchOrder(entryId: number): Promise<any[]>

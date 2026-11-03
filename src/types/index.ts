@@ -131,3 +131,43 @@ export interface AniListSearchResult {
     }>
   }
 }
+
+// ── Vorschläge („✨ Für dich“ auf der Einpflegen-Seite) ──
+// media hat dieselbe Form wie ein Suchergebnis, damit „+ Geplant“ und die Vorschau wie bei der Suche funktionieren
+export interface Vorschlag {
+  media: AniListSearchResult
+  quelle: 'empfehlung' | 'adaption' | 'saison'
+  /** Warum der Titel vorgeschlagen wird, z. B. „Weil du Death Note (5★) und Psycho-Pass (5★) mochtest“ */
+  grund: string
+  /** Sortiergewicht (höher = besser) */
+  gewicht: number
+  /** AniList-Durchschnitt 0–100, falls bekannt */
+  score: number | null
+  /** Saison/Jahr für die Anzeige, z. B. „Herbst 2026“ */
+  zeitraum: string | null
+}
+
+/** Titel aus der eigenen Geplant-Liste mit Einschätzung, wie gut er passt */
+export interface GeplantVorschlag {
+  entry_id: number
+  title: string
+  cover_url: string | null
+  type: MediaType
+  folgen: number | null
+  kapitel: number | null
+  genres: string[]
+  /** 0–100: Übereinstimmung mit den eigenen Bewertungen (Genres) */
+  passt: number
+  grund: string
+}
+
+export interface VorschlagAntwort {
+  empfehlungen: Vorschlag[]
+  adaptionen: Vorschlag[]
+  saison: Vorschlag[]
+  geplant: GeplantVorschlag[]
+  /** ISO-Zeit der Berechnung (zwischengespeichert, höchstens einmal am Tag neu) */
+  stand: string | null
+  /** Fehlermeldung, wenn AniList nicht erreichbar war (dann ggf. alter Stand) */
+  fehler?: string
+}

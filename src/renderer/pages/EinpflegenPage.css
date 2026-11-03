@@ -31,3 +31,19 @@
   display: flex;
   flex-direction: column;
 }
+
+/* Handy: drei Tabs passen auch bei 375 px nebeneinander (notfalls waagerecht wischbar) */
+@media (max-width: 640px) {
+  .tab-bar {
+    padding: 0 16px 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab {
+    padding: 8px 10px;
+    font-size: 13px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+}

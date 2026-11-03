@@ -1,5 +1,5 @@
 // Komplette Sicherung als JSON-Datei: alle Einträge (mit Spitznamen, Bewertung, Fortschritt, Wiederholungen,
-// Abschlussdatum), eigene Listen, Watch-Order, Achievements und die Daten hinter der Statistik.
+// Abschlussdatum), eigene Listen, Watch-Order, Achievements, ausgeblendete Vorschläge und die Daten hinter der Statistik.
 // Verweise stehen als uuid statt als lokale Zahlen-ID drin – so passt die Datei auf jedes Gerät.
 //
 // Einspielen ersetzt den Stand: vorhandene Einträge (gleiche uuid) werden überschrieben, fehlende
@@ -28,6 +28,8 @@ export interface Sicherung {
   watch_order: Zeile[]
   achievements: Zeile[]
   media_dauer: Zeile[]
+  /** „Kein Interesse“ bei Vorschlägen (fehlt in älteren Sicherungen) */
+  vorschlag_aus: Zeile[]
   app_meta: Array<{ key: string; value: string }>
 }
 
@@ -74,6 +76,9 @@ export function erstelleSicherung(d: Database = getDb()): Sicherung {
       ORDER BY w.entry_id, w.position`).map(({ entry_id: _, ...rest }) => rest),
     achievements: alle_('SELECT * FROM achievements'),
     media_dauer: alle_('SELECT * FROM media_dauer'),
+    // Lokale Kopien von vor der Einführung haben die Tabelle noch nicht
+    vorschlag_aus: d.exec("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'vorschlag_aus'").length
+      ? alle_('SELECT * FROM vorschlag_aus') : [],
     app_meta: alle_(`SELECT key, value FROM app_meta WHERE key IN (${META_SCHLUESSEL.map(() => '?').join(', ')})`,
       META_SCHLUESSEL) as any,
   }
@@ -103,7 +108,7 @@ export function leseSicherung(text: string): { sicherung: Sicherung; info: Siche
   if (s?.format !== SICHERUNG_FORMAT || !Array.isArray(s.entries)) throw new Error('Die Datei ist keine Sicherung des Anime Trackers.')
   if (s.version > VERSION) throw new Error('Die Sicherung stammt aus einer neueren App-Version. Bitte zuerst die App aktualisieren.')
   if (s.entries.some(e => typeof e.uuid !== 'string' || typeof e.title !== 'string')) throw new Error('Die Sicherung ist beschädigt.')
-  for (const k of ['custom_lists', 'list_entries', 'watch_order', 'achievements', 'media_dauer', 'app_meta'] as const) {
+  for (const k of ['custom_lists', 'list_entries', 'watch_order', 'achievements', 'media_dauer', 'vorschlag_aus', 'app_meta'] as const) {
     if (!Array.isArray(s[k])) (s as any)[k] = []
   }
   return { sicherung: s, info: infoMitVergleich(s) }
@@ -256,6 +261,12 @@ export function spieleSicherungEin(s: Sicherung): SicherungInfo {
     for (const m of s.media_dauer) {
       if (m.anilist_id == null || m.minuten == null) continue
       db.run('INSERT OR REPLACE INTO media_dauer (anilist_id, minuten) VALUES (?, ?)', [m.anilist_id as number, m.minuten as number])
+    }
+    // Ausgeblendete Vorschläge: ergänzen (läuft über den Trigger, kommt also auch aufs andere Gerät)
+    for (const v of s.vorschlag_aus) {
+      if (typeof v.anilist_id !== 'number') continue
+      db.run('INSERT OR IGNORE INTO vorschlag_aus (anilist_id, zeit) VALUES (?, ?)',
+        [v.anilist_id, typeof v.zeit === 'string' ? v.zeit : new Date().toISOString().replace('T', ' ').slice(0, 19)])
     }
 
     // Einstellungen und Zähler; „seit" bleibt das frühere Datum, Öffnungstage werden vereinigt

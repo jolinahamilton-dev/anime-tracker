@@ -119,7 +119,7 @@ export async function anilistAbfrage(query: string, variables: Record<string, un
   throw new Error('AniList-Limit erreicht – bitte später erneut versuchen')
 }
 
-function normalisiere(s: string | null | undefined) {
+export function normalisiere(s: string | null | undefined) {
   return (s ?? '').toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}]+/gu, '')
 }
 

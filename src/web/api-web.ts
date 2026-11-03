@@ -55,6 +55,8 @@ export function baueApi() {
     searchAniList: (query: string, type: string) => invoke('anilist:search', query, type),
     abgleichAniList: () => invoke('anilist:abgleichen'),
     onAbgleichFortschritt: ereignis('anilist:abgleichFortschritt'),
+    getVorschlaege: (neuBerechnen?: boolean) => invoke('vorschlaege:get', neuBerechnen),
+    vorschlagAusblenden: (anilistId: number) => invoke('vorschlaege:ausblenden', anilistId),
 
     syncSerien: () => invoke('serien:sync'),
     getNeueStaffeln: () => invoke('serien:neueStaffeln'),

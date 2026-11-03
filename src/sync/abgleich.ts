@@ -91,6 +91,7 @@ export function gesamtstand(): { bisNr: number; zeilen: LogZeile[] } {
     neu('list_entries', `${le.l_uuid}:${le.e_uuid}`, '*', null)
   }
   for (const a of dbAll('SELECT id, unlocked_at FROM achievements')) neu('achievements', String(a.id), 'unlocked_at', a.unlocked_at)
+  for (const v of dbAll('SELECT anilist_id, zeit FROM vorschlag_aus')) neu('vorschlag_aus', String(v.anilist_id), 'zeit', v.zeit)
   for (const k of SYNC_META) { const v = meta(k); if (v != null) neu('app_meta', k, 'value', v) }
   // Löschvermerke für Zeilen, die es nicht mehr gibt – sonst blieben sie auf einem Gerät, das die
   // Einzeldatei mit der Löschung verpasst hat, für immer stehen
@@ -251,6 +252,13 @@ export function spieleEin(zeilen: LogZeile[], stand?: { geraet: string; bisNr: n
         // Vereinigung: freigeschaltet ist freigeschaltet, das frühere Datum zählt
         db.run(`INSERT INTO achievements (id, name, unlocked_at) VALUES (?, '', ?)
           ON CONFLICT (id) DO UPDATE SET unlocked_at = MIN(unlocked_at, excluded.unlocked_at)`, [r.zeile, r.wert as any])
+        return
+      }
+      case 'vorschlag_aus': {
+        // Vereinigung wie bei den Achievements: „Kein Interesse“ auf irgendeinem Gerät gilt überall
+        const id = Number(r.zeile)
+        if (!Number.isInteger(id) || id <= 0) return
+        db.run('INSERT OR IGNORE INTO vorschlag_aus (anilist_id, zeit) VALUES (?, ?)', [id, (r.wert as any) ?? zeitSql])
         return
       }
       case 'app_meta': {

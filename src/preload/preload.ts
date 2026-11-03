@@ -54,6 +54,10 @@ contextBridge.exposeInMainWorld('api', {
     return () => ipcRenderer.removeListener('anilist:abgleichFortschritt', handler)
   },
 
+  // Vorschläge („✨ Für dich“)
+  getVorschlaege: (neuBerechnen?: boolean) => ipcRenderer.invoke('vorschlaege:get', neuBerechnen),
+  vorschlagAusblenden: (anilistId: number) => ipcRenderer.invoke('vorschlaege:ausblenden', anilistId),
+
   // Export
   exportStarten: (opts: unknown) => ipcRenderer.invoke('export:start', opts),
 

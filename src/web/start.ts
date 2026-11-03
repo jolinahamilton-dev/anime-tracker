@@ -13,6 +13,7 @@ import { registerAniListHandlers } from '../main/handlers/anilist'
 import { registerWatchOrderHandlers } from '../main/handlers/watchorder'
 import { registerStatsHandlers, ergaenzeFolgenlaengen } from '../main/handlers/stats'
 import { registerSerienHandlers, aktualisiereSerien } from '../main/handlers/serien'
+import { registerVorschlagHandlers } from '../main/handlers/vorschlaege'
 import { trackAppOpen } from '../main/trackAppOpen'
 import { erstelleSyncDienst } from '../sync/dienst'
 import { registerDateiHandlers } from './dateien-web'
@@ -33,7 +34,8 @@ async function start() {
   }
 
   for (const registriere of [registerEntryHandlers, registerListHandlers, registerAchievementHandlers, registerNewsHandlers,
-    registerMetaHandlers, registerAniListHandlers, registerWatchOrderHandlers, registerStatsHandlers, registerSerienHandlers]) {
+    registerMetaHandlers, registerAniListHandlers, registerWatchOrderHandlers, registerStatsHandlers, registerSerienHandlers,
+    registerVorschlagHandlers]) {
     registriere(registry)
   }
   const sync = erstelleSyncDienst(webPlattform)
