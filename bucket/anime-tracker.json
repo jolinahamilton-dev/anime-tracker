@@ -1,12 +1,12 @@
 {
-  "version": "1.4.5",
+  "version": "1.4.6",
   "description": "Anime & Manga Tracker mit AniList und verschlüsseltem Handy-Abgleich",
   "homepage": "https://github.com/jolinahamilton-dev/anime-tracker",
   "license": "ISC",
   "architecture": {
     "64bit": {
-      "url": "https://github.com/jolinahamilton-dev/anime-tracker/releases/download/v1.4.5/anime-tracker-1.4.5-win.zip",
-      "hash": "9a525e2b2beef664bd65aa5427738d424a40806e7761cad1b28933d6ba8e647b"
+      "url": "https://github.com/jolinahamilton-dev/anime-tracker/releases/download/v1.4.6/anime-tracker-1.4.6-win.zip",
+      "hash": "2b49b079b47f15cc29623d0dd3fc199308f1b0e029bd45f28cadd7e97b787f39"
     }
   },
   "shortcuts": [
