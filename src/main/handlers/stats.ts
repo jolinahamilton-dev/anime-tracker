@@ -57,6 +57,56 @@ export function geschauteFolgen(): { folgen: number; minuten: number } {
   return { folgen, minuten }
 }
 
+/**
+ * Lese-Statistik der Manga. Einen Verlauf je Kapitel gibt es nicht – alles beruht auf dem aktuellen
+ * Stand (progress_chapters/-volumes) und dem Abschlussdatum (finished_at) beendeter Manga.
+ */
+function mangaStatistik(monate: string[]) {
+  const manga = dbAll(`SELECT id, title, cover_url, status, progress_chapters, total_chapters, progress_volumes
+    FROM entries WHERE type = 'MANGA'`)
+  const zahl = (x: unknown) => (typeof x === 'number' ? x : 0)
+
+  let kapitel = 0, baende = 0, offen = 0, mitFortschritt = 0, beendet = 0, aktiv = 0
+  for (const m of manga) {
+    const k = zahl(m.progress_chapters)
+    kapitel += k
+    baende += zahl(m.progress_volumes)
+    if (k > 0) mitFortschritt++
+    if (m.status === 'completed') beendet++
+    if (m.status === 'started' || m.status === 'ongoing') aktiv++
+    // Offen nur, wenn die Kapitelzahl bekannt ist (laufende Manga haben oft keine)
+    if (['planned', 'started', 'ongoing', 'paused'].includes(m.status as string) && m.total_chapters != null) {
+      offen += Math.max(0, zahl(m.total_chapters) - k)
+    }
+  }
+
+  const topManga = manga
+    .filter(m => zahl(m.progress_chapters) > 0)
+    .sort((a, b) => zahl(b.progress_chapters) - zahl(a.progress_chapters))
+    .slice(0, 5)
+    .map(m => ({
+      id: m.id as number,
+      title: m.title as string,
+      cover_url: (m.cover_url as string | null) ?? null,
+      kapitel: zahl(m.progress_chapters),
+      gesamt: (m.total_chapters as number | null) ?? null,
+    }))
+
+  // Kapitel beendeter Manga, einsortiert nach dem Monat ihres Abschlusses (kein echter Leseverlauf)
+  const beendetProMonat = monate.map(monat => {
+    const zeilen = dbAll(`SELECT progress_chapters FROM entries WHERE type = 'MANGA' AND finished_at IS NOT NULL
+      AND strftime('%Y-%m', finished_at, 'localtime') = ?`, [monat])
+    return { monat, n: zeilen.length, kapitel: zeilen.reduce((s, z) => s + zahl(z.progress_chapters), 0) }
+  })
+
+  return {
+    kapitel, baende, offen, beendet, aktiv,
+    schnittKapitel: mitFortschritt ? Math.round(kapitel / mitFortschritt) : null,
+    topManga,
+    beendetProMonat,
+  }
+}
+
 function rueckstau() {
   // Noch offene Folgen: geplante, angefangene, laufende und pausierte Anime
   const dauer = new Map(dbAll('SELECT anilist_id, minuten FROM media_dauer').map(r => [r.anilist_id as number, r.minuten as number]))
@@ -124,6 +174,7 @@ export function registerStatsHandlers(ipcMain: IpcMain) {
       const monat = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       monate.push({ monat, n: zahl(`SELECT COUNT(*) as n FROM entries WHERE finished_at IS NOT NULL AND strftime('%Y-%m', finished_at, 'localtime') = '${monat}'`) })
     }
+    const mangaStats = mangaStatistik(monate.map(m => m.monat))
 
     const { folgen, minuten } = geschauteFolgen()
     const offen = rueckstau()
@@ -144,6 +195,14 @@ export function registerStatsHandlers(ipcMain: IpcMain) {
       geplant: zahl("SELECT COUNT(*) as n FROM entries WHERE status = 'planned'"),
       offeneFolgen: offen.folgen,
       offeneMinuten: offen.minuten,
+      animeBeendet: zahl("SELECT COUNT(*) as n FROM entries WHERE type = 'ANIME' AND status = 'completed'"),
+      mangaBeendet: mangaStats.beendet,
+      mangaAktiv: mangaStats.aktiv,
+      baendeGelesen: mangaStats.baende,
+      offeneKapitel: mangaStats.offen,
+      schnittKapitel: mangaStats.schnittKapitel,
+      topManga: mangaStats.topManga,
+      mangaBeendetProMonat: mangaStats.beendetProMonat,
     }
   })
 }

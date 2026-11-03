@@ -40,3 +40,84 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* ── Blättern in der Liste: Pfeile, Titel, Position ── */
+.bild-overlay--leiste { padding: 32px 72px 84px; }
+
+.bild-pfeil {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 64px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.bild-pfeil--links { left: 12px; }
+.bild-pfeil--rechts { right: 12px; }
+.bild-pfeil:hover:not(:disabled) { background: rgba(255, 255, 255, 0.28); }
+.bild-pfeil:disabled { opacity: 0.25; cursor: default; }
+.bild-pfeil:focus-visible, .bild-schliessen:focus-visible, .bild-details:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.bild-leiste {
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: fit-content;
+  bottom: 18px;
+  max-width: calc(100% - 32px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px 8px 16px;
+  border-radius: 24px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  cursor: default;
+}
+
+.bild-titel {
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.bild-position {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.bild-details {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 16px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  /* Am Handy blättert man vor allem per Wischen – Pfeile kleiner, Bild breiter */
+  .bild-overlay--leiste { padding: 60px 12px 84px; }
+  .bild-pfeil { width: 40px; height: 52px; font-size: 16px; background: rgba(0, 0, 0, 0.35); }
+  .bild-pfeil--links { left: 4px; }
+  .bild-pfeil--rechts { right: 4px; }
+}

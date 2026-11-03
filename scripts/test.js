@@ -9,7 +9,9 @@ const path = require('path')
 const ts = require('typescript')
 
 const WURZEL = path.join(__dirname, '..')
-const QUELLEN = ['src/sync', 'src/db/kern.ts']
+// Achievements samt Abhängigkeiten (database/stats/anilist) – „electron“ wird unten durch eine Attrappe ersetzt
+const QUELLEN = ['src/sync', 'src/db/kern.ts', 'src/db/database.ts', 'src/main/handlers/achievements.ts',
+  'src/main/handlers/stats.ts', 'src/main/handlers/anilist.ts', 'src/main/trackAppOpen.ts']
 
 const ziel = fs.mkdtempSync(path.join(os.tmpdir(), 'anime-tracker-tests-'))
 process.on('exit', () => { try { fs.rmSync(ziel, { recursive: true, force: true }) } catch { /* egal */ } })
@@ -37,6 +39,13 @@ for (const datei of dateien) {
 // Die übersetzten Dateien finden sql.js usw. über das node_modules des Projekts
 process.env.NODE_PATH = path.join(WURZEL, 'node_modules')
 require('module').Module._initPaths()
+// Attrappe für „electron“: die übersetzten Main-Handler laden es, die Tests brauchen davon nichts
+const Modul = require('module')
+const ladeModul = Modul._load
+Modul._load = function (name, ...rest) {
+  if (name === 'electron') return { app: {}, ipcMain: { handle() {} }, net: {}, shell: {}, BrowserWindow: { getAllWindows: () => [], fromWebContents: () => null } }
+  return ladeModul.call(this, name, ...rest)
+}
 process.env.ANIME_TRACKER_TEST_BUILD = ziel
 
 const filter = process.argv[2]

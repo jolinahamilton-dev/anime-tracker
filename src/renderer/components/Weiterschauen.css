@@ -102,4 +102,6 @@
 
 @media (max-width: 640px) {
   .ws-karte { width: 82vw; }
+  .weiterschauen { margin-bottom: 10px; }
+  .weiterschauen-kopf { margin-bottom: 4px; }
 }

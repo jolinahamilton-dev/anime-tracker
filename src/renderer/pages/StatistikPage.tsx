@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Page.css'
 import './StatistikPage.css'
 import { api } from '../api'
 import { STATUS_TEXTFARBE } from '../components/EintragKarte'
+import AchievementBereich from '../components/AchievementBereich'
 
 interface Stats {
   gesamt: number
@@ -25,17 +26,17 @@ interface Stats {
   geplant: number
   offeneFolgen: number
   offeneMinuten: number
+  animeBeendet: number
+  mangaBeendet: number
+  mangaAktiv: number
+  baendeGelesen: number
+  offeneKapitel: number
+  schnittKapitel: number | null
+  topManga: Array<{ id: number; title: string; cover_url: string | null; kapitel: number; gesamt: number | null }>
+  mangaBeendetProMonat: Array<{ monat: string; n: number; kapitel: number }>
 }
 
 const MONAT_KURZ = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
-
-interface Achievement {
-  id: string
-  name: string
-  beschreibung: string
-  icon: string
-  unlocked_at: string | null
-}
 
 interface Eintrag {
   id: number
@@ -74,6 +75,15 @@ function formatWatchtime(min: number): string {
   return `${d} Tage ${h % 24} Std.`
 }
 
+
+/** Knappe Form für die kleinen Kacheln im Kurzüberblick (ab einem Tag: „32,5 Tage") */
+function formatWatchtimeKurz(min: number): string {
+  if (min < 24 * 60) return formatWatchtime(min)
+  return `${(min / 60 / 24).toLocaleString('de-DE', { maximumFractionDigits: 1 })} Tage`
+}
+const zahlText = (n: number) => n.toLocaleString('de-DE')
+const schnittText = (x: number | null) => (x ? `${x.toLocaleString('de-DE', { maximumFractionDigits: 1 })} ★` : '–')
+
 type DetailFilter =
   | { typ: 'mediatyp'; wert: string; label: string }
   | { typ: 'status'; wert: string; label: string }
@@ -81,21 +91,122 @@ type DetailFilter =
   | { typ: 'alle'; wert: ''; label: string }
   | { typ: 'wiederholt'; wert: ''; label: string }
 
+// ── Auf-/zugeklappte Bereiche: für die Sitzung merken (Modulzustand, zusätzlich sessionStorage,
+//    damit es auch ein Neuladen der Seite übersteht) ──
+const PANEL_SCHLUESSEL = 'statistik-offen'
+let offenePanels: string[] | null = null
+
+function ladeOffenePanels(): string[] {
+  if (offenePanels) return offenePanels
+  try {
+    const gespeichert = JSON.parse(sessionStorage.getItem(PANEL_SCHLUESSEL) ?? '[]')
+    offenePanels = Array.isArray(gespeichert) ? gespeichert.filter(x => typeof x === 'string') : []
+  } catch {
+    offenePanels = []
+  }
+  return offenePanels
+}
+
+function merkeOffenePanels(liste: string[]) {
+  offenePanels = liste
+  try { sessionStorage.setItem(PANEL_SCHLUESSEL, JSON.stringify(liste)) } catch {}
+}
+
+function Panel({ id, titel, info, offen, onToggle, children }: {
+  id: string
+  titel: string
+  info?: ReactNode
+  offen: boolean
+  onToggle: (id: string) => void
+  children: ReactNode
+}) {
+  return (
+    <section className={`stat-panel ${offen ? 'offen' : ''}`}>
+      <h3 className="stat-panel-titel">
+        <button
+          className="stat-panel-kopf"
+          aria-expanded={offen}
+          aria-controls={`stat-panel-${id}`}
+          onClick={() => onToggle(id)}
+        >
+          <span className="stat-panel-pfeil" aria-hidden="true">▸</span>
+          <span className="stat-panel-name">{titel}</span>
+          {info != null && <span className="stat-panel-info">{info}</span>}
+        </button>
+      </h3>
+      {offen && <div className="stat-panel-inhalt" id={`stat-panel-${id}`}>{children}</div>}
+    </section>
+  )
+}
+
+function Kachel({ zahl, label, title, aktiv, onClick }: {
+  zahl: ReactNode
+  label: string
+  title?: string
+  aktiv?: boolean
+  onClick?: (ev: React.MouseEvent<HTMLElement>) => void
+}) {
+  if (onClick) {
+    return (
+      <button className={`stat-karte stat-karte--klickbar ${aktiv ? 'aktiv' : ''}`} title={title} onClick={onClick} aria-pressed={!!aktiv}>
+        <span className="stat-zahl">{zahl}</span>
+        <span className="stat-label">{label}</span>
+      </button>
+    )
+  }
+  return (
+    <div className="stat-karte" title={title}>
+      <span className="stat-zahl">{zahl}</span>
+      <span className="stat-label">{label}</span>
+    </div>
+  )
+}
+
+function MonatsChart({ daten, beschriftung, ariaLabel }: {
+  daten: Array<{ monat: string; wert: number; tooltip: string }>
+  beschriftung?: (wert: number) => string
+  ariaLabel: string
+}) {
+  const max = Math.max(1, ...daten.map(m => m.wert))
+  return (
+    <div className="monats-chart" role="img" aria-label={ariaLabel}>
+      {daten.map(m => (
+        <div key={m.monat} className="monats-spalte" title={m.tooltip}>
+          <span className="monats-zahl">{m.wert ? (beschriftung ? beschriftung(m.wert) : m.wert) : ''}</span>
+          <div className="monats-balken" style={{ height: `${m.wert / max * 100}%` }} />
+          <span className="monats-name">{MONAT_KURZ[Number(m.monat.slice(5)) - 1]}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** Kurzform für enge Balkenbeschriftungen (1234 → „1,2k") */
+const kurzZahl = (n: number) => (n >= 1000 ? `${(n / 1000).toLocaleString('de-DE', { maximumFractionDigits: 1 })}k` : String(n))
+
 export default function StatistikPage() {
   const navigate = useNavigate()
   const [stats, setStats] = useState<Stats | null>(null)
-  const [achievements, setAchievements] = useState<Achievement[]>([])
   const [alleEintraege, setAlleEintraege] = useState<Eintrag[]>([])
   const [detailFilter, setDetailFilter] = useState<DetailFilter | null>(null)
   const [genreAufgeklappt, setGenreAufgeklappt] = useState(false)
+  const [offen, setOffen] = useState<string[]>(ladeOffenePanels)
 
   useEffect(() => {
     api.getStats().then(setStats)
-    api.getAchievements().then(setAchievements)
     api.getEntries().then(setAlleEintraege)
   }, [])
 
-  // Die Trefferliste steht weit unten → nach dem Antippen dorthin scrollen, „↑ Zurück“ führt
+  function togglePanel(id: string) {
+    setOffen(prev => {
+      const neu = prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+      merkeOffenePanels(neu)
+      return neu
+    })
+  }
+  const istOffen = (id: string) => offen.includes(id)
+
+  // Die Trefferliste steht weiter unten → nach dem Antippen dorthin scrollen, „↑ Zurück“ führt
   // wieder zur angetippten Karte bzw. Zeile
   const panelRef = useRef<HTMLElement>(null)
   const herkunft = useRef<HTMLElement | null>(null)
@@ -104,6 +215,7 @@ export default function StatistikPage() {
     herkunft.current = ev?.currentTarget ?? null
     setDetailFilter(prev => prev?.typ === f.typ && prev?.wert === f.wert ? null : f)
   }
+  const istFilter = (typ: DetailFilter['typ'], wert = '') => detailFilter?.typ === typ && detailFilter.wert === wert
 
   useEffect(() => {
     if (detailFilter) panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -145,7 +257,10 @@ export default function StatistikPage() {
   if (!stats) return <div className="page"><div className="empty-state"><p>Wird geladen…</p></div></div>
 
   const gesamtStatus = stats.statusVerteilung.reduce((s, r) => s + r.n, 0)
-  const freigeschaltet = achievements.filter(a => a.unlocked_at !== null)
+  const beendetSumme = stats.beendetProMonat.reduce((s, m) => s + m.n, 0)
+  const mangaMonatKapitel = stats.mangaBeendetProMonat.reduce((s, m) => s + m.kapitel, 0)
+  const mangaMonatTitel = stats.mangaBeendetProMonat.reduce((s, m) => s + m.n, 0)
+  const topMangaMax = stats.topManga[0]?.kapitel ?? 1
 
   return (
     <div className="page">
@@ -156,237 +271,284 @@ export default function StatistikPage() {
 
       <div className="statistik-inhalt">
 
-        {/* Übersicht */}
-        <section className="stat-section">
-          <h3 className="section-titel">Übersicht</h3>
-          <div className="stat-grid">
-            <button
-              className={`stat-karte stat-karte--klickbar ${detailFilter?.typ === 'alle' ? 'aktiv' : ''}`}
+        {/* Kurzüberblick */}
+        <section className="stat-section" aria-label="Überblick">
+          <div className="stat-grid stat-grid--kompakt">
+            <Kachel
+              zahl={zahlText(stats.gesamt)} label="Titel"
+              aktiv={istFilter('alle')}
               onClick={ev => toggleFilter({ typ: 'alle', wert: '', label: 'Alle Einträge' }, ev)}
-            >
-              <span className="stat-zahl">{stats.gesamt}</span>
-              <span className="stat-label">Einträge gesamt</span>
-            </button>
-            <button
-              className={`stat-karte stat-karte--klickbar ${detailFilter?.typ === 'mediatyp' && detailFilter.wert === 'ANIME' ? 'aktiv' : ''}`}
-              onClick={ev => toggleFilter({ typ: 'mediatyp', wert: 'ANIME', label: 'Anime' }, ev)}
-            >
-              <span className="stat-zahl">{stats.anime}</span>
-              <span className="stat-label">Anime</span>
-            </button>
-            <button
-              className={`stat-karte stat-karte--klickbar ${detailFilter?.typ === 'mediatyp' && detailFilter.wert === 'MANGA' ? 'aktiv' : ''}`}
-              onClick={ev => toggleFilter({ typ: 'mediatyp', wert: 'MANGA', label: 'Manga' }, ev)}
-            >
-              <span className="stat-zahl">{stats.manga}</span>
-              <span className="stat-label">Manga</span>
-            </button>
-            <button
-              className={`stat-karte stat-karte--klickbar ${detailFilter?.typ === 'status' && detailFilter.wert === 'completed' ? 'aktiv' : ''}`}
+            />
+            <Kachel
+              zahl={zahlText(stats.beendet)} label="Beendet"
+              aktiv={istFilter('status', 'completed')}
               onClick={ev => toggleFilter({ typ: 'status', wert: 'completed', label: 'Beendet' }, ev)}
-            >
-              <span className="stat-zahl">{stats.beendet}</span>
-              <span className="stat-label">Beendet</span>
-            </button>
-            <div className="stat-karte">
-              <span className="stat-zahl">{stats.folgenGesehen.toLocaleString('de-DE')}</span>
-              <span className="stat-label">Folgen gesehen</span>
-            </div>
-            <div className="stat-karte">
-              <span className="stat-zahl">{stats.kapitelGelesen.toLocaleString('de-DE')}</span>
-              <span className="stat-label">Kapitel gelesen</span>
-            </div>
-            <div className="stat-karte" title="Mit der echten Folgenlänge jeder Staffel laut AniList (fehlt sie, zählen 24 Min.)">
-              <span className="stat-zahl">{formatWatchtime(stats.watchtimeMinuten)}</span>
-              <span className="stat-label">Watchtime</span>
-            </div>
-            <div className="stat-karte" title="Noch ungesehene, schon verfügbare Folgen von geplanten, angefangenen, laufenden und pausierten Anime">
-              <span className="stat-zahl">{stats.offeneFolgen.toLocaleString('de-DE')}</span>
-              <span className="stat-label">Folgen offen (≈ {formatWatchtime(stats.offeneMinuten)})</span>
-            </div>
-            <button
-              className={`stat-karte stat-karte--klickbar ${detailFilter?.typ === 'status' && detailFilter.wert === 'planned' ? 'aktiv' : ''}`}
-              onClick={ev => toggleFilter({ typ: 'status', wert: 'planned', label: 'Geplant' }, ev)}
-            >
-              <span className="stat-zahl">{stats.geplant}</span>
-              <span className="stat-label">Geplant (Rückstau)</span>
-            </button>
-            <button
-              className={`stat-karte stat-karte--klickbar ${detailFilter?.typ === 'wiederholt' ? 'aktiv' : ''}`}
-              onClick={ev => toggleFilter({ typ: 'wiederholt', wert: '', label: 'Wiederholt' }, ev)}
-            >
-              <span className="stat-zahl">{stats.wiederholungen}</span>
-              <span className="stat-label">Wiederholungen</span>
-            </button>
-            {stats.topGenre && (
-              <button
-                className={`stat-karte stat-karte--klickbar ${detailFilter?.typ === 'genre' && detailFilter.wert === stats.topGenre ? 'aktiv' : ''}`}
-                onClick={ev => toggleFilter({ typ: 'genre', wert: stats.topGenre!, label: stats.topGenre! }, ev)}
-              >
-                <span className="stat-zahl">{stats.topGenre}</span>
-                <span className="stat-label">Top-Genre</span>
-              </button>
-            )}
-            {!stats.topGenre && (
-              <div className="stat-karte">
-                <span className="stat-zahl">–</span>
-                <span className="stat-label">Top-Genre</span>
-              </div>
-            )}
+            />
+            <Kachel zahl={zahlText(stats.folgenGesehen)} label="Folgen" />
+            <Kachel
+              zahl={formatWatchtimeKurz(stats.watchtimeMinuten)} label="Watchtime"
+              title="Mit der echten Folgenlänge jeder Staffel laut AniList (fehlt sie, zählen 24 Min.)"
+            />
+            <Kachel zahl={zahlText(stats.kapitelGelesen)} label="Kapitel" />
+            <Kachel zahl={schnittText(stats.bewertungGesamt)} label="Ø Bewertung" />
           </div>
         </section>
 
-        {/* Bewertungen */}
-        <section className="stat-section">
-          <h3 className="section-titel">Ø Bewertung</h3>
-          <div className="bewertung-liste">
-            {[
-              { label: 'Gesamt', wert: stats.bewertungGesamt },
-              { label: 'Anime', wert: stats.bewertungAnime },
-              { label: 'Manga', wert: stats.bewertungManga },
-            ].map(({ label, wert }) => (
-              <div key={label} className="bewertung-zeile">
-                <span className="bewertung-label">{label}</span>
-                {wert
-                  ? <span className="stat-wert">
-                      {'★'.repeat(Math.round(wert))}{'☆'.repeat(Math.max(0, 5 - Math.round(wert)))}
-                      {' '}<span className="stat-sub">({wert.toLocaleString('de-DE', { maximumFractionDigits: 1 })}/5)</span>
-                    </span>
-                  : <span className="stat-wert muted">–</span>
-                }
-              </div>
-            ))}
-          </div>
-        </section>
+        <div className="stat-panels">
 
-        {/* Bewertungsverteilung */}
-        {stats.bewertungsVerteilung.some(b => b.n > 0) && (() => {
-          const max = Math.max(...stats.bewertungsVerteilung.map(b => b.n))
-          return (
-            <section className="stat-section">
-              <h3 className="section-titel">Bewertungen</h3>
+          {/* Anime */}
+          <Panel
+            id="anime" titel="Anime" offen={istOffen('anime')} onToggle={togglePanel}
+            info={`${zahlText(stats.anime)} · ${formatWatchtime(stats.watchtimeMinuten)}`}
+          >
+            <div className="stat-grid">
+              <Kachel
+                zahl={zahlText(stats.anime)} label="Anime"
+                aktiv={istFilter('mediatyp', 'ANIME')}
+                onClick={ev => toggleFilter({ typ: 'mediatyp', wert: 'ANIME', label: 'Anime' }, ev)}
+              />
+              <Kachel zahl={zahlText(stats.animeBeendet)} label="Beendet" />
+              <Kachel zahl={zahlText(stats.folgenGesehen)} label="Folgen gesehen" />
+              <Kachel
+                zahl={formatWatchtime(stats.watchtimeMinuten)} label="Watchtime"
+                title="Mit der echten Folgenlänge jeder Staffel laut AniList (fehlt sie, zählen 24 Min.)"
+              />
+              <Kachel
+                zahl={zahlText(stats.offeneFolgen)} label={`Folgen offen (≈ ${formatWatchtime(stats.offeneMinuten)})`}
+                title="Noch ungesehene, schon verfügbare Folgen von geplanten, angefangenen, laufenden und pausierten Anime"
+              />
+              <Kachel zahl={schnittText(stats.bewertungAnime)} label="Ø Bewertung" />
+            </div>
+          </Panel>
+
+          {/* Manga */}
+          <Panel
+            id="manga" titel="Manga" offen={istOffen('manga')} onToggle={togglePanel}
+            info={`${zahlText(stats.manga)} · ${zahlText(stats.kapitelGelesen)} Kap.`}
+          >
+            <div className="stat-grid">
+              <Kachel
+                zahl={zahlText(stats.manga)} label="Manga"
+                aktiv={istFilter('mediatyp', 'MANGA')}
+                onClick={ev => toggleFilter({ typ: 'mediatyp', wert: 'MANGA', label: 'Manga' }, ev)}
+              />
+              <Kachel zahl={zahlText(stats.mangaBeendet)} label="Beendet" />
+              <Kachel zahl={zahlText(stats.mangaAktiv)} label="Am Lesen" title="Angefangene und laufende Manga" />
+              <Kachel zahl={zahlText(stats.kapitelGelesen)} label="Kapitel gelesen" />
+              {stats.baendeGelesen > 0 && <Kachel zahl={zahlText(stats.baendeGelesen)} label="Bände gelesen" />}
+              <Kachel
+                zahl={stats.schnittKapitel != null ? zahlText(stats.schnittKapitel) : '–'} label="Ø Kapitel je Manga"
+                title="Durchschnitt über alle Manga, in denen schon mindestens ein Kapitel gelesen ist"
+              />
+              {stats.offeneKapitel > 0 && (
+                <Kachel
+                  zahl={zahlText(stats.offeneKapitel)} label="Kapitel offen"
+                  title="Noch ungelesene Kapitel von geplanten, angefangenen, laufenden und pausierten Manga – nur, wo die Kapitelzahl bekannt ist"
+                />
+              )}
+              <Kachel zahl={schnittText(stats.bewertungManga)} label="Ø Bewertung" />
+            </div>
+
+            {stats.topManga.length > 0 && (
+              <>
+                <h4 className="stat-unter-titel">Meiste Kapitel</h4>
+                <div className="status-chart">
+                  {stats.topManga.map(m => (
+                    <button
+                      key={m.id}
+                      className="status-row status-row--klickbar top-manga-zeile"
+                      onClick={() => navigate(`/detail/${m.id}`)}
+                      title={`${m.title}: ${m.gesamt ? `${m.kapitel} von ${m.gesamt} Kapiteln` : `${m.kapitel} Kapitel`}`}
+                    >
+                      <span className="status-name top-manga-titel">{m.title}</span>
+                      <div className="status-bar-wrap">
+                        <div className="status-bar-fill" style={{ width: `${Math.round(m.kapitel / topMangaMax * 100)}%`, background: 'var(--text-lila, var(--accent))' }} />
+                      </div>
+                      <span className="status-zahl">{zahlText(m.kapitel)}{m.gesamt ? ` / ${zahlText(m.gesamt)}` : ''}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <h4 className="stat-unter-titel">
+              Kapitel pro Monat (beendete Manga)
+              {mangaMonatTitel > 0 && <span className="achievement-count">{zahlText(mangaMonatKapitel)} in 12 Monaten</span>}
+            </h4>
+            {mangaMonatTitel > 0 ? (
+              <MonatsChart
+                daten={stats.mangaBeendetProMonat.map(m => ({
+                  monat: m.monat, wert: m.kapitel,
+                  tooltip: `${m.n} Manga beendet, zusammen ${m.kapitel} Kapitel`,
+                }))}
+                beschriftung={kurzZahl}
+                ariaLabel={`Kapitel beendeter Manga pro Monat, insgesamt ${mangaMonatKapitel}`}
+              />
+            ) : null}
+            <p className="empty-hint">
+              {mangaMonatTitel > 0
+                ? 'Nach dem Abschlussdatum: Die Kapitel eines Manga zählen in dem Monat, in dem du ihn auf „Beendet" gestellt hast. Einzelne Lesetage werden nicht aufgezeichnet.'
+                : 'Noch kein Manga in den letzten 12 Monaten beendet. Gezählt werden die Kapitel eines Manga in dem Monat, in dem du ihn auf „Beendet" stellst.'}
+            </p>
+          </Panel>
+
+          {/* Beendet pro Monat */}
+          <Panel
+            id="monat" titel="Beendet pro Monat" offen={istOffen('monat')} onToggle={togglePanel}
+            info={`${beendetSumme} in 12 Monaten`}
+          >
+            <MonatsChart
+              daten={stats.beendetProMonat.map(m => ({ monat: m.monat, wert: m.n, tooltip: `${m.n} beendet` }))}
+              ariaLabel={`Beendete Titel pro Monat, insgesamt ${beendetSumme}`}
+            />
+            {beendetSumme === 0 && <p className="empty-hint">Wird ab jetzt aufgezeichnet: Jeder Titel, den du auf „Beendet" stellst, erscheint hier.</p>}
+          </Panel>
+
+          {/* Status */}
+          <Panel
+            id="status" titel="Status" offen={istOffen('status')} onToggle={togglePanel}
+            info={`${zahlText(stats.geplant)} geplant`}
+          >
+            <div className="stat-grid">
+              <Kachel
+                zahl={zahlText(stats.geplant)} label="Geplant (Rückstau)"
+                aktiv={istFilter('status', 'planned')}
+                onClick={ev => toggleFilter({ typ: 'status', wert: 'planned', label: 'Geplant' }, ev)}
+              />
+              <Kachel
+                zahl={zahlText(stats.wiederholungen)} label="Wiederholungen"
+                aktiv={istFilter('wiederholt')}
+                onClick={ev => toggleFilter({ typ: 'wiederholt', wert: '', label: 'Wiederholt' }, ev)}
+              />
+            </div>
+            {gesamtStatus > 0 && (
               <div className="status-chart">
-                {[...stats.bewertungsVerteilung].reverse().map(b => (
-                  <div key={b.sterne} className="status-row">
-                    <span className="status-name stat-sterne">{'★'.repeat(b.sterne)}</span>
-                    <div className="status-bar-wrap">
-                      <div className="status-bar-fill" style={{ width: `${max ? Math.round(b.n / max * 100) : 0}%`, background: '#f5c518' }} />
-                    </div>
-                    <span className="status-zahl">{b.n}</span>
-                  </div>
-                ))}
+                {stats.statusVerteilung.map(row => {
+                  const pct = Math.round((row.n / gesamtStatus) * 100)
+                  return (
+                    <button
+                      key={row.status}
+                      className={`status-row status-row--klickbar ${istFilter('status', row.status) ? 'aktiv' : ''}`}
+                      onClick={ev => toggleFilter({ typ: 'status', wert: row.status, label: STATUS_LABEL[row.status] ?? row.status }, ev)}
+                    >
+                      <span className="status-name" style={{ color: STATUS_TEXTFARBE[row.status] ?? 'var(--text-muted)' }}>
+                        {STATUS_LABEL[row.status] ?? row.status}
+                      </span>
+                      <div className="status-bar-wrap">
+                        <div
+                          className="status-bar-fill"
+                          style={{ width: `${pct}%`, background: STATUS_FARBE[row.status] ?? 'var(--accent)' }}
+                        />
+                      </div>
+                      <span className="status-zahl">{row.n} ({pct}%)</span>
+                    </button>
+                  )
+                })}
               </div>
-            </section>
-          )
-        })()}
+            )}
+          </Panel>
 
-        {/* Ø Bewertung je Genre */}
-        {stats.bewertungJeGenre.length > 0 && (
-          <section className="stat-section">
-            <h3 className="section-titel">Ø Bewertung je Genre</h3>
-            <div className="status-chart">
-              {stats.bewertungJeGenre.map(g => (
-                <button
-                  key={g.genre}
-                  className={`status-row status-row--klickbar ${detailFilter?.typ === 'genre' && detailFilter.wert === g.genre ? 'aktiv' : ''}`}
-                  onClick={ev => toggleFilter({ typ: 'genre', wert: g.genre, label: g.genre }, ev)}
-                >
-                  <span className="status-name" style={{ color: 'var(--text)' }}>{g.genre}</span>
-                  <div className="status-bar-wrap">
-                    <div className="status-bar-fill" style={{ width: `${g.schnitt / 5 * 100}%`, background: 'var(--accent)' }} />
+          {/* Genres */}
+          {genreVerteilung.length > 0 && (
+            <Panel
+              id="genres" titel="Genres" offen={istOffen('genres')} onToggle={togglePanel}
+              info={stats.topGenre ? `Top: ${stats.topGenre}` : `${genreVerteilung.length}`}
+            >
+              <div className="status-chart">
+                {(genreAufgeklappt ? genreVerteilung : genreVerteilung.slice(0, 5)).map(([genre, anzahl]) => {
+                  const pct = Math.round((anzahl / alleEintraege.length) * 100)
+                  const balken = Math.round((anzahl / genreMax) * 100)
+                  return (
+                    <button
+                      key={genre}
+                      className={`status-row status-row--klickbar ${istFilter('genre', genre) ? 'aktiv' : ''}`}
+                      onClick={ev => toggleFilter({ typ: 'genre', wert: genre, label: genre }, ev)}
+                    >
+                      <span className="status-name" style={{ color: 'var(--text)' }}>{genre}</span>
+                      <div className="status-bar-wrap">
+                        <div className="status-bar-fill" style={{ width: `${balken}%`, background: 'var(--accent)' }} />
+                      </div>
+                      <span className="status-zahl">{anzahl} ({pct}%)</span>
+                    </button>
+                  )
+                })}
+                {genreVerteilung.length > 5 && (
+                  <button className="genre-mehr-btn" aria-expanded={genreAufgeklappt} onClick={() => setGenreAufgeklappt(v => !v)}>
+                    {genreAufgeklappt ? '▲ Weniger anzeigen' : `▼ ${genreVerteilung.length - 5} weitere Genres`}
+                  </button>
+                )}
+              </div>
+
+              {stats.bewertungJeGenre.length > 0 && (
+                <>
+                  <h4 className="stat-unter-titel">Ø Bewertung je Genre</h4>
+                  <div className="status-chart">
+                    {stats.bewertungJeGenre.map(g => (
+                      <button
+                        key={g.genre}
+                        className={`status-row status-row--klickbar ${istFilter('genre', g.genre) ? 'aktiv' : ''}`}
+                        onClick={ev => toggleFilter({ typ: 'genre', wert: g.genre, label: g.genre }, ev)}
+                      >
+                        <span className="status-name" style={{ color: 'var(--text)' }}>{g.genre}</span>
+                        <div className="status-bar-wrap">
+                          <div className="status-bar-fill" style={{ width: `${g.schnitt / 5 * 100}%`, background: 'var(--accent)' }} />
+                        </div>
+                        <span className="status-zahl">{g.schnitt.toLocaleString('de-DE')} ★ ({g.n})</span>
+                      </button>
+                    ))}
                   </div>
-                  <span className="status-zahl">{g.schnitt.toLocaleString('de-DE')} ★ ({g.n})</span>
-                </button>
+                </>
+              )}
+            </Panel>
+          )}
+
+          {/* Bewertungen */}
+          <Panel
+            id="bewertungen" titel="Bewertungen" offen={istOffen('bewertungen')} onToggle={togglePanel}
+            info={stats.bewertungGesamt ? `Ø ${schnittText(stats.bewertungGesamt)}` : undefined}
+          >
+            <div className="bewertung-liste">
+              {[
+                { label: 'Gesamt', wert: stats.bewertungGesamt },
+                { label: 'Anime', wert: stats.bewertungAnime },
+                { label: 'Manga', wert: stats.bewertungManga },
+              ].map(({ label, wert }) => (
+                <div key={label} className="bewertung-zeile">
+                  <span className="bewertung-label">{label}</span>
+                  {wert
+                    ? <span className="stat-wert">
+                        {'★'.repeat(Math.round(wert))}{'☆'.repeat(Math.max(0, 5 - Math.round(wert)))}
+                        {' '}<span className="stat-sub">({wert.toLocaleString('de-DE', { maximumFractionDigits: 1 })}/5)</span>
+                      </span>
+                    : <span className="stat-wert muted">–</span>
+                  }
+                </div>
               ))}
             </div>
-          </section>
-        )}
 
-        {/* Beendet pro Monat */}
-        {(() => {
-          const max = Math.max(1, ...stats.beendetProMonat.map(m => m.n))
-          const summe = stats.beendetProMonat.reduce((s, m) => s + m.n, 0)
-          return (
-            <section className="stat-section">
-              <h3 className="section-titel">Beendet pro Monat <span className="achievement-count">{summe} in 12 Monaten</span></h3>
-              <div className="monats-chart" role="img" aria-label={`Beendete Titel pro Monat, insgesamt ${summe}`}>
-                {stats.beendetProMonat.map(m => (
-                  <div key={m.monat} className="monats-spalte" title={`${m.n} beendet`}>
-                    <span className="monats-zahl">{m.n || ''}</span>
-                    <div className="monats-balken" style={{ height: `${m.n / max * 100}%` }} />
-                    <span className="monats-name">{MONAT_KURZ[Number(m.monat.slice(5)) - 1]}</span>
+            {stats.bewertungsVerteilung.some(b => b.n > 0) && (() => {
+              const max = Math.max(...stats.bewertungsVerteilung.map(b => b.n))
+              return (
+                <>
+                  <h4 className="stat-unter-titel">Verteilung</h4>
+                  <div className="status-chart">
+                    {[...stats.bewertungsVerteilung].reverse().map(b => (
+                      <div key={b.sterne} className="status-row">
+                        <span className="status-name stat-sterne">{'★'.repeat(b.sterne)}</span>
+                        <div className="status-bar-wrap">
+                          <div className="status-bar-fill" style={{ width: `${max ? Math.round(b.n / max * 100) : 0}%`, background: '#f5c518' }} />
+                        </div>
+                        <span className="status-zahl">{b.n}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              {summe === 0 && <p className="empty-hint">Wird ab jetzt aufgezeichnet: Jeder Titel, den du auf „Beendet" stellst, erscheint hier.</p>}
-            </section>
-          )
-        })()}
+                </>
+              )
+            })()}
+          </Panel>
+        </div>
 
-        {/* Statusverteilung */}
-        {gesamtStatus > 0 && (
-          <section className="stat-section">
-            <h3 className="section-titel">Statusverteilung</h3>
-            <div className="status-chart">
-              {stats.statusVerteilung.map(row => {
-                const pct = Math.round((row.n / gesamtStatus) * 100)
-                const aktiv = detailFilter?.typ === 'status' && detailFilter.wert === row.status
-                return (
-                  <button
-                    key={row.status}
-                    className={`status-row status-row--klickbar ${aktiv ? 'aktiv' : ''}`}
-                    onClick={ev => toggleFilter({ typ: 'status', wert: row.status, label: STATUS_LABEL[row.status] ?? row.status }, ev)}
-                  >
-                    <span className="status-name" style={{ color: STATUS_TEXTFARBE[row.status] ?? 'var(--text-muted)' }}>
-                      {STATUS_LABEL[row.status] ?? row.status}
-                    </span>
-                    <div className="status-bar-wrap">
-                      <div
-                        className="status-bar-fill"
-                        style={{ width: `${pct}%`, background: STATUS_FARBE[row.status] ?? 'var(--accent)' }}
-                      />
-                    </div>
-                    <span className="status-zahl">{row.n} ({pct}%)</span>
-                  </button>
-                )
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* Genre-Verteilung */}
-        {genreVerteilung.length > 0 && (
-          <section className="stat-section">
-            <h3 className="section-titel">Genres</h3>
-            <div className="status-chart">
-              {(genreAufgeklappt ? genreVerteilung : genreVerteilung.slice(0, 4)).map(([genre, anzahl]) => {
-                const pct = Math.round((anzahl / alleEintraege.length) * 100)
-                const balken = Math.round((anzahl / genreMax) * 100)
-                const aktiv = detailFilter?.typ === 'genre' && detailFilter.wert === genre
-                return (
-                  <button
-                    key={genre}
-                    className={`status-row status-row--klickbar ${aktiv ? 'aktiv' : ''}`}
-                    onClick={ev => toggleFilter({ typ: 'genre', wert: genre, label: genre }, ev)}
-                  >
-                    <span className="status-name" style={{ color: 'var(--text)' }}>{genre}</span>
-                    <div className="status-bar-wrap">
-                      <div className="status-bar-fill" style={{ width: `${balken}%`, background: 'var(--accent)' }} />
-                    </div>
-                    <span className="status-zahl">{anzahl} ({pct}%)</span>
-                  </button>
-                )
-              })}
-              {genreVerteilung.length > 4 && (
-                <button className="genre-mehr-btn" onClick={() => setGenreAufgeklappt(v => !v)}>
-                  {genreAufgeklappt ? '▲ Weniger anzeigen' : `▼ ${genreVerteilung.length - 4} weitere Genres`}
-                </button>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* Detail-Panel */}
+        {/* Detail-Panel (Trefferliste der angetippten Karte/Zeile) */}
         {detailFilter && (
           <section className="stat-section stat-detail-panel" ref={panelRef}>
             <div className="section-header">
@@ -427,37 +589,11 @@ export default function StatistikPage() {
         )}
 
         {/* Achievements */}
-        <section className="stat-section">
-          <h3 className="section-titel">
-            Achievements <span className="achievement-count">{freigeschaltet.length}/{achievements.length} freigeschaltet</span>
-          </h3>
-          {achievements.length === 0 ? (
-            <p className="empty-hint">Wird geladen…</p>
-          ) : (
-            <div className="achievement-grid">
-              {achievements.map(a => (
-                <div
-                  key={a.id}
-                  className={a.unlocked_at ? 'achievement-item freigeschaltet' : 'achievement-item gesperrt'}
-                  title={a.unlocked_at
-                    ? `Freigeschaltet: ${new Date(a.unlocked_at).toLocaleDateString('de-DE')}`
-                    : a.beschreibung}
-                >
-                  <span className="achievement-icon">{a.unlocked_at ? a.icon : '🔒'}</span>
-                  <div className="achievement-info">
-                    <span className="achievement-name">{a.name}</span>
-                    <span className="achievement-desc">{a.beschreibung}</span>
-                    {a.unlocked_at && (
-                      <span className="achievement-datum">
-                        {new Date(a.unlocked_at).toLocaleDateString('de-DE')}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+        <div className="stat-panels">
+          <Panel id="achievements" titel="Achievements" offen={istOffen('achievements')} onToggle={togglePanel}>
+            <AchievementBereich />
+          </Panel>
+        </div>
 
       </div>
     </div>

@@ -54,10 +54,54 @@ export interface WatchOrderItem {
   is_custom: number
 }
 
+/** Einmaliges Achievement (Erster Schritt, Meisterwerk …) */
 export interface Achievement {
-  id: number
-  key: string
-  unlocked_at: string
+  id: string
+  name: string
+  beschreibung: string
+  icon: string
+  unlocked_at: string | null
+}
+
+/** Eine Stufe eines Achievement-Tracks (Bronze … Diamant), eigene Zeile in der Tabelle achievements */
+export interface AchievementStufe {
+  id: string // z. B. 'folgen_2'
+  nr: number // 1 = Bronze … 5 = Diamant
+  name: string // 'Bronze', 'Silber', …
+  schwelle: number
+  beschreibung: string // z. B. '500 Folgen geschaut'
+  unlocked_at: string | null
+}
+
+/** Achievement-Track mit aufbauenden Stufen und aktuellem Fortschritt */
+export interface AchievementTrackInfo {
+  id: string
+  name: string
+  icon: string
+  einheit: string
+  wert: number
+  zusatz: string | null
+  erreicht: number // höchste freigeschaltete Stufe, 0 = noch keine
+  naechste: { nr: number; name: string; schwelle: number } | null
+  stufen: AchievementStufe[]
+}
+
+/** Antwort von api.getAchievements() */
+export interface AchievementUebersicht {
+  tracks: AchievementTrackInfo[]
+  einzeln: Achievement[]
+  freigeschaltet: number
+  gesamt: number
+}
+
+/** Ereignis 'achievements:neu' (Toast) */
+export interface NeuesAchievement {
+  id: string
+  name: string
+  icon: string
+  beschreibung: string
+  stufe?: number
+  stufenName?: string
 }
 
 export interface NewsItem {

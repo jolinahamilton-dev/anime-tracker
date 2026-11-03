@@ -199,6 +199,11 @@ export default function ListePage() {
       return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
     })
 
+  // 🏆 schaltet einfach den Status-Filter auf „Beendet" (und zurück) – so bleiben beide im Einklang
+  const nurBeendete = filterStatus.length === 1 && filterStatus[0] === 'completed'
+  const anzahlBeendet = entries.filter(e => e.status === 'completed').length
+  const beendeteUmschalten = () => setFilterStatus(nurBeendete ? [] : ['completed'])
+
   function oeffneEintrag(id: number) {
     sitzung.blaetterIds = gefiltert.map(e => e.id)
     navigate(`/detail/${id}`)
@@ -273,9 +278,15 @@ export default function ListePage() {
               >
                 🔔
               </button>
-              <div className="beendet-counter" title="Beendete Titel">
-                🏆 <span>{entries.filter(e => e.status === 'completed').length}</span>
-              </div>
+              <button
+                className={nurBeendete ? 'beendet-counter aktiv' : 'beendet-counter'}
+                onClick={beendeteUmschalten}
+                title={nurBeendete ? 'Wieder alle Status anzeigen' : `Beendete Titel anzeigen (${anzahlBeendet})`}
+                aria-label={`Beendete Titel anzeigen (${anzahlBeendet})`}
+                aria-pressed={nurBeendete}
+              >
+                🏆 <span>{anzahlBeendet}</span>
+              </button>
             </>
           )}
         </div>
@@ -417,7 +428,11 @@ export default function ListePage() {
           </p>
         )}
 
-        {!laden && aktiveListe === null && !verwaltenModus && !suche && <Weiterschauen onOeffnen={id => navigate(`/detail/${id}`)} />}
+        {/* Weiterschauen/-lesen nur ohne Suche und wenn der Status-Filter Angefangene/Laufende zeigt */}
+        {!laden && aktiveListe === null && !verwaltenModus && !suche &&
+          (filterStatus.length === 0 || filterStatus.includes('started') || filterStatus.includes('ongoing')) && (
+          <Weiterschauen onOeffnen={id => navigate(`/detail/${id}`)} entries={entries} filterTyp={filterTyp} />
+        )}
 
         {laden ? (
           <Ladeindikator />
@@ -490,6 +505,7 @@ export default function ListePage() {
             <div className="sheet-chips">
               <button className={filterFavorit ? 'filter-btn active' : 'filter-btn'} aria-pressed={filterFavorit} onClick={() => setFilterFavorit(!filterFavorit)}>⭐ Favoriten</button>
               <button className={filterAbo ? 'filter-btn active' : 'filter-btn'} aria-pressed={filterAbo} onClick={() => setFilterAbo(!filterAbo)}>🔔 Abonnierte</button>
+              <button className={nurBeendete ? 'filter-btn active' : 'filter-btn'} aria-pressed={nurBeendete} onClick={beendeteUmschalten}>🏆 Beendete</button>
             </div>
           </div>
           <div className="sheet-gruppe">
@@ -512,6 +528,9 @@ export default function ListePage() {
           url={vergroessert.cover_url}
           alt={vergroessert.title}
           onSchliessen={() => setVergroessert(null)}
+          bilder={gefiltert.filter(e => e.cover_url).map(e => ({ id: e.id, url: e.cover_url!, titel: e.nickname || e.title }))}
+          startId={vergroessert.id}
+          onOeffnen={id => { setVergroessert(null); oeffneEintrag(id) }}
         />
       )}
     </div>

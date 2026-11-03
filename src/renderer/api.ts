@@ -2,7 +2,7 @@
 // Am PC reicht sie die Electron-Brücke (preload.ts → Main-Prozess) durch. Eine Handy-Version
 // liefert hier eine eigene Umsetzung derselben Schnittstelle (z. B. Datenbank im Browser) –
 // alle Seiten und Komponenten bleiben dabei unverändert.
-import type { Entry, EntryStatus } from '../types'
+import type { Entry, EntryStatus, AchievementUebersicht, NeuesAchievement } from '../types'
 
 export interface CustomListMitEintraegen {
   id: number
@@ -84,9 +84,9 @@ export interface TrackerApi {
   /** Nur PC: Fenster-/Taskleistensymbol auf das gewählte Logo setzen */
   fensterLogo?(id: string): Promise<unknown>
   getStats(): Promise<any>
-  getAchievements(): Promise<any[]>
+  getAchievements(): Promise<AchievementUebersicht>
   pruefeAchievements(): Promise<unknown>
-  onAchievementNeu(cb: (namen: string[]) => void): Abmelden
+  onAchievementNeu(cb: (neu: NeuesAchievement[]) => void): Abmelden
 
   // AniList
   searchAniList(query: string, type: string): Promise<any>

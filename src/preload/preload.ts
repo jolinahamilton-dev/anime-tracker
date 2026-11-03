@@ -38,8 +38,8 @@ contextBridge.exposeInMainWorld('api', {
   getAchievements: () => ipcRenderer.invoke('achievements:getAll'),
   pruefeAchievements: () => ipcRenderer.invoke('achievements:pruefen'),
   // Fix #13: Cleanup-Funktion zurückgeben damit React den Listener entfernen kann
-  onAchievementNeu: (cb: (namen: string[]) => void) => {
-    const handler = (_: unknown, namen: string[]) => cb(namen)
+  onAchievementNeu: (cb: (neu: unknown[]) => void) => {
+    const handler = (_: unknown, neu: unknown[]) => cb(neu)
     ipcRenderer.on('achievements:neu', handler)
     return () => ipcRenderer.removeListener('achievements:neu', handler)
   },

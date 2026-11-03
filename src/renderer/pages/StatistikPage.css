@@ -4,7 +4,112 @@
   padding: 16px 20px 32px;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 14px;
+}
+
+/* ── Aufklappbare Bereiche ── */
+.stat-panels {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.15s;
+}
+
+.stat-panel.offen {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.stat-panel-titel {
+  margin: 0;
+  font-size: inherit;
+}
+
+.stat-panel-kopf {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  min-height: 44px;
+  text-align: left;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.stat-panel-kopf:hover {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.stat-panel-kopf:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.stat-panel-pfeil {
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+
+.stat-panel.offen .stat-panel-pfeil {
+  transform: rotate(90deg);
+  color: var(--accent);
+}
+
+.stat-panel-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.stat-panel-info {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.stat-panel-inhalt {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 2px 14px 14px;
+}
+
+/* Innerhalb eines Bereichs: Karten/Diagramme leicht absetzen statt doppelter Rahmen-Optik */
+.stat-panel-inhalt .stat-karte,
+.stat-panel-inhalt .status-chart,
+.stat-panel-inhalt .bewertung-liste {
+  background: var(--bg);
+}
+
+.stat-unter-titel {
+  margin: 4px 0 -4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.top-manga-titel {
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
 }
 
 .stat-section {
@@ -15,19 +120,25 @@
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+/* Kurzüberblick ganz oben: kleine Kacheln, am Handy drei nebeneinander */
+.stat-grid--kompakt {
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
 }
 
 .stat-karte {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 14px 16px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   text-align: left;
+  min-width: 0;
 }
 
 .stat-karte--klickbar {
@@ -46,7 +157,7 @@
 }
 
 .stat-zahl {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--accent);
   line-height: 1.2;
@@ -355,8 +466,13 @@
 .stat-sterne { color: var(--stern-gelb) !important; letter-spacing: 1px; }
 
 @media (max-width: 640px) {
+  .statistik-inhalt { padding: 12px 16px 28px; }
   .monats-chart { gap: 3px; height: 120px; }
   .monats-name { font-size: 9px; }
+  .monats-zahl { font-size: 9px; }
+  .stat-panel-inhalt { padding: 2px 10px 12px; }
+  .status-name { width: 84px; }
+  .status-zahl { width: 72px; }
 }
 
 .detail-panel-aktionen {
@@ -368,3 +484,30 @@
   scroll-margin-top: 12px;
 }
 
+/* „Meiste Kapitel": am PC Titel links neben dem Balken, am Handy darüber (sonst abgeschnitten) */
+.top-manga-titel { width: 200px; }
+
+@media (max-width: 640px) {
+  .top-manga-zeile {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .top-manga-zeile .top-manga-titel {
+    width: 100%;
+  }
+}
+
+/* Kurzüberblick: am PC alle sechs Kacheln in einer Reihe */
+@media (min-width: 641px) {
+  .stat-grid--kompakt {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+.stat-unter-titel .achievement-count {
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 12px;
+  white-space: nowrap;
+}
