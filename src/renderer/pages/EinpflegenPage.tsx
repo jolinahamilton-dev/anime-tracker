@@ -1,16 +1,21 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import AniListSuche from '../components/AniListSuche'
 import ManuelleEingabe from '../components/ManuelleEingabe'
 import EintragVorschau from '../components/EintragVorschau'
 import { AniListSearchResult } from '../../types'
+import { einpflegenSitzung } from '../einpflegenZustand'
 import './Page.css'
 import './EinpflegenPage.css'
 
 type Tab = 'suche' | 'manuell'
 
 export default function EinpflegenPage() {
-  const [tab, setTab] = useState<Tab>('suche')
+  const [tab, setTab] = useState<Tab>(einpflegenSitzung.tab)
+  // Die Vorschau ersetzt die Suche (AniListSuche wird dabei ausgehängt) –
+  // Suchbegriff, Treffer & Scrollposition liegen deshalb in einpflegenSitzung
   const [ausgewaehlt, setAusgewaehlt] = useState<AniListSearchResult | null>(null)
+
+  useEffect(() => { einpflegenSitzung.tab = tab }, [tab])
 
   if (ausgewaehlt) {
     return (

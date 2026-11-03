@@ -175,7 +175,7 @@ export const SYNC_FELDER = {
   watch_order: ['relation_type', 'position', 'is_custom', 'title', 'cover_url', 'progress_episodes', 'item_status', 'neu_seit', 'total_episodes'],
 }
 /** Einstellungen, die auf allen Geräten gleich sein sollen (alles andere in app_meta bleibt lokal) */
-export const SYNC_META = ['akzentfarbe', 'logo']
+export const SYNC_META = ['akzentfarbe', 'logo', 'darkMode']
 
 const NEUE_UUID = 'lower(hex(randomblob(16)))'
 const ZEIT_MS = "CAST(ROUND((julianday('now') - 2440587.5) * 86400000) AS INTEGER)"
@@ -271,6 +271,17 @@ function richteSyncEin(db: Database, entryCols: unknown[]) {
     WHEN ${NICHT_PAUSIERT} AND NEW.key IN (${SYNC_META.map(k => `'${k}'`).join(', ')}) BEGIN
     ${log('app_meta', 'NEW.key', 'value', 'NEW.value')}
   END`)
+
+  // Gemeinsame Einstellungen, die gewählt wurden, bevor sie protokolliert wurden (der Dunkelmodus wird
+  // erst seit Kurzem abgeglichen, Farbe/Logo von vor dem Protokoll), stehen nicht im Protokoll und
+  // kämen über die Einzeldateien nie auf einem neu eingerichteten Gerät an. Einmalig nachtragen, mit
+  // Zeit 0 wie unprotokollierte Altdaten im Gesamtstand: so gewinnt jede echte Änderung auf einem
+  // anderen Gerät, und ein Gerät ohne eigenen Wert übernimmt diesen.
+  for (const key of SYNC_META) {
+    db.run(`INSERT INTO sync_log (zeit, geraet, tabelle, zeile, feld, wert, alt)
+      SELECT 0, ${GERAET}, 'app_meta', key, 'value', value, NULL FROM app_meta
+      WHERE key = ? AND NOT EXISTS (SELECT 1 FROM sync_log WHERE tabelle = 'app_meta' AND zeile = ? AND feld = 'value')`, [key, key])
+  }
 }
 
 export function dbAll(sql: string, params: unknown[] = []): Record<string, unknown>[] {

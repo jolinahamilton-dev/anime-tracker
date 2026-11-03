@@ -2,7 +2,7 @@
 // ein Drive im Speicher, echte Verschlüsselung und echte sql.js-Datenbanken.
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
-const { erstelleUmgebung } = require('./hilfe')
+const { erstelleUmgebung, kern } = require('./hilfe')
 
 const MAX_EIGENE_LOGS = 40 // wie in src/sync/dienst.ts
 
@@ -172,4 +172,37 @@ test('Datei verschwindet zwischen Auflisten und Laden (anderes Gerät räumt ger
   drive.dateien.set(...weg)
   await sync(handy)
   assert.equal(handy.feld(a, 'progress_episodes'), 3)
+})
+
+test('Dunkelmodus: ein neues Gerät übernimmt den Wert, der vor dem Abgleich der Einstellung gewählt wurde', async () => {
+  const { geraet } = await erstelleUmgebung()
+  const pc = geraet('pc')
+  pc.neuerEintrag('Frieren')
+  await sync(pc) // erster Gesamtstand liegt schon in Drive – danach kommen nur noch Einzeldateien
+
+  // Alte Version: darkMode wurde gespeichert, aber nicht protokolliert
+  pc.aendere("INSERT OR REPLACE INTO app_meta (key, value) VALUES ('sync_pause', '1')")
+  pc.aendere("INSERT OR REPLACE INTO app_meta (key, value) VALUES ('darkMode', 'false')")
+  pc.aendere("DELETE FROM app_meta WHERE key = 'sync_pause'")
+  assert.equal(pc.eins("SELECT COUNT(*) AS n FROM sync_log WHERE zeile = 'darkMode'").n, 0, 'Voraussetzung: nicht protokolliert')
+
+  // Neue Version startet: Wert wird einmalig nachgetragen (auch bei weiteren Starts nur einmal)
+  pc.aktiv(); kern.migrateSchema(pc.db); kern.migrateSchema(pc.db)
+  assert.equal(pc.eins("SELECT COUNT(*) AS n FROM sync_log WHERE zeile = 'darkMode'").n, 1)
+  await sync(pc)
+
+  // Handy frisch eingerichtet (z. B. Startbildschirm-App neu installiert): noch kein eigener Wert
+  const handy = geraet('handy')
+  assert.equal(handy.eins("SELECT value FROM app_meta WHERE key = 'darkMode'"), undefined)
+  await sync(handy)
+  assert.equal(handy.eins("SELECT value FROM app_meta WHERE key = 'darkMode'")?.value, 'false')
+  assert.ok(handy.meldungen.length > 0, 'Seiten werden benachrichtigt, damit die Darstellung sofort wechselt')
+
+  // Eine echte Änderung auf dem Handy schlägt den nachgetragenen Altwert und kommt am PC an
+  handy.aendere("INSERT OR REPLACE INTO app_meta (key, value) VALUES ('darkMode', 'true')")
+  await sync(handy)
+  pc.meldungen.length = 0
+  await sync(pc)
+  assert.equal(pc.eins("SELECT value FROM app_meta WHERE key = 'darkMode'")?.value, 'true')
+  assert.ok(pc.meldungen.length > 0, 'nur Einstellung geändert – trotzdem benachrichtigt')
 })

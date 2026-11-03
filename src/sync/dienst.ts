@@ -7,7 +7,7 @@ import {
   eigeneGeraeteId, gesamtstand, hochgeladenBis, letzteNr, LogZeile, neueEigeneAenderungen, setzeAbgleichZurueck,
   setzeHochgeladenBis, spieleEin,
 } from './abgleich'
-import { dbGet, getDb, schedulePersist } from '../db/kern'
+import { dbGet, getDb, schedulePersist, SYNC_META } from '../db/kern'
 
 export interface SyncPlattform {
   istVerbunden(): Promise<boolean>
@@ -156,6 +156,10 @@ export function erstelleSyncDienst(plattform: SyncPlattform) {
       // 1) Änderungen der anderen Geräte einspielen. Eine unlesbare Datei hält nur dieses Gerät an –
       //    es geht genau dort weiter, sobald sie lesbar ist; alle anderen Geräte laufen normal.
       const geaendert = new Set<number>()
+      // Gemeinsame Einstellungen (Dunkelmodus, Farbe, Logo) vorher merken – ändern sie sich, sollen
+      // die Seiten sie gleich übernehmen, auch wenn kein Eintrag geändert wurde
+      const einstellungen = () => JSON.stringify(SYNC_META.map(k => meta(k)))
+      const einstellungenVorher = einstellungen()
       const fremde = [...new Set(dateien.filter(n => n.geraet !== eigene).map(n => n.geraet))]
       for (const g of fremde) {
         let bekannt = letzteNr(g)
@@ -229,7 +233,7 @@ export function erstelleSyncDienst(plattform: SyncPlattform) {
 
       setzeMeta('sync_letzter', new Date().toISOString())
       fehler = probleme.length ? probleme.join(' ') : null
-      if (geaendert.size) plattform.benachrichtige([...geaendert])
+      if (geaendert.size || einstellungen() !== einstellungenVorher) plattform.benachrichtige([...geaendert])
     } catch (e: any) {
       fehler = e?.message ?? String(e)
       console.error('Abgleich fehlgeschlagen:', e)

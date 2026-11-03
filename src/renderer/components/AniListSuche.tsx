@@ -1,20 +1,30 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { AniListSearchResult } from '../../types'
 import './AniListSuche.css'
 import { api } from '../api'
+import { einpflegenSitzung, MediaFilter } from '../einpflegenZustand'
 
 interface Props {
   onAuswaehlen: (result: AniListSearchResult) => void
 }
 
-type MediaFilter = 'ANIME' | 'MANGA' | 'ALLE'
-
 export default function AniListSuche({ onAuswaehlen }: Props) {
-  const [suchbegriff, setSuchbegriff] = useState('')
-  const [filter, setFilter] = useState<MediaFilter>('ALLE')
-  const [ergebnisse, setErgebnisse] = useState<AniListSearchResult[]>([])
+  // Startwerte aus der Sitzung → nach „← Zurück“ aus der Vorschau ist alles wie vorher
+  const [suchbegriff, setSuchbegriff] = useState(einpflegenSitzung.suchbegriff)
+  const [filter, setFilter] = useState<MediaFilter>(einpflegenSitzung.filter)
+  const [ergebnisse, setErgebnisse] = useState<AniListSearchResult[]>(einpflegenSitzung.ergebnisse)
   const [laden, setLaden] = useState(false)
   const [fehler, setFehler] = useState('')
+  const listeRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => { einpflegenSitzung.suchbegriff = suchbegriff }, [suchbegriff])
+  useEffect(() => { einpflegenSitzung.filter = filter }, [filter])
+  useEffect(() => { einpflegenSitzung.ergebnisse = ergebnisse }, [ergebnisse])
+
+  // Scrollposition der Trefferliste wiederherstellen (nur beim Einblenden)
+  useLayoutEffect(() => {
+    if (listeRef.current) listeRef.current.scrollTop = einpflegenSitzung.scrollPosition
+  }, [])
 
   const suchen = useCallback(async () => {
     const q = suchbegriff.trim()
@@ -77,6 +87,9 @@ export default function AniListSuche({ onAuswaehlen }: Props) {
           bereitsVorhanden: istVorhanden(item),
         }))
       setErgebnisse(merged)
+      // Neue Treffer beginnen oben
+      if (listeRef.current) listeRef.current.scrollTop = 0
+      einpflegenSitzung.scrollPosition = 0
     } catch (e: any) {
       // IPC verpackt die Meldung als „Error invoking remote method …: Error: <Meldung>"
       const grund = String(e?.message ?? '').split('Error: ').pop()
@@ -100,7 +113,8 @@ export default function AniListSuche({ onAuswaehlen }: Props) {
           onChange={e => setSuchbegriff(e.target.value)}
           onKeyDown={onKeyDown}
           className="suche-input"
-          autoFocus
+          // Bei wiederhergestellten Treffern nicht fokussieren – sonst springt am Handy die Tastatur auf
+          autoFocus={einpflegenSitzung.ergebnisse.length === 0}
         />
         <div className="filter-buttons">
           {(['ALLE', 'ANIME', 'MANGA'] as MediaFilter[]).map(f => (
@@ -120,7 +134,11 @@ export default function AniListSuche({ onAuswaehlen }: Props) {
 
       {fehler && <p className="fehler-text">{fehler}</p>}
 
-      <div className="ergebnisse-liste">
+      <div
+        className="ergebnisse-liste"
+        ref={listeRef}
+        onScroll={e => { einpflegenSitzung.scrollPosition = e.currentTarget.scrollTop }}
+      >
         {ergebnisse.length === 0 && !laden && suchbegriff && (
           <p className="keine-ergebnisse">Keine Ergebnisse gefunden.</p>
         )}

@@ -121,7 +121,7 @@ export async function initDb(): Promise<Database> {
     for (const k of KOPIEN) {
       try {
         const kopie = await leseWert<Kopie>(k)
-        if (!kopie) continue
+        if (!kopie || !kopie.eintraege) continue
         db = oeffneGeprueft(kopie.daten)
         wiederhergestelltAusKopie = kopie.erstellt
         wiederhergestelltAusBackup = true
@@ -168,17 +168,18 @@ async function legeKopieAn(): Promise<void> {
   if (!db || kopiertGerade) return
   kopiertGerade = true
   try {
-    const [k0, k1] = await Promise.all([leseWert<Kopie>(KOPIEN[0]), leseWert<Kopie>(KOPIEN[1])])
-    const letzte = k0 ? new Date(k0.erstellt).getTime() : 0
-    if (Date.now() - letzte < KOPIE_ABSTAND) { naechsteKopie = letzte + KOPIE_ABSTAND; return }
+    // Eine leere Liste ist nichts wert (z. B. neu installiert, der Abgleich holt die Einträge gleich erst) –
+    // nicht kopieren und beim nächsten Speichern wieder prüfen, statt einen Tag lang zu warten
     const eintraege = anzahlEintraege(db)
-    // Eine plötzlich leere Liste nicht über eine Kopie mit Einträgen schieben
-    if (eintraege === 0 && k0 && k0.eintraege > 0) { naechsteKopie = Date.now() + KOPIE_ABSTAND; return }
+    if (eintraege === 0) { naechsteKopie = 0; return }
+    // Leere Kopien aus älteren Versionen zählen nicht und werden beim Rotieren verdrängt
+    const alt = (await Promise.all(KOPIEN.map(k => leseWert<Kopie>(k).catch(() => null))))
+      .filter((k): k is Kopie => !!k && k.eintraege > 0)
+    const letzte = alt[0] ? new Date(alt[0].erstellt).getTime() : 0
+    if (Date.now() - letzte < KOPIE_ABSTAND) { naechsteKopie = letzte + KOPIE_ABSTAND; return }
     const neu: Kopie = { erstellt: new Date().toISOString(), eintraege, daten: db.export() }
-    const werte: Record<string, unknown> = { [KOPIEN[0]]: neu }
-    if (k0) werte[KOPIEN[1]] = k0
-    if (k1) werte[KOPIEN[2]] = k1
-    await nacheinander(werte)
+    const reihe = [neu, ...alt]
+    await nacheinander(Object.fromEntries(KOPIEN.map((k, i) => [k, reihe[i] ?? null])))
     naechsteKopie = Date.now() + KOPIE_ABSTAND
   } catch (e) {
     // z. B. Speicher voll: die eigentlichen Daten sind davon nicht betroffen, später erneut versuchen
@@ -194,7 +195,7 @@ export async function lokaleKopien(): Promise<Array<{ nr: number; erstellt: stri
   const liste = []
   for (let nr = 0; nr < KOPIEN.length; nr++) {
     const k = await leseWert<Kopie>(KOPIEN[nr]).catch(() => null)
-    if (k) liste.push({ nr, erstellt: k.erstellt, eintraege: k.eintraege })
+    if (k && k.eintraege > 0) liste.push({ nr, erstellt: k.erstellt, eintraege: k.eintraege }) // leere Kopien taugen nicht zum Einspielen
   }
   return liste
 }

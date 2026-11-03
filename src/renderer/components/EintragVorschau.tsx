@@ -5,6 +5,7 @@ import Sterne from './Sterne'
 import './EintragVorschau.css'
 import { snackbar } from '../meldungen'
 import { api } from '../api'
+import { sucheZuruecksetzen } from '../einpflegenZustand'
 
 interface Props {
   data: AniListSearchResult
@@ -57,6 +58,8 @@ export default function EintragVorschau({ data, onZurueck }: Props) {
         navigate(`/detail/${ergebnis.id}`)
         return
       }
+      // Hinzugefügt → Suche erledigt, nächstes Einpflegen startet leer
+      sucheZuruecksetzen()
       navigate('/')
     } finally {
       setSpeichern(false)
