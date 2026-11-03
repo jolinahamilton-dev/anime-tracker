@@ -4,6 +4,7 @@ import { EntryStatus, MediaType } from '../../types'
 import Sterne from './Sterne'
 import './ManuelleEingabe.css'
 import { api } from '../api'
+import { sucheZuruecksetzen } from '../einpflegenZustand'
 
 const STATUS_LABEL: Partial<Record<EntryStatus, string>> = {
   started: 'Angefangen',
@@ -62,6 +63,8 @@ export default function ManuelleEingabe() {
         is_favorite: favorit ? 1 : 0,
         review: null,
       })
+      // Hinzugefügt → gespeicherte Suche ist erledigt (sonst kämen beim nächsten Einpflegen alte Treffer zurück)
+      sucheZuruecksetzen()
       navigate('/')
     } finally {
       setSpeichern(false)

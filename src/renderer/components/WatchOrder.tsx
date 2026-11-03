@@ -44,9 +44,10 @@ const RELATION_LABEL: Record<string, string> = {
 }
 
 // Staffeln der Hauptgeschichte; alles andere (Side Stories, Alternativen, Spin-offs …) ist eingeklappt,
-// solange man es nicht angefangen hat – zählt auch für „+1" und die Übersicht nicht mit
+// solange man es nicht angefangen hat – zählt auch für „+1" und die Übersicht nicht mit.
+// Gemeinsame Regel für die Watch Order UND die Fortschritt-Sektion der DetailPage
 const HAUPTLINIE = new Set(['MAIN', 'PREQUEL', 'SEQUEL'])
-const istNebensache = (item: WatchItem) =>
+export const istNebensache = (item: WatchItem) =>
   !HAUPTLINIE.has(item.relation_type) && item.item_status === 'planned' && !item.progress_episodes
 
 const ITEM_STATUS_LABEL: Record<string, string> = {

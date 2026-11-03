@@ -294,7 +294,7 @@
   border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--accent) 60%, var(--border));
   background: color-mix(in srgb, var(--accent) 14%, var(--bg-card));
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: 13px;
   font-weight: 700;
   flex-shrink: 0;
@@ -307,10 +307,32 @@
 
 .karte--liste .karte-plus { align-self: center; margin-top: 0; }
 
-/* ── Touch-Geräte: kein Hover → Glocke immer (dezent) zeigen, Lupe weglassen ── */
+/* ── Touch-Geräte: kein Hover → Glocke und Lupe immer (dezent) zeigen.
+   Lupe unten rechts – oben rechts sitzen 🔔/⭐, unten links das Typ-Badge ── */
 @media (hover: none) {
   .karte-abo { opacity: 0.75; }
-  .karte-zoom { display: none; }
+  .karte-zoom {
+    opacity: 0.85;
+    top: auto;
+    left: auto;
+    bottom: 6px;
+    right: 6px;
+    width: 30px;
+    height: 30px;
+  }
+  /* Listenansicht: kleines Cover – Lupe unten links (Glocke oben rechts, Typ-Badge ausgeblendet) */
+  .karte--liste .karte-zoom {
+    top: auto;
+    left: 2px;
+    right: auto;
+    bottom: 2px;
+    transform: none;
+    width: 22px;
+    height: 22px;
+    font-size: 11px;
+  }
+  /* Unsichtbar vergrößerte Tippfläche – die sichtbare Lupe bleibt klein */
+  .karte-zoom::after { content: ''; position: absolute; inset: -7px; }
   .eintrag-karte:hover { transform: none; border-color: var(--border); }
   .karte--beendet:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
 }

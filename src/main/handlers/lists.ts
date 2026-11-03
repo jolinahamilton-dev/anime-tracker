@@ -1,5 +1,6 @@
-import { IpcMain } from 'electron'
+import { BrowserWindow, IpcMain } from 'electron'
 import { dbAll, dbGet, dbRun, dbRunGetId } from '../../db/database'
+import { pruefeAchievements } from './achievements'
 
 export function registerListHandlers(ipcMain: IpcMain) {
   ipcMain.handle('lists:getAll', () => {
@@ -10,8 +11,10 @@ export function registerListHandlers(ipcMain: IpcMain) {
     }))
   })
 
-  ipcMain.handle('lists:create', (_, name: string) => {
+  ipcMain.handle('lists:create', (event, name: string) => {
     const id = dbRunGetId('INSERT INTO custom_lists (name) VALUES (?)', [name])
+    // Nur das Anlegen erhöht die Zahl der Listen (Achievement „Organisator“); Löschen nimmt nichts zurück
+    try { pruefeAchievements(BrowserWindow.fromWebContents(event.sender)) } catch (e) { console.error(e) }
     return dbGet('SELECT * FROM custom_lists WHERE id = ?', [id])
   })
 

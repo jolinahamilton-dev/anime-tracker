@@ -8,6 +8,25 @@ interface Props {
   onAuswaehlen: (result: AniListSearchResult) => void
 }
 
+type VorhandenerEintrag = { anilist_id: number | null; title: string; type: string }
+
+/** Markiert Treffer, die schon in der Liste stehen (per AniList-ID, sonst über Titel + Typ) */
+function markiereVorhandene<T extends AniListSearchResult>(treffer: T[], vorhandene: VorhandenerEintrag[]): T[] {
+  const vorhandeneIds = new Set(vorhandene.map(e => e.anilist_id).filter(Boolean))
+  // Einträge ohne AniList-ID (CSV-Import, manuell) über Titel + Typ erkennen
+  const vorhandeneTitel = new Set(
+    vorhandene
+      .filter(e => !e.anilist_id)
+      .map(e => `${e.type}|${e.title.trim().toLowerCase()}`)
+  )
+  const istVorhanden = (item: any) =>
+    vorhandeneIds.has(item.id) ||
+    [item.title?.romaji, item.title?.english].some(
+      (t: string | null) => t && vorhandeneTitel.has(`${item.type}|${t.trim().toLowerCase()}`)
+    )
+  return treffer.map(item => ({ ...item, bereitsVorhanden: istVorhanden(item) }))
+}
+
 export default function AniListSuche({ onAuswaehlen }: Props) {
   // Startwerte aus der Sitzung → nach „← Zurück“ aus der Vorschau ist alles wie vorher
   const [suchbegriff, setSuchbegriff] = useState(einpflegenSitzung.suchbegriff)
@@ -20,6 +39,17 @@ export default function AniListSuche({ onAuswaehlen }: Props) {
   useEffect(() => { einpflegenSitzung.suchbegriff = suchbegriff }, [suchbegriff])
   useEffect(() => { einpflegenSitzung.filter = filter }, [filter])
   useEffect(() => { einpflegenSitzung.ergebnisse = ergebnisse }, [ergebnisse])
+
+  // Wiederhergestellte Treffer: „Bereits in Liste" stammt vom Zeitpunkt der Suche – inzwischen
+  // hinzugefügte (oder gelöschte) Einträge berücksichtigen, also gegen die aktuelle Liste neu prüfen
+  useEffect(() => {
+    if (einpflegenSitzung.ergebnisse.length === 0) return
+    let abgebrochen = false
+    api.getEntries().then((vorhandene: VorhandenerEintrag[]) => {
+      if (!abgebrochen) setErgebnisse(alt => markiereVorhandene(alt, vorhandene))
+    })
+    return () => { abgebrochen = true }
+  }, [])
 
   // Scrollposition der Trefferliste wiederherstellen (nur beim Einblenden)
   useLayoutEffect(() => {
@@ -37,18 +67,6 @@ export default function AniListSuche({ onAuswaehlen }: Props) {
         Promise.all(typen.map(t => api.searchAniList(q, t))),
         api.getEntries(),
       ])
-      const vorhandeneIds = new Set((vorhandene as Array<{ anilist_id: number | null }>).map(e => e.anilist_id).filter(Boolean))
-      // Einträge ohne AniList-ID (CSV-Import, manuell) über Titel + Typ erkennen
-      const vorhandeneTitel = new Set(
-        (vorhandene as Array<{ anilist_id: number | null; title: string; type: string }>)
-          .filter(e => !e.anilist_id)
-          .map(e => `${e.type}|${e.title.trim().toLowerCase()}`)
-      )
-      const istVorhanden = (item: any) =>
-        vorhandeneIds.has(item.id) ||
-        [item.title?.romaji, item.title?.english].some(
-          (t: string | null) => t && vorhandeneTitel.has(`${item.type}|${t.trim().toLowerCase()}`)
-        )
       const alleErgebnisse: any[] = ergebnisArrays.flat()
       const alleIds = new Set(alleErgebnisse.map((r: any) => r.id))
 
@@ -80,12 +98,10 @@ export default function AniListSuche({ onAuswaehlen }: Props) {
         }
       }
 
-      const merged = alleErgebnisse
-        .filter((item: any) => !ausgeblendet.has(item.id))
-        .map((item: any) => ({
-          ...item,
-          bereitsVorhanden: istVorhanden(item),
-        }))
+      const merged = markiereVorhandene(
+        alleErgebnisse.filter((item: any) => !ausgeblendet.has(item.id)),
+        vorhandene as VorhandenerEintrag[],
+      )
       setErgebnisse(merged)
       // Neue Treffer beginnen oben
       if (listeRef.current) listeRef.current.scrollTop = 0

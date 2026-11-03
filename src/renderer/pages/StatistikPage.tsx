@@ -72,14 +72,15 @@ function formatWatchtime(min: number): string {
   const h = Math.floor(min / 60)
   if (h < 24) return `${h} Std.`
   const d = Math.floor(h / 24)
-  return `${d} Tage ${h % 24} Std.`
+  return `${d} ${d === 1 ? 'Tag' : 'Tage'} ${h % 24} Std.`
 }
 
 
 /** Knappe Form für die kleinen Kacheln im Kurzüberblick (ab einem Tag: „32,5 Tage") */
 function formatWatchtimeKurz(min: number): string {
   if (min < 24 * 60) return formatWatchtime(min)
-  return `${(min / 60 / 24).toLocaleString('de-DE', { maximumFractionDigits: 1 })} Tage`
+  const tage = (min / 60 / 24).toLocaleString('de-DE', { maximumFractionDigits: 1 })
+  return `${tage} ${tage === '1' ? 'Tag' : 'Tage'}`
 }
 const zahlText = (n: number) => n.toLocaleString('de-DE')
 const schnittText = (x: number | null) => (x ? `${x.toLocaleString('de-DE', { maximumFractionDigits: 1 })} ★` : '–')
@@ -229,6 +230,9 @@ export default function StatistikPage() {
     zurueckNachOben()
     setDetailFilter(null)
   }
+
+  // Kachel „Wiederholt": Zahl = Titel (wie die Liste beim Antippen), dazu die Wiederholungen insgesamt
+  const wiederholteTitel = alleEintraege.filter(e => (e.rewatch_count ?? 0) > 0).length
 
   const detailEintraege = detailFilter === null ? [] : alleEintraege.filter(e => {
     if (detailFilter.typ === 'alle') return true
@@ -416,7 +420,9 @@ export default function StatistikPage() {
                 onClick={ev => toggleFilter({ typ: 'status', wert: 'planned', label: 'Geplant' }, ev)}
               />
               <Kachel
-                zahl={zahlText(stats.wiederholungen)} label="Wiederholungen"
+                zahl={zahlText(wiederholteTitel)}
+                label={`Titel wiederholt · ${zahlText(stats.wiederholungen)}×`}
+                title={`${zahlText(wiederholteTitel)} Titel, zusammen ${zahlText(stats.wiederholungen)}-mal wiederholt`}
                 aktiv={istFilter('wiederholt')}
                 onClick={ev => toggleFilter({ typ: 'wiederholt', wert: '', label: 'Wiederholt' }, ev)}
               />

@@ -201,7 +201,8 @@ export default function ListePage() {
 
   // 🏆 schaltet einfach den Status-Filter auf „Beendet" (und zurück) – so bleiben beide im Einklang
   const nurBeendete = filterStatus.length === 1 && filterStatus[0] === 'completed'
-  const anzahlBeendet = entries.filter(e => e.status === 'completed').length
+  // Zählt passend zum Typ-Filter (ALLE/ANIME/MANGA), aber unabhängig vom Status-Filter, den 🏆 ja umschaltet
+  const anzahlBeendet = entries.filter(e => e.status === 'completed' && (filterTyp === 'ALLE' || e.type === filterTyp)).length
   const beendeteUmschalten = () => setFilterStatus(nurBeendete ? [] : ['completed'])
 
   function oeffneEintrag(id: number) {

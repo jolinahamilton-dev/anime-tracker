@@ -49,7 +49,7 @@
 }
 
 .dialog-btn:hover { background: var(--border); }
-.dialog-btn--ok { background: var(--accent); border-color: var(--accent); color: #fff; }
+.dialog-btn--ok { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .dialog-btn--ok:hover { background: var(--accent-hover); }
 .dialog-btn--gefahr { background: #e74c3c; border-color: #e74c3c; color: #fff; }
 .dialog-btn--gefahr:hover { background: #c0392b; }
@@ -85,7 +85,7 @@
 
 .snackbar-aktion {
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
   padding: 6px 10px;
   border-radius: 6px;
   white-space: nowrap;

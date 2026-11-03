@@ -92,7 +92,7 @@
   padding: 2px 7px;
   border-radius: 10px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   letter-spacing: 0.04em;
 }
 

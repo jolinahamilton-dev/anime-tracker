@@ -45,14 +45,14 @@
 .filter-btn.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .suche-btn {
   padding: 8px 18px;
   height: 40px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-radius: var(--radius-sm);
   font-size: 14px;
   font-weight: 600;
@@ -103,7 +103,7 @@
 
 .ergebnis-karte:hover {
   border-color: var(--accent);
-  background: #1e1e2e;
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-card));
 }
 
 .ergebnis-karte.vorhanden {
@@ -145,7 +145,7 @@
 .ergebnis-typ {
   font-size: 11px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
   letter-spacing: 0.08em;
 }
 

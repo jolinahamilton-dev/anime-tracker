@@ -5,7 +5,7 @@ import { LOGOS, logoBild } from '../logos'
 import { installieren, useInstallierbar } from '../installieren'
 import './Page.css'
 import './EinstellungenPage.css'
-import { api, kann, istHandyApp, SicherungInfo, LokaleKopie } from '../api'
+import { api, kann, istHandyApp, neuLaden, SicherungInfo, LokaleKopie } from '../api'
 import SyncBereich from '../components/SyncBereich'
 import { bestaetigen, snackbar } from '../meldungen'
 
@@ -182,7 +182,7 @@ export default function EinstellungenPage() {
       if (!r.info) { setSicherungMeldung(`❌ ${r.fehler ?? 'Wiederherstellen fehlgeschlagen.'}`); return }
       try { sessionStorage.setItem(NACH_WIEDERHERSTELLUNG, `${nachricht} (${anzahl(r.info.eintraege)})`) } catch { /* nur der Hinweis fehlt */ }
       // Alle Seiten frisch laden, damit überall der wiederhergestellte Stand zu sehen ist
-      window.location.reload()
+      neuLaden()
     } catch {
       setSicherungMeldung('❌ Wiederherstellen fehlgeschlagen – der bisherige Stand ist unverändert.')
     } finally {

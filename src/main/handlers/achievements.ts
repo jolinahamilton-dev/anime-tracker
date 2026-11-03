@@ -257,6 +257,23 @@ export function migriereAlteAchievements() {
   }
 }
 
+/**
+ * Zählt freigeschaltete Achievements so wie die Statistik („x / 73"): nur aktuelle Stufen und
+ * Einzel-Achievements; alte ids zählen über die Stufen, auf die sie übertragen werden.
+ */
+export function zaehleAchievements(ids: Iterable<string>): number {
+  const gueltig = new Set([...TRACKS.flatMap(t => t.schwellen.map((_, i) => stufenId(t.id, i + 1))), ...EINZELN.map(a => a.id)])
+  const gezaehlt = new Set<string>()
+  for (const id of ids) {
+    if (gueltig.has(id)) { gezaehlt.add(id); continue }
+    const neu = ALTE_IDS[id]
+    if (!neu) continue
+    const trennung = neu.lastIndexOf('_')
+    for (let nr = 1; nr <= Number(neu.slice(trennung + 1)); nr++) gezaehlt.add(stufenId(neu.slice(0, trennung), nr))
+  }
+  return gezaehlt.size
+}
+
 function freigeschaltetMap() {
   return new Map(dbAll('SELECT id, unlocked_at FROM achievements WHERE unlocked_at IS NOT NULL')
     .map(r => [r.id as string, r.unlocked_at as string]))

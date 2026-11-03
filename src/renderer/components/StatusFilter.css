@@ -22,7 +22,7 @@
 
 .status-filter-btn.aktiv {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
@@ -78,7 +78,7 @@
 
 .status-haken {
   width: 12px;
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: 12px;
 }
 

@@ -8,6 +8,7 @@
 // Vor dem Einspielen wird der bisherige Stand als Sicherheitskopie abgelegt (siehe VorherAblage).
 import { getDb, schedulePersist } from '../../db/database'
 import type { Database, SqlValue } from 'sql.js'
+import { zaehleAchievements } from './achievements'
 
 export const SICHERUNG_FORMAT = 'anime-tracker-sicherung'
 const VERSION = 1
@@ -109,7 +110,10 @@ export function leseSicherung(text: string): { sicherung: Sicherung; info: Siche
 }
 
 function kurzInfo(s: Sicherung): SicherungInfo {
-  return { erstellt: s.erstellt, eintraege: s.entries.length, listen: s.custom_lists.length, achievements: s.achievements.length }
+  // Nur aktuelle Achievements zählen (alte, ausgeblendete ids nicht doppelt) – passt so zur Statistik
+  const achievements = zaehleAchievements(s.achievements
+    .filter(a => typeof a.id === 'string' && a.unlocked_at !== null).map(a => a.id as string))
+  return { erstellt: s.erstellt, eintraege: s.entries.length, listen: s.custom_lists.length, achievements }
 }
 
 /** Eckdaten der Sicherung plus Vergleich mit dem aktuellen Stand (für die Rückfrage vor dem Einspielen) */

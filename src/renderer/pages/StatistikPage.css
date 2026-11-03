@@ -61,7 +61,7 @@
 
 .stat-panel.offen .stat-panel-pfeil {
   transform: rotate(90deg);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .stat-panel-name {
@@ -159,7 +159,7 @@
 .stat-zahl {
   font-size: 18px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
   line-height: 1.2;
 }
 
@@ -268,7 +268,7 @@
 
 .genre-mehr-btn {
   font-size: 12px;
-  color: var(--accent);
+  color: var(--accent-text);
   padding: 6px 0;
   text-align: left;
   transition: opacity 0.15s;
@@ -284,7 +284,7 @@
 
 .edit-btn {
   font-size: 12px;
-  color: var(--accent);
+  color: var(--accent-text);
   padding: 4px 10px;
   border-radius: var(--radius-sm);
   transition: background 0.15s;
@@ -373,7 +373,7 @@
 .achievement-count {
   font-size: 13px;
   font-weight: 400;
-  color: var(--accent);
+  color: var(--accent-text);
   margin-left: 8px;
 }
 
@@ -431,7 +431,7 @@
 
 .achievement-datum {
   font-size: 11px;
-  color: var(--accent);
+  color: var(--accent-text);
   margin-top: 2px;
 }
 

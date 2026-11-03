@@ -126,12 +126,12 @@
 
 .listen-tab.aktiv {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .listen-tab-neu {
-  color: var(--accent);
+  color: var(--accent-text);
   border-style: dashed;
 }
 
@@ -142,6 +142,9 @@
   font-size: 11px;
   font-weight: 600;
 }
+
+/* Im aktiven Tab getönt statt grau – auf --border wäre die Akzentschrift zu blass */
+.listen-tab.aktiv .listen-tab-count { background: color-mix(in srgb, var(--accent) 15%, var(--bg-card)); }
 
 .listen-tab-wrap {
   display: flex;
@@ -241,7 +244,7 @@
 .ansicht-btn:hover { color: var(--text); }
 
 .ansicht-btn.aktiv {
-  color: var(--accent);
+  color: var(--accent-text);
   background: color-mix(in srgb, var(--accent) 12%, var(--bg-card));
 }
 
@@ -299,14 +302,14 @@
   font-weight: 700;
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
   background: rgba(0,0,0,0.55);
-  color: var(--text-muted);
+  color: #d8d8e0; /* Overlay ist immer dunkel – unabhängig vom Design helle Schrift */
   pointer-events: none;
   transition: background 0.15s;
 }
 
 .karte-verwalten--drin .karte-verwalten-overlay {
   background: rgba(74, 219, 111, 0.75);
-  color: #fff;
+  color: #06260f; /* dunkle Schrift auf hellem Grün (weiß wäre ~2:1) */
 }
 
 .karte-verwalten--drin {
@@ -331,11 +334,11 @@
   white-space: nowrap;
 }
 
-.filter-oeffnen.aktiv { border-color: var(--accent); color: var(--accent); }
+.filter-oeffnen.aktiv { border-color: var(--accent); color: var(--accent-text); }
 
 .filter-zahl {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-radius: 10px;
   min-width: 20px;
   height: 20px;

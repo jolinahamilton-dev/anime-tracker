@@ -83,6 +83,8 @@ export interface TrackerApi {
   setMeta(key: string, value: string): Promise<unknown>
   /** Nur PC: Fenster-/Taskleistensymbol auf das gewählte Logo setzen */
   fensterLogo?(id: string): Promise<unknown>
+  /** Nur PC: Fenster neu laden – Seiten rufen stattdessen neuLaden() auf */
+  fensterNeuLaden?(): Promise<unknown>
   getStats(): Promise<any>
   getAchievements(): Promise<AchievementUebersicht>
   pruefeAchievements(): Promise<unknown>
@@ -162,3 +164,10 @@ export const kann = {
 }
 /** Läuft gerade die Handy-Version (Web-App) statt der PC-App? */
 export const istHandyApp = (window as any).api?.istHandy === true
+
+/** Lädt die ganze Oberfläche frisch (z. B. nach einer Wiederherstellung). Am PC über den Main-Prozess,
+ *  weil der Navigationsschutz (will-navigate) dort ein location.reload() aus der Seite verhindert. */
+export function neuLaden() {
+  if (api.fensterNeuLaden) api.fensterNeuLaden().catch(() => location.reload())
+  else location.reload()
+}

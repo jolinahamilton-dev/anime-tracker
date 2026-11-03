@@ -1,6 +1,9 @@
 :root {
   --accent: #e85d8a;
   --accent-hover: #d44a77;
+  /* Von useSettings.ts aus der Akzentfarbe abgeleitet: Akzent als Schrift bzw. Schrift auf Akzentflächen */
+  --accent-text: #e85d8a;
+  --on-accent: #111118;
   --bg: #0f0f13;
   --bg-card: #1a1a24;
   --bg-nav: #13131c;
@@ -36,6 +39,12 @@
   --text-gelb: #806606;
   --stern-gelb: #a07f07;
 }
+
+/* Graue Chips (Genres, Staffel-Badges, Anzahlen) liegen auf --border (#d8d8e0): dort reicht
+   --text-muted nicht (3,97:1) – im hellen Design etwas dunklere Schrift (5,7:1) */
+:root[data-theme="light"] .genre-tag:not(.genre-tag--aktiv),
+:root[data-theme="light"] .staffel-badge:not(.staffel-badge--neu),
+:root[data-theme="light"] .status-anzahl { color: #4f4f60; }
 
 * {
   box-sizing: border-box;

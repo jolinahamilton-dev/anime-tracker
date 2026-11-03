@@ -30,10 +30,76 @@ const hoerer = new Set<() => void>()
 let ladeNr = 0 // jedes Laden und Speichern zählt hoch – ältere Antworten der DB werden verworfen
 let geladen = false
 
+// ── Lesbarkeit der Akzentfarbe (WCAG-Kontrast) ──
+// Die Akzentfarbe ist frei wählbar – ein helles Gelb (#ffcc00) wäre als Schrift auf hellem Grund
+// unlesbar (~1,6:1), weiße Schrift auf gelben Knöpfen ebenso. Darum zwei abgeleitete Farben:
+//   --accent-text: Akzent als SCHRIFT (im hellen Design so weit abgedunkelt, dass ≥ 4,5:1 erreicht
+//                  wird; im dunklen Design der Akzent selbst, bei sehr dunklen Farben aufgehellt)
+//   --on-accent:   Schrift AUF Akzentflächen (dunkel oder weiß, je nachdem, was besser kontrastiert)
+type Rgb = [number, number, number]
+const DUNKLE_SCHRIFT = '#111118'
+
+function hexZuRgb(hex: string): Rgb | null {
+  let h = hex.trim().replace(/^#/, '')
+  if (h.length === 3 || h.length === 4) h = h.slice(0, 3).split('').map(c => c + c).join('')
+  if (h.length === 8) h = h.slice(0, 6)
+  if (!/^[0-9a-f]{6}$/i.test(h)) return null
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
+}
+
+function rgbZuHex([r, g, b]: Rgb): string {
+  return '#' + [r, g, b].map(k => Math.round(Math.min(255, Math.max(0, k))).toString(16).padStart(2, '0')).join('')
+}
+
+/** Relative Leuchtdichte nach WCAG 2.x */
+function leuchtdichte([r, g, b]: Rgb): number {
+  const lin = (k: number) => { const c = k / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4 }
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+}
+
+export function kontrast(a: Rgb, b: Rgb): number {
+  const la = leuchtdichte(a), lb = leuchtdichte(b)
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
+}
+
+/** Mischt schrittweise Richtung Ziel (Schwarz/Weiß), bis die Farbe gegen alle Hintergründe ≥ minKontrast hat */
+function anpassen(farbe: Rgb, hintergruende: Rgb[], ziel: Rgb, minKontrast = 4.5): Rgb {
+  for (let i = 0; i <= 100; i++) {
+    const t = i / 100
+    const c: Rgb = [0, 1, 2].map(k => farbe[k] + (ziel[k] - farbe[k]) * t) as Rgb
+    const gerundet = hexZuRgb(rgbZuHex(c))!
+    if (hintergruende.every(bg => kontrast(gerundet, bg) >= minKontrast)) return gerundet
+  }
+  return ziel
+}
+
+// Hintergründe, auf denen Akzent-Schrift steht: Karte, Seite, Navigation (die getönten
+// Chip-/Filterflächen ergänzt akzentAbleitungen)
+const HELLE_FLAECHEN: Rgb[] = [[0xff, 0xff, 0xff], [0xf5, 0xf5, 0xf8], [0xec, 0xec, 0xf0]]
+const DUNKLE_FLAECHEN: Rgb[] = [[0x1a, 0x1a, 0x24], [0x0f, 0x0f, 0x13], [0x13, 0x13, 0x1c]]
+
+/** Abgeleitete Akzentfarben für Schrift (--accent-text) und Schrift auf Akzentflächen (--on-accent) */
+export function akzentAbleitungen(akzent: string, dunkel: boolean): { text: string; aufAkzent: string } {
+  const rgb = hexZuRgb(akzent)
+  if (!rgb) return { text: akzent, aufAkzent: '#ffffff' }
+  // Auch auf den mit dem Akzent getönten Flächen (Chips, aktive Filter: color-mix bis 15 %) lesbar bleiben
+  const flaechen = dunkel ? DUNKLE_FLAECHEN : HELLE_FLAECHEN
+  const getoent = flaechen.map(bg => [0, 1, 2].map(k => Math.round(bg[k] + (rgb[k] - bg[k]) * 0.15)) as Rgb)
+  const text = anpassen(rgb, [...flaechen, ...getoent], dunkel ? [255, 255, 255] : [0, 0, 0])
+  // Weiß bleibt (wie bisher), solange es gut lesbar ist – sonst die besser kontrastierende Farbe
+  const weiss = kontrast(rgb, [255, 255, 255])
+  const dunkelSchrift = kontrast(rgb, hexZuRgb(DUNKLE_SCHRIFT)!)
+  const aufAkzent = weiss >= 4.5 || weiss >= dunkelSchrift ? '#ffffff' : DUNKLE_SCHRIFT
+  return { text: rgbZuHex(text), aufAkzent }
+}
+
 export function anwenden(s: Settings) {
   const stil = document.documentElement.style
   stil.setProperty('--accent', s.akzentfarbe)
   stil.setProperty('--accent-hover', s.akzentfarbe + 'cc')
+  const { text, aufAkzent } = akzentAbleitungen(s.akzentfarbe, s.darkMode)
+  stil.setProperty('--accent-text', text)
+  stil.setProperty('--on-accent', aufAkzent)
   document.documentElement.dataset.theme = s.darkMode ? 'dark' : 'light' // für die hellen Schriftfarben (global.css)
   if (!s.darkMode) {
     stil.setProperty('--bg', '#f5f5f8')

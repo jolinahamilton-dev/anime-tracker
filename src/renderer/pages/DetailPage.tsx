@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Entry, EntryStatus } from '../../types'
 import Sterne from '../components/Sterne'
-import WatchOrder, { WatchItem, istNeueStaffel } from '../components/WatchOrder'
+import WatchOrder, { WatchItem, istNeueStaffel, istNebensache } from '../components/WatchOrder'
 import BildVergroesserung from '../components/BildVergroesserung'
 import { naechsteFolgeText } from '../components/EintragKarte'
 import { sitzung } from '../listenZustand'
@@ -67,6 +67,8 @@ export default function DetailPage() {
   const [nickname, setNickname] = useState('')
   const [nickBearbeiten, setNickBearbeiten] = useState(false)
   const [watchItems, setWatchItems] = useState<WatchItem[]>([])
+  // Nicht angefangene Nebengeschichten (Side Stories …) eingeklappt – dieselbe Regel wie in der Watch Order
+  const [nebenZeigen, setNebenZeigen] = useState(false)
   const [listen, setListen] = useState<CustomList[]>([])
   const [listenOffen, setListenOffen] = useState(false)
   const [alleIds, setAlleIds] = useState<number[]>([])
@@ -105,6 +107,7 @@ export default function DetailPage() {
 
   useEffect(() => {
     if (!id) return
+    setNebenZeigen(false) // beim Blättern zum nächsten Eintrag wieder eingeklappt
     ;(async () => {
       const e: Entry = await api.getEntry(entryId)
       setEntry(e)
@@ -165,6 +168,7 @@ export default function DetailPage() {
   if (!entry) return <div className="page"><div className="empty-state"><p>Wird geladen…</p></div></div>
 
   const isAnime = entry.type === 'ANIME'
+  const nebenAnzahl = watchItems.filter(istNebensache).length
   let genres: string[] = []
   try { genres = JSON.parse(entry.genres || '[]') } catch { genres = [] }
 
@@ -410,8 +414,10 @@ export default function DetailPage() {
 
           {isAnime && watchItems.length > 0 ? (
             // Staffel-Counter: eine Zeile pro Staffel/Teil
+            <>
             <div className="staffel-counter-liste">
               {watchItems.map((item, i) => {
+                if (!nebenZeigen && istNebensache(item)) return null
                 const rel = item.relation_type ?? ''
                 const relFarbe = ['MAIN','SEQUEL','PREQUEL','PARENT'].includes(rel) ? 'gruen'
                   : rel === 'SIDE_STORY' || rel === 'SPIN_OFF' ? 'lila' : 'grau'
@@ -456,6 +462,12 @@ export default function DetailPage() {
                 )
               })}
             </div>
+            {nebenAnzahl > 0 && (
+              <button className="watch-mehr" onClick={() => setNebenZeigen(!nebenZeigen)} aria-expanded={nebenZeigen}>
+                {nebenZeigen ? 'Nebengeschichten ausblenden' : `+ ${nebenAnzahl} Nebengeschichte${nebenAnzahl === 1 ? '' : 'n'} (Side Stories, Alternativen …)`}
+              </button>
+            )}
+            </>
           ) : isAnime ? (
             <div className="fortschritt-zeile">
               <span className="fortschritt-label">Folge</span>

@@ -20,8 +20,10 @@ export function useBeiAenderung(f: () => void) {
 export async function aendereFortschritt(entryId: number, delta: 1 | -1) {
   const r = await api.aendereFortschritt(entryId, delta)
   if (!r) return
+  // Manga werden gelesen, Anime geschaut
+  const verb = r.entry?.type === 'MANGA' ? 'gelesen' : 'geschaut'
   if (r.keinZiel) {
-    snackbar(delta > 0 ? 'Alles Verfügbare ist schon geschaut.' : 'Noch nichts geschaut.')
+    snackbar(delta > 0 ? `Alles Verfügbare ist schon ${verb}.` : `Noch nichts ${verb}.`)
     return
   }
   meldeAenderung()
@@ -32,7 +34,7 @@ export async function aendereFortschritt(entryId: number, delta: 1 | -1) {
   } : undefined)
 
   if (r.fertigVorschlag) {
-    const ja = await bestaetigen(`„${titel}" komplett geschaut`, {
+    const ja = await bestaetigen(`„${titel}" komplett ${verb}`, {
       text: 'Als „Beendet" markieren?', ok: 'Beendet', abbrechen: 'Noch nicht',
     })
     if (ja) {

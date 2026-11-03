@@ -97,6 +97,9 @@ app.whenReady().then(async () => {
   registerSicherungHandlers(ipcMain)
   registerBegruessungHandlers(ipcMain)
   registerSerienHandlers(ipcMain)
+  // Neu laden (z. B. nach einer Wiederherstellung): ein location.reload() aus der Seite fängt der
+  // Navigationsschutz (will-navigate) ab – der Main-Prozess lädt dasselbe Fenster mit derselben Adresse neu
+  ipcMain.handle('fenster:neuLaden', (event) => { event.sender.reload() })
   const sync = erstelleSyncDienst(pcPlattform)
   sync.registriere(ipcMain)
   const win = createWindow()
