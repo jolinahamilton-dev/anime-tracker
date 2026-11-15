@@ -56,10 +56,21 @@ const VORAUSWAHL_FARBEN = [
   '#ff6b35', '#ffcc00', '#00c9b1', '#ff4757',
 ]
 
+
+// Ob „Erweitert“ offen ist, gilt für die Sitzung (bleibt auch nach dem Neuladen nach einer Wiederherstellung offen)
+const ERWEITERT_KEY = 'einstellungen-erweitert'
+const erweitertGespeichert = () => { try { return sessionStorage.getItem(ERWEITERT_KEY) === '1' } catch { return false } }
+
 export default function EinstellungenPage() {
   const navigate = useNavigate()
   const { settings, speichern } = useSettings()
   const installierbar = useInstallierbar()
+  const [erweitertOffen, setErweitertOffen] = useState(erweitertGespeichert)
+  function schalteErweitert() {
+    const neu = !erweitertOffen
+    setErweitertOffen(neu)
+    try { sessionStorage.setItem(ERWEITERT_KEY, neu ? '1' : '0') } catch { /* egal */ }
+  }
 
   // Nebengeschichten (Side Stories, Spin-offs, Filme, Kurzserien) in den News – Standard: aus
   const [newsNeben, setNewsNeben] = useState(false)
@@ -393,6 +404,20 @@ export default function EinstellungenPage() {
           </dl>
         </section>}
 
+        {/* Erweitert: Sicherung, Import, Export, AniList-Abgleich – braucht man im Alltag nicht, deshalb eingeklappt */}
+        <section className="einstell-section">
+          <button
+            className="einstell-aufklapp"
+            onClick={schalteErweitert}
+            aria-expanded={erweitertOffen}
+            aria-controls="einstell-erweitert"
+          >
+            <span className="aufklapp-pfeil" aria-hidden="true">▸</span>
+            <span className="section-titel">Erweitert</span>
+            <span className="einstell-sub">Sicherung, Import, Export, AniList-Abgleich</span>
+          </button>
+        {erweitertOffen && <div id="einstell-erweitert" className="einstell-erweitert">
+
         {/* Komplette Sicherung */}
         {kann.dateien && <section className="einstell-section">
           <h3 className="section-titel">Komplette Sicherung</h3>
@@ -572,6 +597,9 @@ export default function EinstellungenPage() {
             {exportLaeuft ? 'Wird exportiert…' : '⬇ Export starten'}
           </button>
         </section>}
+
+        </div>}
+        </section>
 
       </div>
     </div>
