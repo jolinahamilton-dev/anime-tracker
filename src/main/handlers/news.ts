@@ -1,6 +1,7 @@
 import { IpcMain } from 'electron'
 import { dbAll, dbGet, dbRun } from '../../db/database'
 import { anilistAbfrage } from './anilist'
+import { aboIdsSql, newsWatchOrderBedingung } from './news-regel'
 
 const ZWEI_MONATE_SEKUNDEN = 60 * 24 * 3600 * 2
 const ZWEI_WOCHEN_SEKUNDEN = 14 * 24 * 3600
@@ -23,13 +24,6 @@ query ($ids: [Int], $page: Int, $seit: Int, $bis: Int) {
 
 type Ausstrahlung = { mediaId: number, episode: number, airingAt: number }
 
-// AniList-IDs aller abonnierten Anime samt ihrer Staffeln – News anderer Anime werden
-// ausgeblendet (z. B. ältere Einträge von inzwischen abbestellten Anime)
-const ABO_IDS = `
-  SELECT anilist_id FROM entries WHERE abonniert = 1 AND anilist_id IS NOT NULL
-  UNION
-  SELECT w.related_anilist_id FROM watch_order w JOIN entries e ON e.id = w.entry_id WHERE e.abonniert = 1`
-
 async function fetchAiringSchedule(anilistIds: number[], seit: number, bis: number) {
   const alle: Ausstrahlung[] = []
   for (let page = 1; page <= MAX_SEITEN; page++) {
@@ -48,15 +42,15 @@ function bereinigeAlteNews() {
 export async function aktualisiereNews() {
   bereinigeAlteNews()
 
-  // Abonnierte Haupteinträge UND ihre noch laufenden/angekündigten Staffeln
-  // (neue Staffeln haben eigene AniList-IDs)
+  // Abonnierte Haupteinträge UND ihre noch laufenden/angekündigten Staffeln der Hauptlinie
+  // (neue Staffeln haben eigene AniList-IDs; Nebengeschichten nur mit der Einstellung)
   const rows = dbAll(`
     SELECT anilist_id AS id FROM entries
       WHERE type = 'ANIME' AND anilist_id IS NOT NULL AND abonniert = 1
     UNION
     SELECT w.related_anilist_id FROM watch_order w JOIN entries e ON e.id = w.entry_id
       WHERE e.type = 'ANIME' AND e.abonniert = 1
-        AND (w.media_status IS NULL OR w.media_status IN ('RELEASING', 'NOT_YET_RELEASED'))`)
+        AND (w.media_status IS NULL OR w.media_status IN ('RELEASING', 'NOT_YET_RELEASED'))${newsWatchOrderBedingung('w')}`)
   if (rows.length === 0) return
 
   const ids = rows.map(r => r.id as number)
@@ -83,7 +77,7 @@ export function registerNewsHandlers(ipcMain: IpcMain) {
         COALESCE(e.id, (SELECT w.entry_id FROM watch_order w WHERE w.related_anilist_id = n.anilist_id LIMIT 1)) AS entry_id
       FROM news_cache n
       LEFT JOIN entries e ON e.anilist_id = n.anilist_id
-      WHERE n.airing_at >= ? AND n.anilist_id IN (${ABO_IDS})
+      WHERE n.airing_at >= ? AND n.anilist_id IN (${aboIdsSql()})
       ORDER BY n.airing_at DESC
       LIMIT 100
     `, [grenze])
@@ -91,7 +85,7 @@ export function registerNewsHandlers(ipcMain: IpcMain) {
 
   ipcMain.handle('news:getUnseenCount', () => {
     const now = Math.floor(Date.now() / 1000)
-    const row = dbGet(`SELECT COUNT(*) as count FROM news_cache WHERE seen = 0 AND airing_at <= ? AND anilist_id IN (${ABO_IDS})`, [now])
+    const row = dbGet(`SELECT COUNT(*) as count FROM news_cache WHERE seen = 0 AND airing_at <= ? AND anilist_id IN (${aboIdsSql()})`, [now])
     return (row?.count as number) ?? 0
   })
 

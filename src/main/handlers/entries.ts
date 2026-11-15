@@ -2,6 +2,7 @@ import { IpcMain, BrowserWindow } from 'electron'
 import { dbAll, dbGet, dbRun, dbRunGetId, getDb, schedulePersist } from '../../db/database'
 import { pruefeAchievements } from './achievements'
 import { pruefeAutoBeendet } from './serien'
+import { nebenInNews } from './news-regel'
 
 // Fortschritt beim Anlegen; bei „Beendet" wie in entries:update auf das Maximum setzen
 function fortschrittBeimAnlegen(data: Record<string, unknown>): [number, number, number] {
@@ -172,6 +173,13 @@ function ergaenzeEintraege(eintraege: Zeile[], woZeilen: Zeile[]): Zeile[] {
     if (liste) liste.push(z); else hauptlinie.set(z.entry_id as number, [z])
   }
   const termine = naechsteAusstrahlungen()
+  // Für die „nächste Folge" zählen dieselben Teile wie in den News (Hauptlinie, mit Einstellung alle)
+  const neben = nebenInNews()
+  const newsZeilen = neben ? new Map<number, Zeile[]>() : hauptlinie
+  if (neben) for (const z of woZeilen) {
+    const liste = newsZeilen.get(z.entry_id as number)
+    if (liste) liste.push(z); else newsZeilen.set(z.entry_id as number, [z])
+  }
 
   return eintraege.map(e => {
     if (e.type !== 'ANIME') return e
@@ -201,7 +209,7 @@ function ergaenzeEintraege(eintraege: Zeile[], woZeilen: Zeile[]): Zeile[] {
       let staffel: Zeile | null = null
       if (aktuell) { treffer = termine.get(aktuell.related_anilist_id as number); staffel = aktuell }
       if (!treffer) {
-        const kandidaten: [number, Zeile | null][] = zeilen.map(z => [z.related_anilist_id as number, z])
+        const kandidaten: [number, Zeile | null][] = (newsZeilen.get(e.id as number) ?? []).map(z => [z.related_anilist_id as number, z])
         if (e.anilist_id != null) kandidaten.push([e.anilist_id as number, null])
         for (const [aid, z] of kandidaten) {
           const t = termine.get(aid)

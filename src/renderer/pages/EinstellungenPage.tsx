@@ -62,6 +62,15 @@ export default function EinstellungenPage() {
   const { settings, speichern } = useSettings()
   const installierbar = useInstallierbar()
 
+  // Nebengeschichten (Side Stories, Spin-offs, Filme, Kurzserien) in den News – Standard: aus
+  const [newsNeben, setNewsNeben] = useState(false)
+  useEffect(() => { api.getMeta('newsNeben').then(v => setNewsNeben(v === 'true')) }, [])
+  function schalteNewsNeben() {
+    const neu = !newsNeben
+    setNewsNeben(neu)
+    api.setMeta('newsNeben', String(neu))
+  }
+
   const [importLaeuft, setImportLaeuft] = useState(false)
   const [importMeldung, setImportMeldung] = useState('')
 
@@ -287,6 +296,19 @@ export default function EinstellungenPage() {
             <button
               className={settings.darkMode ? 'toggle aktiv' : 'toggle'}
               onClick={() => speichern({ darkMode: !settings.darkMode })}
+            >
+              <span className="toggle-knopf" />
+            </button>
+          </div>
+
+          <div className="einstell-zeile">
+            <div className="einstell-info">
+              <span className="einstell-label">Nebengeschichten in den News zeigen</span>
+              <span className="einstell-sub">Side Stories, Spin-offs, Filme und Kurzserien zusätzlich zur Hauptgeschichte anzeigen</span>
+            </div>
+            <button
+              className={newsNeben ? 'toggle aktiv' : 'toggle'}
+              onClick={schalteNewsNeben}
             >
               <span className="toggle-knopf" />
             </button>

@@ -3,7 +3,7 @@ import { NavigateFunction, useNavigate } from 'react-router-dom'
 import { AniListSearchResult, Entry, GeplantVorschlag, Vorschlag, VorschlagAntwort } from '../../types'
 import { api } from '../api'
 import { snackbar } from '../meldungen'
-import { MediaFilter, VorschlagBereich, vorschlagSitzung } from '../einpflegenZustand'
+import { GeplantDauer, MediaFilter, VorschlagBereich, vorschlagSitzung } from '../einpflegenZustand'
 import { eintragAusAniList } from './EintragVorschau'
 import Ladeindikator from './Ladeindikator'
 import './Vorschlaege.css'
@@ -74,15 +74,15 @@ export default function Vorschlaege({ onAuswaehlen }: Props) {
   const [entfernt, setEntfernt] = useState<Set<string>>(() => new Set(vorschlagSitzung.entfernt))
   const [gewaehlt, setGewaehlt] = useState<VorschlagBereich | null>(vorschlagSitzung.bereich)
   const [beschaeftigt, setBeschaeftigt] = useState<Set<number>>(new Set())
-  const [geplantTyp, setGeplantTyp] = useState<MediaFilter>(vorschlagSitzung.geplantTyp)
-  const [geplantKurz, setGeplantKurz] = useState(vorschlagSitzung.geplantKurz)
+  const [typ, setTyp] = useState<MediaFilter>(vorschlagSitzung.typ)
+  const [dauer, setDauer] = useState<GeplantDauer>(vorschlagSitzung.geplantDauer)
   const [hervorgehoben, setHervorgehoben] = useState<number | null>(null)
   const listeRef = useRef<HTMLDivElement>(null)
   const aktiv = useRef(true)
 
   useEffect(() => () => { aktiv.current = false }, [])
-  useEffect(() => { vorschlagSitzung.geplantTyp = geplantTyp }, [geplantTyp])
-  useEffect(() => { vorschlagSitzung.geplantKurz = geplantKurz }, [geplantKurz])
+  useEffect(() => { vorschlagSitzung.typ = typ }, [typ])
+  useEffect(() => { vorschlagSitzung.geplantDauer = dauer }, [dauer])
 
   const lade = useCallback(async (neu: boolean, still = false) => {
     if (neu) setBerechnen(true)
@@ -111,14 +111,16 @@ export default function Vorschlaege({ onAuswaehlen }: Props) {
   }, [])
 
   const listen = useMemo(() => {
-    const ohne = (l: Vorschlag[] | undefined) => (l ?? []).filter(v => !entfernt.has(schluesselA(v.media.id)))
+    const ohne = (l: Vorschlag[] | undefined) => (l ?? []).filter(v =>
+      !entfernt.has(schluesselA(v.media.id)) && (typ === 'ALLE' || v.media.type === typ))
     return {
       empfehlungen: ohne(antwort?.empfehlungen),
       adaptionen: ohne(antwort?.adaptionen),
       saison: ohne(antwort?.saison),
-      geplant: (antwort?.geplant ?? []).filter(g => !entfernt.has(schluesselE(g.entry_id))),
+      geplant: (antwort?.geplant ?? []).filter(g =>
+        !entfernt.has(schluesselE(g.entry_id)) && (typ === 'ALLE' || g.type === typ)),
     }
-  }, [antwort, entfernt])
+  }, [antwort, entfernt, typ])
 
   const vorhandene = BEREICHE.filter(b => listen[b.key].length > 0)
   // Gewählter Bereich leer (z. B. letzte Karte hinzugefügt) → der erste mit Inhalt
@@ -176,9 +178,17 @@ export default function Vorschlaege({ onAuswaehlen }: Props) {
   })
 
   // ── Geplant-Liste: Filter und Zufallsauswahl ──
+  // Kurz/Lang gelten nur für Anime mit bekannter Folgenzahl
   const geplantGefiltert = listen.geplant.filter(g =>
-    (geplantTyp === 'ALLE' || g.type === geplantTyp) &&
-    (!geplantKurz || (g.type === 'ANIME' && g.folgen != null && g.folgen <= 13)))
+    dauer === 'alle' ||
+    (g.type === 'ANIME' && g.folgen != null && (dauer === 'kurz' ? g.folgen <= 13 : g.folgen > 24)))
+
+  function waehleTyp(t: MediaFilter) {
+    setTyp(t)
+    setHervorgehoben(null)
+    vorschlagSitzung.scrollPosition = 0
+    if (listeRef.current) listeRef.current.scrollTop = 0
+  }
 
   function zufall() {
     if (geplantGefiltert.length === 0) return
@@ -235,6 +245,21 @@ export default function Vorschlaege({ onAuswaehlen }: Props) {
         </p>
       )}
 
+      {(antwort || typ !== 'ALLE') && (
+        <div className="vorschlaege-typ" role="group" aria-label="Anime oder Manga">
+          {(['ALLE', 'ANIME', 'MANGA'] as MediaFilter[]).map(t => (
+            <button
+              key={t}
+              className={typ === t ? 'filter-btn active' : 'filter-btn'}
+              aria-pressed={typ === t}
+              onClick={() => waehleTyp(t)}
+            >
+              {t === 'ALLE' ? 'Alle' : t === 'ANIME' ? 'Anime' : 'Manga'}
+            </button>
+          ))}
+        </div>
+      )}
+
       {vorhandene.length > 0 && (
         <div className="vorschlaege-bereiche" role="group" aria-label="Art der Vorschläge">
           {vorhandene.map(b => (
@@ -265,6 +290,8 @@ export default function Vorschlaege({ onAuswaehlen }: Props) {
                 <button className="vorschlaege-neu" onClick={() => lade(false)}>Nochmal versuchen</button>
               </div>
             )
+          ) : typ !== 'ALLE' && ((antwort.empfehlungen?.length ?? 0) + (antwort.adaptionen?.length ?? 0) + (antwort.saison?.length ?? 0) + (antwort.geplant?.length ?? 0)) > 0 ? (
+            <p className="vorschlaege-keine">Nichts gefunden – für {typ === 'ANIME' ? 'Anime' : 'Manga'} gibt es gerade keine Vorschläge.</p>
           ) : (
             <div className="empty-state vorschlaege-leer">
               <div className="empty-icon" aria-hidden="true">✨</div>
@@ -286,26 +313,19 @@ export default function Vorschlaege({ onAuswaehlen }: Props) {
             {bereich === 'geplant' ? (
               <>
                 <div className="geplant-filter" role="group" aria-label="Geplant-Liste filtern">
-                  {(['ALLE', 'ANIME', 'MANGA'] as MediaFilter[]).map(f => (
+                  {([['alle', 'Alle'], ['kurz', 'Kurz (≤ 13 Folgen)'], ['lang', 'Lang (> 24 Folgen)']] as Array<[GeplantDauer, string]>).map(([d, text]) => (
                     <button
-                      key={f}
-                      className={geplantTyp === f ? 'filter-btn active' : 'filter-btn'}
-                      aria-pressed={geplantTyp === f}
-                      onClick={() => { setGeplantTyp(f); setHervorgehoben(null) }}
+                      key={d}
+                      className={dauer === d ? 'filter-btn active' : 'filter-btn'}
+                      aria-pressed={dauer === d}
+                      onClick={() => { setDauer(d); setHervorgehoben(null) }}
                     >
-                      {f === 'ALLE' ? 'Alle' : f === 'ANIME' ? 'Anime' : 'Manga'}
+                      {text}
                     </button>
                   ))}
-                  <button
-                    className={geplantKurz ? 'filter-btn active' : 'filter-btn'}
-                    aria-pressed={geplantKurz}
-                    onClick={() => { setGeplantKurz(k => !k); setHervorgehoben(null) }}
-                  >
-                    Kurz (≤ 13 Folgen)
-                  </button>
                 </div>
                 {geplantGefiltert.length === 0 ? (
-                  <p className="vorschlaege-keine">Kein geplanter Titel passt zu diesem Filter.</p>
+                  <p className="vorschlaege-keine">Nichts gefunden – kein geplanter Titel passt zu diesem Filter.</p>
                 ) : (
                   <div className="vorschlag-raster">
                     {geplantGefiltert.map(g => (

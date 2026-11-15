@@ -2,6 +2,7 @@ import { IpcMain, BrowserWindow } from 'electron'
 import { dbAll, dbGet, getDb, schedulePersist } from '../../db/database'
 import { anilistAbfrage } from './anilist'
 import { schreibeWatchOrder } from './watchorder'
+import { nebenInNews, newsRelationErlaubt, newsWatchOrderBedingung } from './news-regel'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Serien-Abgleich: erkennt neue Folgen und neue Staffeln (eigene AniList-IDs) über
@@ -225,6 +226,8 @@ export async function aktualisiereSerien(win: BrowserWindow | null): Promise<Ser
     const geaendert = new Set<number>()
     const jetzt = new Date().toISOString()
     const db = getDb()
+    // Hinweise („Neue Folge/Staffel") nur für die Hauptlinie – Nebengeschichten nur mit der News-Einstellung
+    const neben = nebenInNews()
 
     // Folgenlängen nebenbei für die Statistik merken (kostet keine zusätzliche Anfrage)
     const dauern = new Map<number, number>()
@@ -283,7 +286,7 @@ export async function aktualisiereSerien(win: BrowserWindow | null): Promise<Ser
         neu = ordne(kandidaten, haupt.id).map(k => neueZeile(k, k.id === haupt.id))
         for (const z of neu) {
           const k = kandidaten.get(z.related_anilist_id)!
-          if (z.neu_seit && istAktuell(k.media)) { ausloeser.push(k.id); art = 'staffel' }
+          if (z.neu_seit && istAktuell(k.media) && newsRelationErlaubt(z.relation_type, neben)) { ausloeser.push(k.id); art = 'staffel' }
         }
       } else {
         neu = vorher.map(z => ({ ...z }))
@@ -306,9 +309,11 @@ export async function aktualisiereSerien(win: BrowserWindow | null): Promise<Ser
           if (jetztAusgestrahlt != null) {
             // Nur wirklich ungesehene neue Folgen zählen
             if (alt != null && jetztAusgestrahlt > alt && z.progress_episodes < jetztAusgestrahlt) {
-              ausloeser.push(z.related_anilist_id)
-              // Angekündigte Staffel hat angefangen (0 → 1+) = neue Staffel (mit NEU-Markierung), sonst neue Folge
-              if (alt === 0) { art = 'staffel'; z.neu_seit = jetzt } else art = art ?? 'folge'
+              if (newsRelationErlaubt(z.relation_type, neben)) {
+                ausloeser.push(z.related_anilist_id)
+                // Angekündigte Staffel hat angefangen (0 → 1+) = neue Staffel (mit NEU-Markierung), sonst neue Folge
+                if (alt === 0) { art = 'staffel'; z.neu_seit = jetzt } else art = art ?? 'folge'
+              } else if (alt === 0) z.neu_seit = jetzt
               if (z.item_status === 'completed') z.item_status = 'started'
             }
             z.aired_episodes = jetztAusgestrahlt
@@ -324,7 +329,7 @@ export async function aktualisiereSerien(win: BrowserWindow | null): Promise<Ser
           else if (!eigeneReihenfolge && quellIdx >= 0 && k.relation === 'PREQUEL') neu.splice(quellIdx, 0, item)
           else neu.push(item)
           // Ankündigungen landen in der Watch-Order, ändern aber den Status nicht
-          if (item.neu_seit && istAktuell(k.media)) { ausloeser.push(k.id); art = 'staffel' }
+          if (item.neu_seit && istAktuell(k.media) && newsRelationErlaubt(k.relation, neben)) { ausloeser.push(k.id); art = 'staffel' }
         }
       }
 
@@ -398,7 +403,7 @@ export function registerSerienHandlers(ipcMain: IpcMain) {
              MAX(w.neu_seit) AS neu_seit, MIN(e.title) AS serie
       FROM watch_order w JOIN entries e ON e.id = w.entry_id
       WHERE w.neu_seit IS NOT NULL AND w.neu_seit >= ?
-        AND e.abonniert = 1
+        AND e.abonniert = 1${newsWatchOrderBedingung('w')}
       GROUP BY w.related_anilist_id
       ORDER BY neu_seit DESC
     `, [new Date(Date.now() - 60 * TAG_MS).toISOString()])

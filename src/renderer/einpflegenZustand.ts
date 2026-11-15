@@ -5,6 +5,7 @@ import { AniListSearchResult, VorschlagAntwort } from '../types'
 // Speicher, gilt also, solange die App offen ist.
 
 export type MediaFilter = 'ANIME' | 'MANGA' | 'ALLE'
+export type GeplantDauer = 'alle' | 'kurz' | 'lang'
 export type EinpflegenTab = 'suche' | 'manuell' | 'fuerdich'
 export type VorschlagBereich = 'empfehlungen' | 'adaptionen' | 'saison' | 'geplant'
 
@@ -22,8 +23,8 @@ export const vorschlagSitzung = {
   antwort: null as VorschlagAntwort | null,
   bereich: null as VorschlagBereich | null,
   scrollPosition: 0,
-  geplantTyp: 'ALLE' as MediaFilter,
-  geplantKurz: false,
+  typ: 'ALLE' as MediaFilter, // gilt für alle Bereiche
+  geplantDauer: 'alle' as GeplantDauer,
   // Hinzugefügte / ausgeblendete Titel bleiben weg, auch wenn ein älterer Stand nachgeladen wird
   entfernt: new Set<string>(), // `a<anilistId>` bzw. `e<entryId>`
 }

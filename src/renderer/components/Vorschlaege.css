@@ -61,6 +61,15 @@
 }
 
 /* Bereichs-Chips: am Handy waagerecht wischbar statt umzubrechen */
+.vorschlaege-typ {
+  display: flex;
+  gap: 6px;
+  padding: 8px 20px 0;
+  flex-shrink: 0;
+}
+
+.vorschlaege-typ .filter-btn { padding: 6px 14px; }
+
 .vorschlaege-bereiche {
   display: flex;
   gap: 6px;
@@ -359,6 +368,7 @@ button.vorschlag-kopf:focus-visible { outline-offset: -2px; border-radius: var(-
 @media (max-width: 640px) {
   .vorschlaege-kopf { padding: 12px 16px 4px; }
   .vorschlaege-hinweis { margin: 4px 16px 2px; }
+  .vorschlaege-typ { padding: 8px 16px 0; }
   .vorschlaege-bereiche { padding: 8px 16px 10px; }
   .vorschlaege-liste { padding: 4px 16px 24px; }
 }
