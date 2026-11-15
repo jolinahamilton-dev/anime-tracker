@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Page.css'
 import './NewsPage.css'
@@ -24,6 +24,9 @@ interface NeueStaffel {
   neu_seit: string
   serie: string
 }
+
+// Scrollposition des Feeds: beim Zurückkommen von einer Detailseite wie vorher (Modulzustand)
+const sitzung = { scroll: 0 }
 
 function formatDatum(unix: number): string {
   const d = new Date(unix * 1000)
@@ -63,6 +66,16 @@ export default function NewsPage() {
   const [staffeln, setStaffeln] = useState<NeueStaffel[]>([])
   const [laden, setLaden] = useState(true)
   const [aktualisieren, setAktualisieren] = useState(false)
+  const inhaltRef = useRef<HTMLDivElement>(null)
+  const wiederhergestellt = useRef(false)
+  // „Zurück“ auf der Detailseite führt hierher (1 Schritt) – siehe DetailPage (zurueck)
+  const oeffne = (id: number) => navigate(`/detail/${id}`, { state: { zurueck: 1 } })
+
+  // Sobald der Feed gerendert ist, an die alte Stelle springen
+  useLayoutEffect(() => {
+    if (wiederhergestellt.current || laden || !inhaltRef.current) return
+    wiederhergestellt.current = true
+    inhaltRef.current.scrollTop = sitzung.scroll  }, [laden])
 
   useEffect(() => { ladeNews() }, [])
   // Hintergrund-Abgleich fertig → neue Staffeln/Folgen anzeigen
@@ -115,7 +128,7 @@ export default function NewsPage() {
           <p className="empty-hint">Abonniere Anime mit 🔔 (auf der Karte oder in der Detailansicht), um News zu neuen Folgen und Staffeln zu bekommen.</p>
         </div>
       ) : (
-        <div className="news-inhalt">
+        <div className="news-inhalt" ref={inhaltRef} onScroll={e => { sitzung.scroll = e.currentTarget.scrollTop }}>
           {staffeln.length > 0 && (
             <section>
               <h3 className="news-gruppe-titel">Neue Staffeln & Ankündigungen</h3>
@@ -123,7 +136,7 @@ export default function NewsPage() {
                 <button
                   key={`${s.entry_id}-${s.related_anilist_id}`}
                   className="news-karte news-karte--klickbar"
-                  onClick={() => navigate(`/detail/${s.entry_id}`)}
+                  onClick={() => oeffne(s.entry_id)}
                 >
                   {s.cover_url && <img src={s.cover_url} alt="" className="news-cover" />}
                   <div className="news-info">
@@ -146,7 +159,7 @@ export default function NewsPage() {
               {sendeplan(bald).map(tag => (
                 <div key={tag.schluessel} className="sendeplan-tag">
                   <h4 className="sendeplan-datum">{tag.ueberschrift}</h4>
-                  {tag.folgen.map(item => <NewsKarte key={item.id} item={item} onOeffnen={id => navigate(`/detail/${id}`)} />)}
+                  {tag.folgen.map(item => <NewsKarte key={item.id} item={item} onOeffnen={oeffne} />)}
                 </div>
               ))}
             </section>
@@ -154,7 +167,7 @@ export default function NewsPage() {
           {erschienen.length > 0 && (
             <section>
               <h3 className="news-gruppe-titel">Neue Folgen</h3>
-              {erschienen.map(item => <NewsKarte key={item.id} item={item} onOeffnen={id => navigate(`/detail/${id}`)} />)}
+              {erschienen.map(item => <NewsKarte key={item.id} item={item} onOeffnen={oeffne} />)}
             </section>
           )}
         </div>

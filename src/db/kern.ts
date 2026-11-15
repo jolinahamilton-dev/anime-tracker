@@ -136,6 +136,13 @@ export function migrateSchema(db: Database) {
   if (!entryCols.includes('rewatch_count')) db.run('ALTER TABLE entries ADD COLUMN rewatch_count INTEGER NOT NULL DEFAULT 0')
   if (!entryCols.includes('finished_at'))   db.run('ALTER TABLE entries ADD COLUMN finished_at TEXT')
 
+  // Sammlung (Manga im Regal): besessene und gewünschte Bände als kompakte Bereichsliste („1-12,14"),
+  // dazu Ausgabe/Verlag als Text. NULL = nichts erfasst. Zwei Textfelder statt einer Tabelle: der
+  // Abgleich arbeitet feldweise (letzte Änderung gewinnt), und eine Serie hat nur wenige Bereiche.
+  if (!entryCols.includes('baende_besitz')) db.run('ALTER TABLE entries ADD COLUMN baende_besitz TEXT')
+  if (!entryCols.includes('baende_wunsch')) db.run('ALTER TABLE entries ADD COLUMN baende_wunsch TEXT')
+  if (!entryCols.includes('ausgabe'))       db.run('ALTER TABLE entries ADD COLUMN ausgabe TEXT')
+
   // Folgenlänge in Minuten je AniList-ID (Haupteinträge und Staffeln) – reiner Cache für die
   // Statistik, wird nicht synchronisiert
   db.run('CREATE TABLE IF NOT EXISTS media_dauer (anilist_id INTEGER PRIMARY KEY, minuten INTEGER NOT NULL)')
@@ -177,7 +184,7 @@ export function migrateSchema(db: Database) {
 export const SYNC_FELDER = {
   entries: ['anilist_id', 'type', 'title', 'nickname', 'cover_url', 'genres', 'description', 'total_episodes',
     'total_chapters', 'total_volumes', 'progress_episodes', 'progress_chapters', 'progress_volumes', 'status',
-    'rating', 'is_favorite', 'review', 'abonniert', 'auto_offen', 'bekannte_ids', 'rewatch_count', 'finished_at', 'created_at'],
+    'rating', 'is_favorite', 'review', 'abonniert', 'auto_offen', 'bekannte_ids', 'rewatch_count', 'finished_at', 'baende_besitz', 'baende_wunsch', 'ausgabe', 'created_at'],
   custom_lists: ['name', 'created_at'],
   watch_order: ['relation_type', 'position', 'is_custom', 'title', 'cover_url', 'progress_episodes', 'item_status', 'neu_seit', 'total_episodes'],
 }

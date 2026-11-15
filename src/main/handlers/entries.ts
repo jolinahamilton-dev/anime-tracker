@@ -266,7 +266,7 @@ export function registerEntryHandlers(ipcMain: IpcMain) {
   ipcMain.handle('entries:update', (event, id: number, data: Record<string, unknown>) => {
     const ALLOWED = new Set(['type','title','nickname','cover_url','genres','description','total_episodes',
       'total_chapters','total_volumes','progress_episodes','progress_chapters','progress_volumes',
-      'status','rating','is_favorite','review','rewatch_count'])
+      'status','rating','is_favorite','review','rewatch_count','baende_besitz','baende_wunsch','ausgabe'])
 
     const current = dbGet('SELECT status, type, total_episodes, total_chapters, total_volumes FROM entries WHERE id = ?', [id])
     // Fix #5: Bei status=completed → Fortschritt automatisch auf Maximalwert setzen

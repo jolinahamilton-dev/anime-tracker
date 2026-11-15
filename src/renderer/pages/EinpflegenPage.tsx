@@ -32,6 +32,7 @@ export default function EinpflegenPage() {
         data={ausgewaehlt}
         onZurueck={() => setAusgewaehlt(null)}
         startStatus={ausVorschlag ? 'planned' : undefined}
+        suchtext={tab === 'suche' ? einpflegenSitzung.suchbegriff : undefined}
         onHinzugefuegt={ausVorschlag ? (entry, schonVorhanden) => {
           vorschlagErledigt(ausgewaehlt.id)
           setAusgewaehlt(null)

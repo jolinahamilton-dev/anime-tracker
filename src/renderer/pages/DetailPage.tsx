@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { Entry, EntryStatus } from '../../types'
 import Sterne from '../components/Sterne'
+import Sammlung from '../components/Sammlung'
 import WatchOrder, { WatchItem, istNeueStaffel, istNebensache } from '../components/WatchOrder'
 import BildVergroesserung from '../components/BildVergroesserung'
 import { naechsteFolgeText } from '../components/EintragKarte'
@@ -512,6 +513,9 @@ export default function DetailPage() {
               onClick={() => update({ rewatch_count: entry.rewatch_count + 1 })}>+</button>
           </div>
         </div>
+
+        {/* Sammlung: nur Manga – welche Bände stehen als Buch im Regal */}
+        {!isAnime && <Sammlung entry={entry} speichere={update} />}
 
         {/* Listen */}
         {listen.length > 0 && (

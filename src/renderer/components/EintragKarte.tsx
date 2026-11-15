@@ -1,6 +1,7 @@
 import { KeyboardEvent, MouseEvent } from 'react'
 import { Entry } from '../../types'
 import { Ansicht } from '../listenZustand'
+import { anzahlBaende } from '../baende'
 import './EintragKarte.css'
 
 export const STATUS_FARBE: Record<string, string> = {
@@ -79,6 +80,8 @@ export default function EintragKarte({ entry, onClick, ansicht = 'kacheln', onVe
       ? { aktuell: entry.progress_episodes, gesamt: entry.total_episodes }
       : { aktuell: entry.progress_chapters, gesamt: entry.total_chapters }
   const naechste = entry.type === 'ANIME' ? naechsteFolgeText(entry) : null
+  // Sammlung: Bände im Regal (nur Manga mit mindestens einem Band)
+  const imRegal = entry.type === 'MANGA' ? anzahlBaende(entry.baende_besitz) : 0
 
   const prozent = fortschritt.gesamt
     ? Math.min(100, Math.round((fortschritt.aktuell / fortschritt.gesamt) * 100))
@@ -141,6 +144,11 @@ export default function EintragKarte({ entry, onClick, ansicht = 'kacheln', onVe
         <span className="karte-status" style={{ color: STATUS_TEXTFARBE[entry.status] }}>
           {STATUS_LABEL[entry.status]}
           {entry.rewatch_count > 0 && <span className="karte-rewatch" title={`${entry.rewatch_count}× wiederholt`}> ↻{entry.rewatch_count}</span>}
+          {imRegal > 0 && (
+            <span className="karte-regal" title={entry.total_volumes ? `${imRegal} von ${entry.total_volumes} Bänden im Regal` : `${imRegal} Bände im Regal`}>
+              {' '}📚 {imRegal}{entry.total_volumes ? `/${entry.total_volumes}` : ''}
+            </span>
+          )}
         </span>
         {prozent !== null || staffel ? (
           <div className="karte-progress">

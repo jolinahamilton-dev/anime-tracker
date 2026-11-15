@@ -22,6 +22,7 @@ export default function ManuelleEingabe() {
   const navigate = useNavigate()
   const [typ, setTyp] = useState<MediaType>('ANIME')
   const [titel, setTitel] = useState('')
+  const [spitzname, setSpitzname] = useState('')
   const [status, setStatus] = useState<EntryStatus>('started')
   const [gesamtFolgen, setGesamtFolgen] = useState('')
   const [fortschritt, setFortschritt] = useState(0)
@@ -49,6 +50,7 @@ export default function ManuelleEingabe() {
         anilist_id: null,
         type: typ,
         title: titel.trim(),
+        nickname: spitzname.trim() || null,
         cover_url: null,
         genres: JSON.stringify(genres),
         description: beschreibung || null,
@@ -92,6 +94,18 @@ export default function ManuelleEingabe() {
             value={titel}
             onChange={e => setTitel(e.target.value)}
             className="manuelle-input"
+          />
+        </div>
+
+        <div className="formular-zeile">
+          <label>Spitzname</label>
+          <input
+            type="text"
+            placeholder="Spitzname (optional)"
+            value={spitzname}
+            onChange={e => setSpitzname(e.target.value)}
+            className="manuelle-input"
+            maxLength={100}
           />
         </div>
 

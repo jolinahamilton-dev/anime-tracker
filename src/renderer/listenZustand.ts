@@ -12,6 +12,7 @@ export interface ListenFilter {
   filterStatus: EntryStatus[] // leer = alle Status
   filterFavorit: boolean
   filterAbo: boolean // nur abonnierte Anime
+  filterRegal: boolean // nur Manga mit mindestens einem Band im Regal
   sortierung: SortOption
   aktiveListe: number | null
 }
@@ -21,6 +22,7 @@ export const STANDARD_FILTER: ListenFilter = {
   filterStatus: [],
   filterFavorit: false,
   filterAbo: false,
+  filterRegal: false,
   sortierung: 'zuletzt',
   aktiveListe: null,
 }

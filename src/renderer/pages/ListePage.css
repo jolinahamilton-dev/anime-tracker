@@ -375,3 +375,8 @@
   .ansicht-btn { width: 52px; height: 44px; font-size: 18px; }
   .sheet .filter-btn { min-height: 40px; padding: 0 14px; }
 }
+
+/* 📚 Im Regal (Manga mit Bänden) – eigener Akzent statt Gold */
+.regal-filter:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); }
+.regal-filter.aktiv { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.sammlung-link { white-space: nowrap; align-self: flex-start; }

@@ -5,6 +5,7 @@ import NewsPage from './pages/NewsPage'
 import EinstellungenPage from './pages/EinstellungenPage'
 import DetailPage from './pages/DetailPage'
 import StatistikPage from './pages/StatistikPage'
+import SammlungPage from './pages/SammlungPage'
 import AchievementToast from './components/AchievementToast'
 import SerienToast from './components/SerienToast'
 import Meldungen from './components/Meldungen'
@@ -100,6 +101,7 @@ export default function App() {
           <Route path="/einstellungen" element={<EinstellungenPage />} />
           <Route path="/detail/:id" element={<DetailPageNeu />} />
           <Route path="/statistiken" element={<StatistikPage />} />
+          <Route path="/sammlung" element={<SammlungPage />} />
         </Routes>
       </main>
 

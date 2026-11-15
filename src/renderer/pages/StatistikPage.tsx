@@ -89,6 +89,7 @@ type DetailFilter =
   | { typ: 'mediatyp'; wert: string; label: string }
   | { typ: 'status'; wert: string; label: string }
   | { typ: 'genre'; wert: string; label: string }
+  | { typ: 'kombi'; wert: string; label: string } // Medientyp + Statusliste, z. B. 'MANGA|started,ongoing'
   | { typ: 'alle'; wert: ''; label: string }
   | { typ: 'wiederholt'; wert: ''; label: string }
 
@@ -255,11 +256,17 @@ export default function StatistikPage() {
   // Kachel „Wiederholt": Zahl = Titel (wie die Liste beim Antippen), dazu die Wiederholungen insgesamt
   const wiederholteTitel = alleEintraege.filter(e => (e.rewatch_count ?? 0) > 0).length
 
-  const detailEintraege = detailFilter === null ? [] : alleEintraege.filter(e => {
+  const animeAktiv = alleEintraege.filter(e => e.type === 'ANIME' && (e.status === 'started' || e.status === 'ongoing')).length
+
+  const detailEintraege =detailFilter === null ? [] : alleEintraege.filter(e => {
     if (detailFilter.typ === 'alle') return true
     if (detailFilter.typ === 'wiederholt') return (e.rewatch_count ?? 0) > 0
     if (detailFilter.typ === 'mediatyp') return e.type === detailFilter.wert
     if (detailFilter.typ === 'status') return e.status === detailFilter.wert
+    if (detailFilter.typ === 'kombi') {
+      const [medientyp, stati] = detailFilter.wert.split('|')
+      return e.type === medientyp && stati.split(',').includes(e.status)
+    }
     if (detailFilter.typ === 'genre') {
       try { return (JSON.parse(e.genres) as string[]).includes(detailFilter.wert) } catch { return false }
     }
@@ -332,7 +339,16 @@ export default function StatistikPage() {
                 aktiv={istFilter('mediatyp', 'ANIME')}
                 onClick={ev => toggleFilter({ typ: 'mediatyp', wert: 'ANIME', label: 'Anime' }, ev)}
               />
-              <Kachel zahl={zahlText(stats.animeBeendet)} label="Beendet" />
+              <Kachel
+                zahl={zahlText(stats.animeBeendet)} label="Beendet"
+                aktiv={istFilter('kombi', 'ANIME|completed')}
+                onClick={ev => toggleFilter({ typ: 'kombi', wert: 'ANIME|completed', label: 'Anime – beendet' }, ev)}
+              />
+              <Kachel
+                zahl={zahlText(animeAktiv)} label="Am Schauen" title="Angefangene und laufende Anime"
+                aktiv={istFilter('kombi', 'ANIME|started,ongoing')}
+                onClick={ev => toggleFilter({ typ: 'kombi', wert: 'ANIME|started,ongoing', label: 'Anime – am Schauen' }, ev)}
+              />
               <Kachel zahl={zahlText(stats.folgenGesehen)} label="Folgen gesehen" />
               <Kachel
                 zahl={formatWatchtime(stats.watchtimeMinuten)} label="Watchtime"
@@ -357,8 +373,16 @@ export default function StatistikPage() {
                 aktiv={istFilter('mediatyp', 'MANGA')}
                 onClick={ev => toggleFilter({ typ: 'mediatyp', wert: 'MANGA', label: 'Manga' }, ev)}
               />
-              <Kachel zahl={zahlText(stats.mangaBeendet)} label="Beendet" />
-              <Kachel zahl={zahlText(stats.mangaAktiv)} label="Am Lesen" title="Angefangene und laufende Manga" />
+              <Kachel
+                zahl={zahlText(stats.mangaBeendet)} label="Beendet"
+                aktiv={istFilter('kombi', 'MANGA|completed')}
+                onClick={ev => toggleFilter({ typ: 'kombi', wert: 'MANGA|completed', label: 'Manga – beendet' }, ev)}
+              />
+              <Kachel
+                zahl={zahlText(stats.mangaAktiv)} label="Am Lesen" title="Angefangene und laufende Manga"
+                aktiv={istFilter('kombi', 'MANGA|started,ongoing')}
+                onClick={ev => toggleFilter({ typ: 'kombi', wert: 'MANGA|started,ongoing', label: 'Manga – am Lesen' }, ev)}
+              />
               <Kachel zahl={zahlText(stats.kapitelGelesen)} label="Kapitel gelesen" />
               {stats.baendeGelesen > 0 && <Kachel zahl={zahlText(stats.baendeGelesen)} label="Bände gelesen" />}
               <Kachel

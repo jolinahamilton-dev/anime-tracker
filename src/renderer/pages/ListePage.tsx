@@ -15,6 +15,7 @@ import {
 import { api, CustomListMitEintraegen as CustomList } from '../api'
 import { aendereFortschritt, useBeiAenderung } from '../aktionen'
 import { bestaetigen } from '../meldungen'
+import { anzahlBaende } from '../baende'
 import { istTippen, overlayOffen, useIstHandy, useTasten } from '../tastatur'
 import './Page.css'
 import './ListePage.css'
@@ -42,6 +43,7 @@ export default function ListePage() {
   const [filterStatus, setFilterStatus] = useState<EntryStatus[]>(gespeichert.filterStatus)
   const [filterFavorit, setFilterFavorit] = useState(gespeichert.filterFavorit)
   const [filterAbo, setFilterAbo] = useState(gespeichert.filterAbo)
+  const [filterRegal, setFilterRegal] = useState(gespeichert.filterRegal)
   const [sortierung, setSortierung] = useState<SortOption>(gespeichert.sortierung)
   const [aktiveListe, setAktiveListe] = useState<number | null>(gespeichert.aktiveListe)
   const [ansichten, setAnsichten] = useState<Ansichten>(ladeAnsichten)
@@ -73,8 +75,8 @@ export default function ListePage() {
   useBeiAenderung(useCallback(() => { stillAktualisieren(); ladeListen() }, [stillAktualisieren, ladeListen]))
 
   useEffect(() => {
-    speichereFilter({ filterTyp, filterStatus, filterFavorit, filterAbo, sortierung, aktiveListe })
-  }, [filterTyp, filterStatus, filterFavorit, filterAbo, sortierung, aktiveListe])
+    speichereFilter({ filterTyp, filterStatus, filterFavorit, filterAbo, filterRegal, sortierung, aktiveListe })
+  }, [filterTyp, filterStatus, filterFavorit, filterAbo, filterRegal, sortierung, aktiveListe])
 
   async function aboUmschalten(entry: Entry) {
     await api.setAbo(entry.id, !entry.abonniert)
@@ -110,7 +112,7 @@ export default function ListePage() {
   }, [laden])
 
   const anzahlFilter = (filterTyp !== STANDARD_FILTER.filterTyp ? 1 : 0) + (filterStatus.length > 0 ? 1 : 0) +
-    (filterFavorit ? 1 : 0) + (filterAbo ? 1 : 0)
+    (filterFavorit ? 1 : 0) + (filterAbo ? 1 : 0) + (filterRegal ? 1 : 0)
   const filterAktiv = suche !== '' || anzahlFilter > 0
 
   function filterZuruecksetzen() {
@@ -119,6 +121,7 @@ export default function ListePage() {
     setFilterStatus([])
     setFilterFavorit(false)
     setFilterAbo(false)
+    setFilterRegal(false)
   }
 
   useEffect(() => {
@@ -186,6 +189,7 @@ export default function ListePage() {
     if (filterTyp !== 'ALLE' && e.type !== filterTyp) return false
     if (filterFavorit && !e.is_favorite) return false
     if (filterAbo && !e.abonniert) return false
+    if (filterRegal && anzahlBaende(e.baende_besitz) === 0) return false
     return true
   })
   const anzahlJeStatus: Record<string, number> = {}
@@ -203,6 +207,11 @@ export default function ListePage() {
   const nurBeendete = filterStatus.length === 1 && filterStatus[0] === 'completed'
   // Zählt passend zum Typ-Filter (ALLE/ANIME/MANGA), aber unabhängig vom Status-Filter, den 🏆 ja umschaltet
   const anzahlBeendet = entries.filter(e => e.status === 'completed' && (filterTyp === 'ALLE' || e.type === filterTyp)).length
+  // 📚 Im Regal: Manga mit mindestens einem besessenen Band (Zahl passend zum Typ-Filter)
+  const anzahlImRegal = entries.filter(e => e.type === 'MANGA' && anzahlBaende(e.baende_besitz) > 0 && (filterTyp === 'ALLE' || e.type === filterTyp)).length
+  const sammlungKnopf = filterTyp === 'MANGA' && (
+    <button className="filter-btn sammlung-link" onClick={() => navigate('/sammlung')}>📚 Sammlung</button>
+  )
   const beendeteUmschalten = () => setFilterStatus(nurBeendete ? [] : ['completed'])
 
   function oeffneEintrag(id: number) {
@@ -287,6 +296,15 @@ export default function ListePage() {
                 aria-pressed={nurBeendete}
               >
                 🏆 <span>{anzahlBeendet}</span>
+              </button>
+              <button
+                className={filterRegal ? 'beendet-counter regal-filter aktiv' : 'beendet-counter regal-filter'}
+                onClick={() => setFilterRegal(!filterRegal)}
+                title={filterRegal ? 'Wieder alle anzeigen' : `Manga mit Bänden im Regal anzeigen (${anzahlImRegal})`}
+                aria-label={`Im Regal: Manga mit Bänden im Regal anzeigen (${anzahlImRegal})`}
+                aria-pressed={filterRegal}
+              >
+                📚 <span>{anzahlImRegal}</span>
               </button>
             </>
           )}
@@ -399,6 +417,7 @@ export default function ListePage() {
         {!istHandy && (
           <div className="filter-zeile">
             {typKnoepfe}
+            {sammlungKnopf}
             <StatusFilter ausgewaehlt={filterStatus} anzahl={anzahlJeStatus} onAendern={setFilterStatus} />
             {filterAktiv && (
               <button className="filter-reset" onClick={filterZuruecksetzen} title="Suche und Filter zurücksetzen">
@@ -496,6 +515,7 @@ export default function ListePage() {
           <div className="sheet-gruppe">
             <span className="sheet-gruppe-titel">Typ</span>
             {typKnoepfe}
+            {sammlungKnopf}
           </div>
           <div className="sheet-gruppe">
             <span className="sheet-gruppe-titel">Status</span>
@@ -507,6 +527,7 @@ export default function ListePage() {
               <button className={filterFavorit ? 'filter-btn active' : 'filter-btn'} aria-pressed={filterFavorit} onClick={() => setFilterFavorit(!filterFavorit)}>⭐ Favoriten</button>
               <button className={filterAbo ? 'filter-btn active' : 'filter-btn'} aria-pressed={filterAbo} onClick={() => setFilterAbo(!filterAbo)}>🔔 Abonnierte</button>
               <button className={nurBeendete ? 'filter-btn active' : 'filter-btn'} aria-pressed={nurBeendete} onClick={beendeteUmschalten}>🏆 Beendete</button>
+              <button className={filterRegal ? 'filter-btn active' : 'filter-btn'} aria-pressed={filterRegal} onClick={() => setFilterRegal(!filterRegal)}>📚 Im Regal</button>
             </div>
           </div>
           <div className="sheet-gruppe">

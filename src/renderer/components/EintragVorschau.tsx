@@ -6,6 +6,7 @@ import './EintragVorschau.css'
 import { snackbar } from '../meldungen'
 import { api } from '../api'
 import { sucheZuruecksetzen } from '../einpflegenZustand'
+import { spitznameAusSuche } from '../spitzname'
 
 interface Props {
   data: AniListSearchResult
@@ -14,6 +15,8 @@ interface Props {
   startStatus?: EntryStatus
   /** Statt zur Liste bzw. zum vorhandenen Eintrag zu springen, entscheidet der Aufrufer */
   onHinzugefuegt?: (entry: Entry, schonVorhanden: boolean) => void
+  /** Suchtext der AniList-Suche – daraus wird ggf. ein Spitzname vorgeschlagen */
+  suchtext?: string
 }
 
 const STATUS_LABEL: Partial<Record<EntryStatus, string>> = {
@@ -45,7 +48,7 @@ export function eintragAusAniList(data: AniListSearchResult, status: EntryStatus
   }
 }
 
-export default function EintragVorschau({ data, onZurueck, startStatus, onHinzugefuegt }: Props) {
+export default function EintragVorschau({ data, onZurueck, startStatus, onHinzugefuegt, suchtext }: Props) {
   const navigate = useNavigate()
   const [status, setStatus] = useState<EntryStatus>(startStatus ?? 'started')
   const statusAuswahl: EntryStatus[] = startStatus === 'planned'
@@ -58,6 +61,9 @@ export default function EintragVorschau({ data, onZurueck, startStatus, onHinzug
   const [bewertung, setBewertung] = useState<number | null>(null)
   const [favorit, setFavorit] = useState(false)
   const [speichern, setSpeichern] = useState(false)
+  // Vorschlag aus dem Suchtext (nur wenn er sich klar von allen Titeln unterscheidet)
+  const [vorschlag] = useState(() => spitznameAusSuche(suchtext ?? '', [data.title.romaji, data.title.english, data.title.native]))
+  const [spitzname, setSpitzname] = useState(vorschlag)
 
   const isAnime = data.type === 'ANIME'
   const beschreibung = data.description?.replace(/<[^>]*>/g, '') ?? ''
@@ -74,15 +80,22 @@ export default function EintragVorschau({ data, onZurueck, startStatus, onHinzug
         progress_volumes: !isAnime && !geplant ? baende : 0,
         rating: bewertung,
         is_favorite: favorit ? 1 : 0,
+        nickname: spitzname.trim() || null,
       })
+      // Schon in der Liste, aber noch ohne Spitzname → den hier eingegebenen übernehmen
+      const nameNachtragen = !!ergebnis.schonVorhanden && !ergebnis.nickname && !!spitzname.trim()
+      if (nameNachtragen) {
+        await api.updateEntry(ergebnis.id, { nickname: spitzname.trim() })
+        ergebnis.nickname = spitzname.trim()
+      }
       if (onHinzugefuegt) {
         onHinzugefuegt(ergebnis, !!ergebnis.schonVorhanden)
         return
       }
       if (ergebnis.schonVorhanden) {
         // Gleicher AniList-Titel ist schon in der Liste → keinen Doppelten anlegen, dorthin springen
-        snackbar(`„${ergebnis.title}" ist schon in deiner Liste`)
-        navigate(`/detail/${ergebnis.id}`)
+        snackbar(`„${ergebnis.title}" ist schon in deiner Liste${nameNachtragen ? ' – Spitzname ergänzt' : ''}`)
+        navigate(`/detail/${ergebnis.id}`, { state: { zurueck: 1 } })
         return
       }
       // Hinzugefügt → Suche erledigt, nächstes Einpflegen startet leer
@@ -175,6 +188,24 @@ export default function EintragVorschau({ data, onZurueck, startStatus, onHinzug
               </div>
             </>
           )}
+
+          <div className="formular-zeile">
+            <label htmlFor="vorschau-spitzname">Spitzname</label>
+            <div className="spitzname-feld">
+              <input
+                id="vorschau-spitzname"
+                type="text"
+                className="spitzname-input"
+                placeholder="Spitzname (optional)"
+                value={spitzname}
+                onChange={e => setSpitzname(e.target.value)}
+                maxLength={100}
+              />
+              {vorschlag && spitzname === vorschlag && (
+                <span className="spitzname-hinweis">Aus deiner Suche übernommen</span>
+              )}
+            </div>
+          </div>
 
           <div className="formular-zeile">
             <label>Bewertung</label>

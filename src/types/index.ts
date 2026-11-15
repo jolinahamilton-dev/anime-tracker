@@ -23,6 +23,9 @@ export interface Entry {
   review: string | null
   rewatch_count: number // wie oft erneut geschaut/gelesen (von Hand gezählt)
   finished_at: string | null // wann zuletzt auf „Beendet" gesetzt
+  baende_besitz: string | null // Sammlung: besessene Bände als Bereichsliste, z. B. "1-12,14" (renderer/baende.ts)
+  baende_wunsch: string | null // Sammlung: Bände, die man haben will
+  ausgabe: string | null // Sammlung: Ausgabe/Verlag, z. B. "Carlsen"
   uuid: string // geräteübergreifend eindeutig (für den Handy-Abgleich)
   created_at: string
   updated_at: string

@@ -1,0 +1,43 @@
+/* Manga-Sammlung: Kennzahlen und drei aufklappbare Listen */
+.sammlung-inhalt { flex: 1; overflow-y: auto; padding: 4px 20px 32px; display: flex; flex-direction: column; gap: 18px; }
+
+.sammlung-zahlen { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.sammlung-zahl {
+  display: flex; flex-direction: column; gap: 2px; padding: 12px 14px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.sammlung-zahl strong { font-size: 24px; font-variant-numeric: tabular-nums; }
+.sammlung-zahl span { font-size: 12px; color: var(--text-muted); }
+
+.sammlung-abschnitt { display: flex; flex-direction: column; gap: 8px; }
+.sammlung-abschnitt-kopf {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  padding: 8px 4px; min-height: 40px; border-bottom: 1px solid var(--border);
+}
+.sammlung-abschnitt-kopf:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sammlung-pfeil { width: 14px; color: var(--text-muted); }
+.sammlung-abschnitt-titel { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+.sammlung-abschnitt-zahl { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.sammlung-liste { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.sammlung-serie {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 8px 10px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.sammlung-serie:hover { border-color: var(--accent); }
+.sammlung-serie:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sammlung-cover { width: 36px; height: 52px; object-fit: cover; border-radius: 4px; flex-shrink: 0; background: var(--border); }
+.sammlung-cover--leer { display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.sammlung-serie-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.sammlung-serie-titel { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sammlung-serie-detail { font-size: 13px; color: var(--text-muted); overflow-wrap: anywhere; }
+.sammlung-mut { opacity: 0.8; }
+.sammlung-serie-pfeil { color: var(--text-muted); font-size: 18px; }
+
+.sammlung-leer { color: var(--text-muted); font-size: 14px; padding: 4px; }
+.sammlung-leer--gross { text-align: center; padding: 32px 8px; display: flex; flex-direction: column; gap: 8px; }
+
+@media (max-width: 640px) {
+  .sammlung-inhalt { padding: 4px 12px 32px; }
+  .sammlung-zahlen { grid-template-columns: repeat(2, 1fr); }
+}

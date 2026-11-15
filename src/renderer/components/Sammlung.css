@@ -1,0 +1,57 @@
+/* Sammlung (Manga-Detailseite): Kacheln je Band, Eingabefelder */
+.sammlung-summe { font-size: 14px; line-height: 1.5; }
+.sammlung-ungelesen { font-size: 13px; color: var(--text-orange); font-weight: 600; }
+
+.band-raster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 6px;
+}
+.band-kachel {
+  min-height: 40px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.band-kachel:hover { border-color: var(--accent); }
+.band-kachel:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.band-kachel.band-besitz { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.band-kachel.band-wunsch { border: 2px dashed var(--accent); color: var(--accent-text); background: transparent; }
+
+.band-legende {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px;
+  font-size: 12px; color: var(--text-muted);
+}
+.band-punkt {
+  display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px;
+  border: 1px solid var(--border); background: var(--bg-card);
+}
+.band-punkt.band-besitz { background: var(--accent); border-color: var(--accent); }
+.band-punkt.band-wunsch { border: 2px dashed var(--accent); background: transparent; }
+.band-plus {
+  margin-left: auto; font-size: 12px; color: var(--accent-text); padding: 6px 10px; min-height: 32px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-card);
+}
+.band-plus:disabled { opacity: 0.4; }
+
+.band-eingabe { display: flex; flex-direction: column; gap: 8px; }
+.band-label { font-size: 12px; color: var(--text-muted); }
+.band-zeile { display: flex; align-items: center; gap: 8px; }
+.band-zeile input[type="text"] { flex: 1; min-width: 0; }
+.band-bis { width: 80px; }
+.band-label-inline { min-width: 104px; flex-shrink: 0; }
+
+@media (hover: none) {
+  .band-kachel { min-height: 44px; }
+  .band-plus { min-height: 44px; }
+}
+@media (max-width: 640px) {
+  .band-zeile input { font-size: 16px; } /* verhindert das Hineinzoomen beim Antippen am Handy */
+  .band-zeile .filter-btn { min-height: 40px; }
+}

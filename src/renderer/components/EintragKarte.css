@@ -374,3 +374,6 @@
 
 .karte--gross .karte-naechste { font-size: 12px; }
 .karte--liste .progress-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Sammlung: Abzeichen „📚 12/24“ neben dem Status */
+.karte-regal { color: var(--text-muted); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
