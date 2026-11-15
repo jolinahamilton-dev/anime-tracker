@@ -404,7 +404,7 @@ function folgenDerHauptlinie(e: EigenerEintrag): number | null {
 async function sammleAdaptionen(abfrage: Abfrage, eintraege: EigenerEintrag[], inListe: Set<number>, aus: Set<number>): Promise<AdaptionsKandidat[]> {
   const quellen = eintraege.filter(e => e.anilist_id && (e.type === 'ANIME'
     ? ['completed', 'ongoing', 'started'].includes(e.status)
-    : !['planned', 'dropped'].includes(e.status)))
+    : e.status !== 'dropped'))
   const quelleVonId = new Map<number, EigenerEintrag>()
   for (const e of quellen) if (!quelleVonId.has(e.anilist_id!)) quelleVonId.set(e.anilist_id!, e)
 
@@ -546,7 +546,12 @@ async function berechneAniListTeil(): Promise<AniListTeil> {
 
   // Details der besten Kandidaten in einem Rutsch (Fortsetzungen fallen danach noch heraus, daher etwas mehr)
   const empfTop = empfKandidaten.slice(0, 32)
-  const adaptTop = adaptKandidaten.slice(0, MAX_JE_LISTE)
+  // Je Richtung eigene Plätze: wer viel mehr Anime als Manga hat, würde sonst alle 20 Plätze mit „Manga zum Anime“
+  // füllen und „Anime zu deinem Manga“ nie zu sehen bekommen
+  const adaptTop = [
+    ...adaptKandidaten.filter(k => k.quelle.type === 'ANIME').slice(0, 14),
+    ...adaptKandidaten.filter(k => k.quelle.type === 'MANGA').slice(0, 14),
+  ].sort((a, b) => b.gewicht - a.gewicht)
   const details = await holeDetails(abfrage, [...empfTop.map(k => k.id), ...adaptTop.map(k => k.id)])
 
   // Was schon als Adaption kommt, hat dort den genaueren Grund
