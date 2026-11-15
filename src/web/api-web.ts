@@ -31,6 +31,7 @@ export function baueApi() {
     setAbo: (id: number, abonniert: boolean) => invoke('entries:abo', id, abonniert),
     aendereFortschritt: (id: number, delta: number) => invoke('entries:fortschritt', id, delta),
     getWeiterschauen: () => invoke('entries:weiterschauen'),
+    wiederholen: (id: number) => invoke('entries:wiederholen', id),
     rueckgaengig: (token: string) => invoke('entries:rueckgaengig', token),
 
     getLists: () => invoke('lists:getAll'),

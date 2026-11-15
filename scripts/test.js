@@ -12,7 +12,9 @@ const WURZEL = path.join(__dirname, '..')
 // Achievements samt Abhängigkeiten (database/stats/anilist) – „electron“ wird unten durch eine Attrappe ersetzt
 const QUELLEN = ['src/sync', 'src/db/kern.ts', 'src/db/database.ts', 'src/main/handlers/achievements.ts',
   'src/main/handlers/stats.ts', 'src/main/handlers/anilist.ts', 'src/main/trackAppOpen.ts', 'src/main/handlers/vorschlaege.ts', 'src/main/handlers/news-regel.ts',
-  'src/renderer/spitzname.ts', 'src/renderer/baende.ts', 'src/main/handlers/sicherung-kern.ts']
+  'src/renderer/spitzname.ts', 'src/renderer/baende.ts', 'src/main/handlers/sicherung-kern.ts',
+  'src/main/handlers/entries.ts', 'src/main/handlers/serien.ts', 'src/main/handlers/watchorder.ts',
+  'src/main/handlers/import-kern.ts']
 
 const ziel = fs.mkdtempSync(path.join(os.tmpdir(), 'anime-tracker-tests-'))
 process.on('exit', () => { try { fs.rmSync(ziel, { recursive: true, force: true }) } catch { /* egal */ } })

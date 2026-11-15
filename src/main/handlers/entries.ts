@@ -19,12 +19,13 @@ type Zeile = Record<string, unknown>
 
 // Rückgängig-Speicher (nur im Arbeitsspeicher, ein paar Sekunden lang gebraucht):
 // gelöschte Einträge samt Listen/Watch-Order und der Stand vor einem „+1"
-const rueckgaengig = new Map<string, { zeit: number; wiederherstellen: () => void }>()
-function merkeRueckgaengig(wiederherstellen: () => void): string {
+// ttl: wie lange der Token gilt (Standard 5 Minuten; „Wiederholen" braucht länger)
+const rueckgaengig = new Map<string, { ablauf: number; wiederherstellen: () => void }>()
+function merkeRueckgaengig(wiederherstellen: () => void, ttl = 5 * 60_000): string {
   const jetzt = Date.now()
-  for (const [k, v] of rueckgaengig) if (jetzt - v.zeit > 5 * 60_000) rueckgaengig.delete(k)
+  for (const [k, v] of rueckgaengig) if (jetzt > v.ablauf) rueckgaengig.delete(k)
   const token = `${jetzt}-${Math.random().toString(36).slice(2)}`
-  rueckgaengig.set(token, { zeit: jetzt, wiederherstellen })
+  rueckgaengig.set(token, { ablauf: jetzt + ttl, wiederherstellen })
   return token
 }
 
@@ -96,7 +97,7 @@ function aendereFortschritt(id: number, delta: number) {
 
   // Wer weiterschaut, hat angefangen
   if (delta > 0 && ['planned', 'paused'].includes(String(e.status))) {
-    db.run("UPDATE entries SET status = 'started', auto_offen = NULL WHERE id = ?", [id])
+    db.run("UPDATE entries SET status = 'ongoing', auto_offen = NULL WHERE id = ?", [id])
   }
   db.run("UPDATE entries SET updated_at = datetime('now') WHERE id = ?", [id])
   schedulePersist()
@@ -253,9 +254,9 @@ export function registerEntryHandlers(ipcMain: IpcMain) {
        data.genres ?? '[]', data.description ?? null, data.total_episodes ?? null,
        data.total_chapters ?? null, data.total_volumes ?? null,
        ...fortschrittBeimAnlegen(data),
-       data.status ?? 'started', data.rating ?? null, data.is_favorite ?? 0, data.review ?? null,
+       data.status ?? 'ongoing', data.rating ?? null, data.is_favorite ?? 0, data.review ?? null,
        // Neue Anime: automatisch abonniert, wenn man sie gerade schaut
-       data.abonniert ?? (data.type === 'ANIME' && ['started', 'ongoing'].includes(String(data.status ?? 'started')) ? 1 : 0),
+       data.abonniert ?? (data.type === 'ANIME' && ['started', 'ongoing'].includes(String(data.status ?? 'ongoing')) ? 1 : 0),
        // Abschlussdatum: beim Anlegen unbekannt (der Titel kann vor Jahren beendet worden sein)
        null]
     )
@@ -318,6 +319,49 @@ export function registerEntryHandlers(ipcMain: IpcMain) {
 
   ipcMain.handle('entries:weiterschauen', () => weiterschauen())
 
+  /**
+   * „Noch einmal schauen/lesen": nur bei „Beendet". Setzt den Fortschritt auf 0 (Anime: Eintrag und alle
+   * Staffeln der Watch-Order; Manga: Kapitel und Bände – die Sammlung/das Regal bleibt), zählt die
+   * Wiederholung hoch und stellt auf „Laufend". Rückgängig 10 Minuten lang über den Token.
+   */
+  ipcMain.handle('entries:wiederholen', (event, id: number) => {
+    const vorher = dbGet('SELECT * FROM entries WHERE id = ?', [id])
+    if (!vorher) return { fehler: 'Eintrag nicht gefunden.' }
+    if (vorher.status !== 'completed') return { fehler: 'Wiederholen geht nur bei beendeten Einträgen.' }
+    const istAnime = vorher.type === 'ANIME'
+    const db = getDb()
+    const woVorher = istAnime ? dbAll('SELECT related_anilist_id, progress_episodes, item_status FROM watch_order WHERE entry_id = ?', [id]) : []
+
+    db.run('BEGIN TRANSACTION')
+    try {
+      if (istAnime) {
+        db.run('UPDATE entries SET progress_episodes = 0 WHERE id = ?', [id])
+        db.run("UPDATE watch_order SET progress_episodes = 0, item_status = 'planned' WHERE entry_id = ?", [id])
+      } else {
+        db.run('UPDATE entries SET progress_chapters = 0, progress_volumes = 0 WHERE id = ?', [id])
+      }
+      // finished_at bleibt (Datum des ersten Abschlusses); auto_offen weg, sonst käme der Abgleich zurück auf „Beendet"
+      db.run(`UPDATE entries SET rewatch_count = rewatch_count + 1, status = 'ongoing', auto_offen = NULL,
+        updated_at = datetime('now') WHERE id = ?`, [id])
+      db.run('COMMIT')
+    } catch (e) {
+      db.run('ROLLBACK')
+      throw e
+    }
+    schedulePersist()
+    pruefeAchievements(BrowserWindow.fromWebContents(event.sender))
+
+    const token = merkeRueckgaengig(() => {
+      db.run(`UPDATE entries SET progress_episodes = ?, progress_chapters = ?, progress_volumes = ?, status = ?,
+        rewatch_count = ?, finished_at = ?, auto_offen = ?, updated_at = ? WHERE id = ?`,
+        [vorher.progress_episodes, vorher.progress_chapters, vorher.progress_volumes, vorher.status,
+         vorher.rewatch_count, vorher.finished_at, vorher.auto_offen, vorher.updated_at, id] as any[])
+      for (const w of woVorher) db.run('UPDATE watch_order SET progress_episodes = ?, item_status = ? WHERE entry_id = ? AND related_anilist_id = ?',
+        [w.progress_episodes, w.item_status, id, w.related_anilist_id] as any[])
+    }, 10 * 60_000)
+    return { entry: dbGet('SELECT * FROM entries WHERE id = ?', [id]), token }
+  })
+
   ipcMain.handle('entries:delete', (_, id: number) => {
     // Alles Zugehörige merken, damit „Rückgängig" den Eintrag vollständig zurückholt
     const eintrag = dbGet('SELECT * FROM entries WHERE id = ?', [id])
@@ -336,7 +380,7 @@ export function registerEntryHandlers(ipcMain: IpcMain) {
 
   ipcMain.handle('entries:rueckgaengig', (_, token: string) => {
     const r = rueckgaengig.get(token)
-    if (!r) return { success: false }
+    if (!r || Date.now() > r.ablauf) { rueckgaengig.delete(token); return { success: false } }
     rueckgaengig.delete(token)
     const db = getDb()
     db.run('BEGIN TRANSACTION')

@@ -459,10 +459,21 @@
 .rewatch-zeile { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
 .rewatch-zahl { min-width: 48px; text-align: center; font-weight: 700; font-size: 15px; }
 .zaehler-btn:disabled { opacity: 0.3; cursor: default; }
+.wiederholen-block { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; margin-top: 10px; }
+.wiederholen-btn {
+  font-size: 13px; font-weight: 600; color: var(--accent-text);
+  padding: 8px 14px; min-height: 36px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--bg-card);
+  transition: background 0.15s;
+}
+.wiederholen-btn:hover:not(:disabled) { background: var(--bg-hover, var(--bg-card)); border-color: var(--accent-text); }
+.wiederholen-btn:disabled { opacity: 0.5; cursor: default; }
+.wiederholen-hinweis { font-size: 12px; color: var(--text-muted, var(--text)); opacity: 0.8; min-width: 0; }
 
 /* ── Touch: größere Ziele ── */
 @media (hover: none) {
   .zaehler-btn { min-width: 44px; min-height: 44px; }
+  .wiederholen-btn { min-height: 44px; }
   .detail-nav-btn { min-width: 44px; min-height: 40px; }
 }
 

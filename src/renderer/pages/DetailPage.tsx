@@ -10,7 +10,7 @@ import { sitzung } from '../listenZustand'
 import './Page.css'
 import './DetailPage.css'
 import { api } from '../api'
-import { aendereFortschritt, loescheEintrag, useBeiAenderung } from '../aktionen'
+import { aendereFortschritt, loescheEintrag, meldeAenderung, useBeiAenderung } from '../aktionen'
 import { hinweis, snackbar } from '../meldungen'
 import { kopiereText } from '../zwischenablage'
 import { istTippen, overlayOffen, useTasten, useWischen } from '../tastatur'
@@ -51,7 +51,7 @@ interface CustomList {
 
 const STATUS_LABEL: Record<EntryStatus, string> = {
   planned: 'Geplant',
-  started: 'Angefangen',
+  started: 'Laufend', // alter Wert, wird nicht mehr vergeben (Migration → ongoing)
   ongoing: 'Laufend',
   completed: 'Beendet',
   paused: 'Pausiert',
@@ -81,6 +81,7 @@ export default function DetailPage() {
   const [alleIds, setAlleIds] = useState<number[]>([])
 
   const [coverGross, setCoverGross] = useState(false)
+  const [wiederholtLaeuft, setWiederholtLaeuft] = useState(false)
   // Nächste Ausstrahlung: kommt nur mit getEntry (nicht mit dem Ergebnis von update/setAbo) – daher eigener Zustand
   const [naechsteFolge, setNaechsteFolge] = useState<ReturnType<typeof naechsteFolgeText>>(null)
 
@@ -245,6 +246,28 @@ export default function DetailPage() {
     })
     const ids = new Set(neu.map(r => r.related_anilist_id))
     await speichereWatchItems([...neu, ...watchItems.filter(w => !ids.has(w.related_anilist_id))].map(w => ({ ...w, is_custom: 0 })))
+  }
+
+  // „Noch einmal schauen/lesen": nur bei Beendet; statt Rückfrage gibt es 30 s lang „Rückgängig"
+  async function wiederholen() {
+    if (wiederholtLaeuft || entry!.status !== 'completed') return
+    setWiederholtLaeuft(true)
+    try {
+      const r = await api.wiederholen(entry!.id)
+      if ('fehler' in r) { await hinweis('Wiederholen nicht möglich', r.fehler); return }
+      setEntry(r.entry)
+      meldeAenderung() // lädt Eintrag und Watch-Order neu
+      snackbar(`Wiederholung ${r.entry.rewatch_count} gestartet – Fortschritt auf 0 gesetzt`, {
+        label: 'Rückgängig',
+        ausfuehren: async () => {
+          const u = await api.rueckgaengig(r.token)
+          meldeAenderung()
+          snackbar(u.success ? 'Wiederholung zurückgenommen' : 'Rückgängig nicht mehr möglich')
+        },
+      }, 30000)
+    } finally {
+      setWiederholtLaeuft(false)
+    }
   }
 
   async function aendereProgress(feld: string, wert: number) {
@@ -422,7 +445,7 @@ export default function DetailPage() {
         <div className="detail-section">
           <h3 className="section-titel">Status</h3>
           <div className="status-buttons">
-            {(['planned', 'started', 'ongoing', 'completed', 'paused', 'dropped'] as EntryStatus[]).map(s => (
+            {(['planned', 'ongoing', 'completed', 'paused', 'dropped'] as EntryStatus[]).map(s => (
               <button
                 key={s}
                 className={entry.status === s ? 'filter-btn active' : 'filter-btn'}
@@ -532,6 +555,15 @@ export default function DetailPage() {
             <button className="zaehler-btn" aria-label="Wiederholung hinzufügen"
               onClick={() => update({ rewatch_count: entry.rewatch_count + 1 })}>+</button>
           </div>
+          {/* Nur bei „Beendet": Fortschritt zurücksetzen und neu anfangen (danach kurz rückgängig machbar) */}
+          {entry.status === 'completed' && (
+            <div className="wiederholen-block">
+              <button className="wiederholen-btn" disabled={wiederholtLaeuft} onClick={wiederholen}>
+                {isAnime ? '↻ Noch einmal schauen' : '↻ Noch einmal lesen'}
+              </button>
+              <span className="wiederholen-hinweis">Setzt den Fortschritt auf 0 – Wiederholung {entry.rewatch_count + 1}</span>
+            </div>
+          )}
         </div>
 
         {/* Sammlung: nur Manga – welche Bände stehen als Buch im Regal */}

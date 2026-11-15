@@ -60,6 +60,8 @@ export interface TrackerApi {
   setAbo(id: number, abonniert: boolean): Promise<Entry>
   aendereFortschritt(id: number, delta: 1 | -1): Promise<FortschrittErgebnis | null>
   getWeiterschauen(): Promise<WeiterschauenEintrag[]>
+  /** „Noch einmal schauen/lesen" (nur bei Beendet): Fortschritt auf 0, Wiederholung +1; token für Rückgängig (10 Min.) */
+  wiederholen(id: number): Promise<{ entry: Entry; token: string } | { fehler: string }>
   rueckgaengig(token: string): Promise<{ success: boolean }>
 
   // Eigene Listen

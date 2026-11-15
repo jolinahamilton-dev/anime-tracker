@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('api', {
   setAbo: (id: number, abonniert: boolean) => ipcRenderer.invoke('entries:abo', id, abonniert),
   aendereFortschritt: (id: number, delta: number) => ipcRenderer.invoke('entries:fortschritt', id, delta),
   getWeiterschauen: () => ipcRenderer.invoke('entries:weiterschauen'),
+  wiederholen: (id: number) => ipcRenderer.invoke('entries:wiederholen', id),
   rueckgaengig: (token: string) => ipcRenderer.invoke('entries:rueckgaengig', token),
 
   // Custom Lists
