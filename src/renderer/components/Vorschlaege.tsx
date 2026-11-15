@@ -75,8 +75,6 @@ export default function Vorschlaege({ onAuswaehlen }: Props) {
   const [gewaehlt, setGewaehlt] = useState<VorschlagBereich | null>(vorschlagSitzung.bereich)
   const [beschaeftigt, setBeschaeftigt] = useState<Set<number>>(new Set())
   const [typ, setTyp] = useState<MediaFilter>(vorschlagSitzung.typ)
-  // Kopf (Stand, Auswahl) schrumpft, sobald man in der Liste nach unten gescrollt hat – mehr Platz für die Titel
-  const [kompakt, setKompakt] = useState(vorschlagSitzung.scrollPosition > 60)
   const [dauer, setDauer] = useState<GeplantDauer>(vorschlagSitzung.geplantDauer)
   const [hervorgehoben, setHervorgehoben] = useState<number | null>(null)
   const listeRef = useRef<HTMLDivElement>(null)
@@ -132,7 +130,6 @@ export default function Vorschlaege({ onAuswaehlen }: Props) {
     setGewaehlt(b)
     vorschlagSitzung.bereich = b
     vorschlagSitzung.scrollPosition = 0
-    setKompakt(false)
     setHervorgehoben(null)
     if (listeRef.current) listeRef.current.scrollTop = 0
   }
@@ -190,7 +187,6 @@ export default function Vorschlaege({ onAuswaehlen }: Props) {
     setTyp(t)
     setHervorgehoben(null)
     vorschlagSitzung.scrollPosition = 0
-    setKompakt(false)
     if (listeRef.current) listeRef.current.scrollTop = 0
   }
 
@@ -226,72 +222,71 @@ export default function Vorschlaege({ onAuswaehlen }: Props) {
   if (laden && !antwort) return <div className="vorschlaege"><Ladeindikator text="Vorschläge werden gesucht…" /></div>
 
   return (
-    <div className={kompakt ? 'vorschlaege kompakt' : 'vorschlaege'}>
-      <div className="vorschlaege-kopf">
-        <span className="vorschlaege-stand" aria-live="polite">
-          {berechnen ? 'Wird neu berechnet…' : stand ? `Stand: ${stand}` : ''}
-        </span>
-        <button
-          className="vorschlaege-neu"
-          onClick={() => lade(true)}
-          disabled={berechnen || laden}
-          title="Vorschläge jetzt neu von AniList berechnen"
-        >
-          <span className={berechnen ? 'dreht' : undefined} aria-hidden="true">↻</span> Neu berechnen
-        </button>
-      </div>
+    <div className="vorschlaege">
+      {/* Immer klein und fest oben: Typ und Bereiche, die Bereiche brechen um statt abgeschnitten zu werden */}
+      {(antwort || typ !== 'ALLE' || vorhandene.length > 0) && (
+        <div className="vorschlaege-filter">
+          {(antwort || typ !== 'ALLE') && (
+            <div className="vorschlaege-typ" role="group" aria-label="Anime oder Manga">
+              {(['ALLE', 'ANIME', 'MANGA'] as MediaFilter[]).map(t => (
+                <button
+                  key={t}
+                  className={typ === t ? 'filter-btn active' : 'filter-btn'}
+                  aria-pressed={typ === t}
+                  onClick={() => waehleTyp(t)}
+                >
+                  {t === 'ALLE' ? 'Alle' : t === 'ANIME' ? 'Anime' : 'Manga'}
+                </button>
+              ))}
+            </div>
+          )}
 
-      {(antwort?.fehler || ladeFehler) && (
-        <p className="vorschlaege-hinweis" role="status">
-          ⚠ {ladeFehler
-            ? `Vorschläge konnten nicht ${antwort ? 'aktualisiert' : 'geladen'} werden (${ladeFehler}).`
-            : `Nicht alles ließ sich neu berechnen${antwort?.stand ? ' – teils siehst du den letzten Stand' : ''} (${antwort!.fehler}).`}
-        </p>
-      )}
-
-      {(antwort || typ !== 'ALLE') && (
-        <div className="vorschlaege-typ" role="group" aria-label="Anime oder Manga">
-          {(['ALLE', 'ANIME', 'MANGA'] as MediaFilter[]).map(t => (
-            <button
-              key={t}
-              className={typ === t ? 'filter-btn active' : 'filter-btn'}
-              aria-pressed={typ === t}
-              onClick={() => waehleTyp(t)}
-            >
-              {t === 'ALLE' ? 'Alle' : t === 'ANIME' ? 'Anime' : 'Manga'}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {vorhandene.length > 0 && (
-        <div className="vorschlaege-bereiche" role="group" aria-label="Art der Vorschläge">
-          {vorhandene.map(b => (
-            <button
-              key={b.key}
-              className={bereich === b.key ? 'filter-btn active' : 'filter-btn'}
-              aria-pressed={bereich === b.key}
-              aria-label={`${b.titel}: ${listen[b.key].length}`}
-              onClick={() => waehleBereich(b.key)}
-            >
-              {b.kurz} <span className="bereich-anzahl">{listen[b.key].length}</span>
-            </button>
-          ))}
+          {vorhandene.length > 0 && (
+            <div className="vorschlaege-bereiche" role="group" aria-label="Art der Vorschläge">
+              {vorhandene.map(b => (
+                <button
+                  key={b.key}
+                  className={bereich === b.key ? 'filter-btn active' : 'filter-btn'}
+                  aria-pressed={bereich === b.key}
+                  aria-label={`${b.titel}: ${listen[b.key].length}`}
+                  onClick={() => waehleBereich(b.key)}
+                >
+                  {b.kurz} <span className="bereich-anzahl">{listen[b.key].length}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       <div
         className="vorschlaege-liste"
         ref={listeRef}
-        onScroll={e => {
-          const el = e.currentTarget
-          vorschlagSitzung.scrollPosition = el.scrollTop
-          // Zwei Schwellen (nicht flackern): erst weit unten schrumpfen, erst ganz oben wieder aufklappen;
-          // bei kurzen Listen gar nicht, sonst würde der gewonnene Platz die Liste unscrollbar machen
-          if (!kompakt && el.scrollTop > 60 && el.scrollHeight - el.clientHeight > 220) setKompakt(true)
-          else if (kompakt && el.scrollTop < 10) setKompakt(false)
-        }}
+        onScroll={e => { vorschlagSitzung.scrollPosition = e.currentTarget.scrollTop }}
       >
+        {/* Stand und „Neu berechnen“ stehen am Anfang der Liste und scrollen mit weg – so bleibt der feste Kopf klein */}
+        <div className="vorschlaege-kopf">
+          <span className="vorschlaege-stand" aria-live="polite">
+            {berechnen ? 'Wird neu berechnet…' : stand ? `Stand: ${stand}` : ''}
+          </span>
+          <button
+            className="vorschlaege-neu"
+            onClick={() => lade(true)}
+            disabled={berechnen || laden}
+            title="Vorschläge jetzt neu von AniList berechnen"
+          >
+            <span className={berechnen ? 'dreht' : undefined} aria-hidden="true">↻</span> Neu berechnen
+          </button>
+        </div>
+
+        {(antwort?.fehler || ladeFehler) && (
+          <p className="vorschlaege-hinweis" role="status">
+            ⚠ {ladeFehler
+              ? `Vorschläge konnten nicht ${antwort ? 'aktualisiert' : 'geladen'} werden (${ladeFehler}).`
+              : `Nicht alles ließ sich neu berechnen${antwort?.stand ? ' – teils siehst du den letzten Stand' : ''} (${antwort!.fehler}).`}
+          </p>
+        )}
+
         {!bereich ? (
           !antwort ? (
             ladeFehler && (
