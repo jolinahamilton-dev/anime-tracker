@@ -91,7 +91,7 @@
 
 .ergebnis-karte {
   display: flex;
-  gap: 14px;
+  gap: calc(14px * var(--kachel-skala));
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -128,8 +128,8 @@
 }
 
 .ergebnis-cover {
-  width: 60px;
-  height: 85px;
+  width: calc(60px * var(--kachel-skala));
+  height: calc(85px * var(--kachel-skala));
   object-fit: cover;
   border-radius: 6px;
   flex-shrink: 0;
@@ -150,15 +150,18 @@
 }
 
 .ergebnis-titel {
-  font-size: 15px;
+  font-size: calc(15px * var(--kachel-titel));
   font-weight: 600;
-  white-space: nowrap;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: var(--kachel-zeilen);
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .ergebnis-titel-en {
-  font-size: 12px;
+  font-size: calc(12px * var(--kachel-text));
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -181,7 +184,11 @@
 }
 
 .ergebnis-meta {
-  font-size: 12px;
+  font-size: calc(12px * var(--kachel-text));
   color: var(--text-muted);
   margin-top: auto;
 }
+
+/* Nur in den Suchergebnissen mit der Titelgröße mitwachsen (die Detailseite nutzt dieselben Klassen) */
+.ergebnis-karte .ergebnis-typ { font-size: calc(11px * var(--kachel-text)); }
+.ergebnis-karte .genre-tag { font-size: calc(11px * var(--kachel-text)); }

@@ -16,6 +16,7 @@ import { api, CustomListMitEintraegen as CustomList } from '../api'
 import { aendereFortschritt, useBeiAenderung } from '../aktionen'
 import { bestaetigen } from '../meldungen'
 import { anzahlBaende } from '../baende'
+import { setzeAnsichtGlobal } from '../ansichtGlobal'
 import { istTippen, overlayOffen, useIstHandy, useTasten } from '../tastatur'
 import './Page.css'
 import './ListePage.css'
@@ -104,6 +105,7 @@ export default function ListePage() {
     const neu = { ...ansichten, [ansichtKey(aktiveListe)]: a }
     setAnsichten(neu)
     speichereAnsichten(neu)
+    setzeAnsichtGlobal(a) // gilt auch für die Titelgröße auf Einpflegen, News und Statistik
   }
 
   // Scrollposition wiederherstellen, sobald die Einträge gerendert sind
@@ -236,7 +238,7 @@ export default function ListePage() {
           key={a.key}
           className={ansicht === a.key ? 'ansicht-btn aktiv' : 'ansicht-btn'}
           onClick={() => waehleAnsicht(a.key)}
-          title={a.label}
+          title={`${a.label} – gilt auch für Einpflegen, News und Statistik`}
           aria-label={a.label}
           aria-pressed={ansicht === a.key}
         >

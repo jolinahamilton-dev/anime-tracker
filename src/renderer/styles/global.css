@@ -115,3 +115,28 @@ button:focus-visible, select:focus-visible, a:focus-visible {
   * { -webkit-tap-highlight-color: transparent; }
   input, textarea, select { font-size: 16px; }
 }
+
+/* Größe der Titel auf Einpflegen, News, Statistik und Sammlung: folgt der Ansicht der Startseite
+   (klein = Liste, mittel = Kacheln, groß = Große Symbole). ansichtGlobal.ts setzt html[data-kachel].
+   „klein“ entspricht den bisherigen Größen; die Seiten rechnen mit calc(<bisheriger Wert> * var(--kachel-…)). */
+:root {
+  --kachel-skala: 1;          /* Cover, Abstände, Spaltenbreite */
+  --kachel-titel: 1;          /* Titelschrift */
+  --kachel-text: 1;           /* Typ, Folge, Datum, Begründung */
+  --kachel-zeilen: 1;         /* Zeilen je Titel in Listenzeilen */
+  --kachel-zeilen-karte: 2;   /* Zeilen je Titel auf Karten („Für dich“) */
+}
+:root[data-kachel="mittel"] {
+  --kachel-skala: 1.25;
+  --kachel-titel: 1.2;
+  --kachel-text: 1.1;
+  --kachel-zeilen: 2;
+  --kachel-zeilen-karte: 3;
+}
+:root[data-kachel="gross"] {
+  --kachel-skala: 1.5;
+  --kachel-titel: 1.4;
+  --kachel-text: 1.2;
+  --kachel-zeilen: 3;
+  --kachel-zeilen-karte: 3;
+}

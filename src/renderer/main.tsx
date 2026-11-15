@@ -5,6 +5,7 @@ import App from './App'
 import './styles/global.css'
 import './styles/shared.css'
 import { anwendenAusCache } from './hooks/useSettings'
+import './ansichtGlobal' // setzt html[data-kachel] schon beim Start
 
 anwendenAusCache()
 

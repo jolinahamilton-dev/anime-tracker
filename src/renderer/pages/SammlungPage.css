@@ -21,16 +21,16 @@
 
 .sammlung-liste { list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .sammlung-serie {
-  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 8px 10px;
+  display: flex; align-items: center; gap: calc(12px * var(--kachel-skala)); width: 100%; text-align: left; padding: calc(8px * var(--kachel-skala)) 10px;
   background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
 }
 .sammlung-serie:hover { border-color: var(--accent); }
 .sammlung-serie:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.sammlung-cover { width: 36px; height: 52px; object-fit: cover; border-radius: 4px; flex-shrink: 0; background: var(--border); }
+.sammlung-cover { width: calc(36px * var(--kachel-skala)); height: calc(52px * var(--kachel-skala)); object-fit: cover; border-radius: 4px; flex-shrink: 0; background: var(--border); }
 .sammlung-cover--leer { display: flex; align-items: center; justify-content: center; font-size: 18px; }
 .sammlung-serie-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-.sammlung-serie-titel { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sammlung-serie-detail { font-size: 13px; color: var(--text-muted); overflow-wrap: anywhere; }
+.sammlung-serie-titel { font-weight: 600; font-size: calc(14px * var(--kachel-titel)); line-height: 1.3; overflow-wrap: anywhere; overflow: hidden; display: -webkit-box; -webkit-line-clamp: var(--kachel-zeilen); -webkit-box-orient: vertical; }
+.sammlung-serie-detail { font-size: calc(13px * var(--kachel-text)); color: var(--text-muted); overflow-wrap: anywhere; }
 .sammlung-mut { opacity: 0.8; }
 .sammlung-serie-pfeil { color: var(--text-muted); font-size: 18px; }
 
