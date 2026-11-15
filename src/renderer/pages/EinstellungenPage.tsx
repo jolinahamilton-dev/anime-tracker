@@ -18,7 +18,6 @@ const anzahl = (n: number) => `${n} ${n === 1 ? 'Eintrag' : 'Einträge'}`
 type ExportFormat = 'csv' | 'excel' | 'pdf'
 
 const ALLE_STATUS = [
-  { key: 'started', label: 'Angefangen' },
   { key: 'ongoing', label: 'Laufend' },
   { key: 'completed', label: 'Beendet' },
   { key: 'planned', label: 'Geplant' },
@@ -230,7 +229,7 @@ export default function EinstellungenPage() {
 
   const [exportFormat, setExportFormat] = useState<ExportFormat>('csv')
   const [exportFelder, setExportFelder] = useState<string[]>(['title', 'type', 'status', 'rating', 'anilist_id'])
-  const [exportStatus, setExportStatus] = useState<string[]>(['started', 'ongoing', 'completed', 'planned'])
+  const [exportStatus, setExportStatus] = useState<string[]>(['ongoing', 'completed', 'planned'])
   const [exportLaeuft, setExportLaeuft] = useState(false)
   const [exportMeldung, setExportMeldung] = useState('')
 

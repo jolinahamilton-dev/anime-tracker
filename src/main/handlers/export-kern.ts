@@ -31,7 +31,7 @@ const FELD_LABEL: Record<string, string> = {
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  started: 'Angefangen',
+  started: 'Laufend', // Altwert „Angefangen" (abgeschafft, = Laufend)
   ongoing: 'Laufend',
   completed: 'Beendet',
   planned: 'Geplant',
@@ -61,6 +61,8 @@ function holeDaten(felder: string[], statusFilter?: string[]): Record<string, un
   const cols = felder.filter(f => ALLOWED_FELDER.has(f)).join(', ')
   if (!cols) return []
   if (statusFilter && statusFilter.length > 0) {
+    // Laufend schließt den Altwert 'started' ein, falls noch einer übrig ist
+    if (statusFilter.includes('ongoing') && !statusFilter.includes('started')) statusFilter = [...statusFilter, 'started']
     const platzhalter = statusFilter.map(() => '?').join(', ')
     return dbAll(`SELECT ${cols} FROM entries WHERE status IN (${platzhalter}) ORDER BY title`, statusFilter)
   }

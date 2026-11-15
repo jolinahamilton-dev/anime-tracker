@@ -108,7 +108,7 @@ function mangaStatistik(monate: string[]) {
 }
 
 function rueckstau() {
-  // Noch offene Folgen: geplante, angefangene, laufende und pausierte Anime
+  // Noch offene Folgen: geplante, laufende und pausierte Anime ('started' = Altwert, tolerant mitgezählt)
   const dauer = new Map(dbAll('SELECT anilist_id, minuten FROM media_dauer').map(r => [r.anilist_id as number, r.minuten as number]))
   let folgen = 0, minuten = 0
   for (const e of dbAll(`SELECT id, anilist_id, total_episodes, progress_episodes FROM entries

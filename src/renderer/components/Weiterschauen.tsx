@@ -12,10 +12,10 @@ interface Props {
 
 let letzteEintraege: WeiterschauenEintrag[] = []
 
-/** Angefangene/laufende Manga, die noch nicht zu Ende gelesen sind – zuletzt bearbeitete zuerst */
+/** Laufende Manga, die noch nicht zu Ende gelesen sind – zuletzt bearbeitete zuerst */
 export function weiterlesen(entries: Entry[]): Entry[] {
   return entries
-    .filter(e => e.type === 'MANGA' && (e.status === 'started' || e.status === 'ongoing') &&
+    .filter(e => e.type === 'MANGA' && e.status === 'ongoing' &&
       (e.total_chapters == null || e.progress_chapters < e.total_chapters))
     .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
 }

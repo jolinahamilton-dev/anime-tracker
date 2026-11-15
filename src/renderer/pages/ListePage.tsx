@@ -450,9 +450,9 @@ export default function ListePage() {
           </p>
         )}
 
-        {/* Weiterschauen/-lesen nur ohne Suche und wenn der Status-Filter Angefangene/Laufende zeigt */}
+        {/* Weiterschauen/-lesen nur ohne Suche und wenn der Status-Filter Laufende zeigt */}
         {!laden && aktiveListe === null && !verwaltenModus && !suche &&
-          (filterStatus.length === 0 || filterStatus.includes('started') || filterStatus.includes('ongoing')) && (
+          (filterStatus.length === 0 || filterStatus.includes('ongoing')) && (
           <Weiterschauen onOeffnen={oeffneEintrag} entries={entries} filterTyp={filterTyp} />
         )}
 

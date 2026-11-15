@@ -4,7 +4,6 @@ import { STATUS_FARBE } from './EintragKarte'
 import './StatusFilter.css'
 
 const STATUS: Array<{ key: EntryStatus; label: string }> = [
-  { key: 'started', label: 'Angefangen' },
   { key: 'ongoing', label: 'Laufend' },
   { key: 'completed', label: 'Beendet' },
   { key: 'planned', label: 'Geplant' },

@@ -2,13 +2,13 @@
 import { dbGet, dbRunGetId } from '../../db/database'
 
 const STATUS_MAP: Record<string, string> = {
-  'angefangen': 'started',
+  'angefangen': 'ongoing', // „Angefangen" gibt es nicht mehr, es heißt Laufend
   'laufend': 'ongoing',
   'beendet': 'completed',
   'geplant': 'planned',
   'abgebrochen': 'dropped',
   'pausiert': 'paused',
-  'started': 'started',
+  'started': 'ongoing',
   'ongoing': 'ongoing',
   'completed': 'completed',
   'planned': 'planned',

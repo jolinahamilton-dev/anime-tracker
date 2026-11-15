@@ -148,7 +148,11 @@ export function spieleEin(zeilen: LogZeile[], stand?: { geraet: string; bisNr: n
   db.run('BEGIN TRANSACTION')
   try {
     setzeMeta('sync_pause', '1') // Trigger schweigen – sonst würden fremde Änderungen als eigene protokolliert
-    for (const r of sortiert) {
+    for (const r0 of sortiert) {
+      // „Angefangen" gibt es nicht mehr (= Laufend): ein Gerät mit alter App-Version schickt es noch
+      const r = r0.tabelle === 'entries' && r0.feld === 'status'
+        ? { ...r0, wert: r0.wert === 'started' ? 'ongoing' : r0.wert, alt: r0.alt === 'started' ? 'ongoing' : r0.alt }
+        : r0
       // Eigene Änderungen (in fremden Gesamtständen enthalten) sind hier längst angewendet oder überholt
       if (r.geraet === eigene) continue
       if (stand === undefined) {

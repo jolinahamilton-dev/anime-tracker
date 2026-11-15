@@ -209,7 +209,10 @@ export function spieleSicherungEin(s: Sicherung): SicherungInfo {
     for (const { uuid } of alle('SELECT uuid FROM entries')) {
       if (!entryUuids.has(uuid as string)) db.run('DELETE FROM entries WHERE uuid = ?', [uuid as string])
     }
-    for (const e of s.entries) schreibe('entries', entryFelder, e, { uuid: e.uuid as string })
+    // Ältere Sicherungen kennen noch den Status „Angefangen" (jetzt Laufend)
+    for (const e of s.entries) {
+      schreibe('entries', entryFelder, e.status === 'started' ? { ...e, status: 'ongoing' } : e, { uuid: e.uuid as string })
+    }
 
     const listUuids = new Set(s.custom_lists.map(l => l.uuid as string))
     for (const { uuid } of alle('SELECT uuid FROM custom_lists')) {

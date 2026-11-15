@@ -7,9 +7,8 @@ import { api } from '../api'
 import { sucheZuruecksetzen } from '../einpflegenZustand'
 
 const STATUS_LABEL: Partial<Record<EntryStatus, string>> = {
-  started: 'Angefangen',
   completed: 'Beendet',
-  ongoing: 'Ongoing',
+  ongoing: 'Laufend',
 }
 
 const GENRES = [
@@ -23,7 +22,7 @@ export default function ManuelleEingabe() {
   const [typ, setTyp] = useState<MediaType>('ANIME')
   const [titel, setTitel] = useState('')
   const [spitzname, setSpitzname] = useState('')
-  const [status, setStatus] = useState<EntryStatus>('started')
+  const [status, setStatus] = useState<EntryStatus>('ongoing')
   const [gesamtFolgen, setGesamtFolgen] = useState('')
   const [fortschritt, setFortschritt] = useState(0)
   const [gesamtKapitel, setGesamtKapitel] = useState('')
@@ -112,7 +111,7 @@ export default function ManuelleEingabe() {
         <div className="formular-zeile">
           <label>Status</label>
           <div className="status-buttons">
-            {(['started', 'ongoing', 'completed'] as EntryStatus[]).map(s => (
+            {(['ongoing', 'completed'] as EntryStatus[]).map(s => (
               <button key={s} className={status === s ? 'filter-btn active' : 'filter-btn'} onClick={() => setStatus(s)}>
                 {STATUS_LABEL[s]}
               </button>

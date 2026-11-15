@@ -53,7 +53,7 @@ interface Eintrag {
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  started: 'Angefangen',
+  started: 'Laufend', // Altwert „Angefangen" (abgeschafft)
   ongoing: 'Laufend',
   completed: 'Beendet',
   planned: 'Geplant',
@@ -62,7 +62,7 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 const STATUS_FARBE: Record<string, string> = {
-  started: '#4a9eff',
+  started: '#4adb6f', // Altwert, wie Laufend
   ongoing: '#4adb6f',
   completed: '#a259ff',
   planned: '#f5a623',
@@ -92,7 +92,7 @@ type DetailFilter =
   | { typ: 'mediatyp'; wert: string; label: string }
   | { typ: 'status'; wert: string; label: string }
   | { typ: 'genre'; wert: string; label: string }
-  | { typ: 'kombi'; wert: string; label: string } // Medientyp + Statusliste, z. B. 'MANGA|started,ongoing'
+  | { typ: 'kombi'; wert: string; label: string } // Medientyp + Statusliste, z. B. 'MANGA|ongoing'
   | { typ: 'alle'; wert: ''; label: string }
   | { typ: 'wiederholt'; wert: ''; label: string }
 
@@ -263,7 +263,7 @@ export default function StatistikPage() {
   // Kachel „Wiederholt": Zahl = Titel (wie die Liste beim Antippen), dazu die Wiederholungen insgesamt
   const wiederholteTitel = alleEintraege.filter(e => (e.rewatch_count ?? 0) > 0).length
 
-  const animeAktiv = alleEintraege.filter(e => e.type === 'ANIME' && (e.status === 'started' || e.status === 'ongoing')).length
+  const animeAktiv = alleEintraege.filter(e => e.type === 'ANIME' && (e.status === 'ongoing' || e.status === 'started')).length
 
   const detailEintraege =detailFilter === null ? [] : alleEintraege.filter(e => {
     if (detailFilter.typ === 'alle') return true
@@ -373,9 +373,9 @@ export default function StatistikPage() {
                 onClick={ev => toggleFilter({ typ: 'kombi', wert: 'ANIME|completed', label: 'Anime – beendet' }, ev)}
               />
               <Kachel
-                zahl={zahlText(animeAktiv)} label="Am Schauen" title="Angefangene und laufende Anime"
-                aktiv={istFilter('kombi', 'ANIME|started,ongoing')}
-                onClick={ev => toggleFilter({ typ: 'kombi', wert: 'ANIME|started,ongoing', label: 'Anime – am Schauen' }, ev)}
+                zahl={zahlText(animeAktiv)} label="Am Schauen" title="Laufende Anime"
+                aktiv={istFilter('kombi', 'ANIME|ongoing')}
+                onClick={ev => toggleFilter({ typ: 'kombi', wert: 'ANIME|ongoing', label: 'Anime – am Schauen' }, ev)}
               />
               <Kachel zahl={zahlText(stats.folgenGesehen)} label="Folgen gesehen" />
               <Kachel
@@ -384,7 +384,7 @@ export default function StatistikPage() {
               />
               <Kachel
                 zahl={zahlText(stats.offeneFolgen)} label={`Folgen offen (≈ ${formatWatchtime(stats.offeneMinuten)})`}
-                title="Noch ungesehene, schon verfügbare Folgen von geplanten, angefangenen, laufenden und pausierten Anime"
+                title="Noch ungesehene, schon verfügbare Folgen von geplanten, laufenden und pausierten Anime"
               />
               <Kachel zahl={schnittText(stats.bewertungAnime)} label="Ø Bewertung" />
             </div>
@@ -407,9 +407,9 @@ export default function StatistikPage() {
                 onClick={ev => toggleFilter({ typ: 'kombi', wert: 'MANGA|completed', label: 'Manga – beendet' }, ev)}
               />
               <Kachel
-                zahl={zahlText(stats.mangaAktiv)} label="Am Lesen" title="Angefangene und laufende Manga"
-                aktiv={istFilter('kombi', 'MANGA|started,ongoing')}
-                onClick={ev => toggleFilter({ typ: 'kombi', wert: 'MANGA|started,ongoing', label: 'Manga – am Lesen' }, ev)}
+                zahl={zahlText(stats.mangaAktiv)} label="Am Lesen" title="Laufende Manga"
+                aktiv={istFilter('kombi', 'MANGA|ongoing')}
+                onClick={ev => toggleFilter({ typ: 'kombi', wert: 'MANGA|ongoing', label: 'Manga – am Lesen' }, ev)}
               />
               <Kachel zahl={zahlText(stats.kapitelGelesen)} label="Kapitel gelesen" />
               {stats.baendeGelesen > 0 && <Kachel zahl={zahlText(stats.baendeGelesen)} label="Bände gelesen" />}
@@ -420,7 +420,7 @@ export default function StatistikPage() {
               {stats.offeneKapitel > 0 && (
                 <Kachel
                   zahl={zahlText(stats.offeneKapitel)} label="Kapitel offen"
-                  title="Noch ungelesene Kapitel von geplanten, angefangenen, laufenden und pausierten Manga – nur, wo die Kapitelzahl bekannt ist"
+                  title="Noch ungelesene Kapitel von geplanten, laufenden und pausierten Manga – nur, wo die Kapitelzahl bekannt ist"
                 />
               )}
               <Kachel zahl={schnittText(stats.bewertungManga)} label="Ø Bewertung" />

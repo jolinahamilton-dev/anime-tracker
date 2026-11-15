@@ -27,7 +27,7 @@ export const STANDARD_FILTER: ListenFilter = {
   aktiveListe: null,
 }
 
-const GUELTIGE_STATUS: EntryStatus[] = ['started', 'ongoing', 'completed', 'planned', 'dropped', 'paused']
+const GUELTIGE_STATUS: EntryStatus[] = ['ongoing','completed', 'planned', 'dropped', 'paused']
 
 const FILTER_KEY = 'liste.filter'
 const ANSICHTEN_KEY = 'liste.ansichten'
@@ -50,7 +50,10 @@ export function ladeFilter(): ListenFilter {
   // Früher war filterStatus ein einzelner Wert ('ALLE' oder ein Status) → in Liste umwandeln
   const roh: unknown[] = Array.isArray(f.filterStatus) ? f.filterStatus
     : typeof f.filterStatus === 'string' && f.filterStatus !== 'ALLE' ? [f.filterStatus] : []
-  return { ...f, filterStatus: roh.filter((s): s is EntryStatus => GUELTIGE_STATUS.includes(s as EntryStatus)) }
+  // „Angefangen" (started) gibt es nicht mehr, es ist jetzt Laufend – ohne Doppelte ersetzen
+  const status = roh.map(s => (s === 'started' ? 'ongoing' : s))
+    .filter((s, i, alle): s is EntryStatus => GUELTIGE_STATUS.includes(s as EntryStatus) && alle.indexOf(s) === i)
+  return { ...f, filterStatus: status }
 }
 export const speichereFilter = (f: ListenFilter) => schreibe(FILTER_KEY, f)
 

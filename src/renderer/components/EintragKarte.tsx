@@ -5,7 +5,7 @@ import { anzahlBaende } from '../baende'
 import './EintragKarte.css'
 
 export const STATUS_FARBE: Record<string, string> = {
-  started: '#4a9eff',
+  started: '#4adb6f', // Altwert „Angefangen" (abgeschafft) – wie Laufend
   ongoing: '#4adb6f',
   completed: '#a259ff',
   planned: '#f5a623',
@@ -15,7 +15,7 @@ export const STATUS_FARBE: Record<string, string> = {
 
 /** Statusfarbe als Schrift – im hellen Design dunklere Varianten (global.css), damit lesbar */
 export const STATUS_TEXTFARBE: Record<string, string> = {
-  started: 'var(--text-blau)',
+  started: 'var(--text-gruen)', // Altwert, wie Laufend
   ongoing: 'var(--text-gruen)',
   completed: 'var(--text-lila)',
   planned: 'var(--text-orange)',
@@ -48,8 +48,8 @@ export function naechsteFolgeText(entry: Entry, jetzt = new Date()): { kurz: str
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  started: 'Angefangen',
-  ongoing: 'Ongoing',
+  started: 'Laufend', // Altwert „Angefangen" (abgeschafft)
+  ongoing: 'Laufend',
   completed: 'Beendet',
   planned: 'Geplant',
   dropped: 'Abgebrochen',

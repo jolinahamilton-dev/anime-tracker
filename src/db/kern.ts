@@ -165,6 +165,12 @@ export function migrateSchema(db: Database) {
   // damit die Korrektur protokolliert und aufs andere Gerät übertragen wird
   db.run(`UPDATE watch_order SET item_status = 'completed'
     WHERE item_status != 'completed' AND total_episodes > 0 AND progress_episodes >= total_episodes`)
+
+  // Der Eintrags-Status „Angefangen" ist abgeschafft, er heißt jetzt „Laufend" (ongoing). Der Wert
+  // 'started' bleibt nur noch im CHECK oben (lässt sich nicht ändern) und wird nie mehr geschrieben.
+  // Läuft nach richteSyncEin (landet im Protokoll → aufs andere Gerät); updated_at bleibt, damit sich
+  // die Reihenfolge nach „Zuletzt bearbeitet" nicht verschiebt.
+  db.run("UPDATE entries SET status = 'ongoing' WHERE status = 'started'")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

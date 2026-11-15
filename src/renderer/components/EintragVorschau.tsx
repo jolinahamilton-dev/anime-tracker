@@ -21,9 +21,8 @@ interface Props {
 
 const STATUS_LABEL: Partial<Record<EntryStatus, string>> = {
   planned: 'Geplant',
-  started: 'Angefangen',
   completed: 'Beendet',
-  ongoing: 'Ongoing',
+  ongoing: 'Laufend',
 }
 
 /** Felder für api.createEntry aus einem AniList-Treffer (Fortschritt 0) – auch für „+ Geplant“ in den Vorschlägen */
@@ -50,10 +49,10 @@ export function eintragAusAniList(data: AniListSearchResult, status: EntryStatus
 
 export default function EintragVorschau({ data, onZurueck, startStatus, onHinzugefuegt, suchtext }: Props) {
   const navigate = useNavigate()
-  const [status, setStatus] = useState<EntryStatus>(startStatus ?? 'started')
+  const [status, setStatus] = useState<EntryStatus>(startStatus ?? 'ongoing')
   const statusAuswahl: EntryStatus[] = startStatus === 'planned'
-    ? ['planned', 'started', 'ongoing', 'completed']
-    : ['started', 'ongoing', 'completed']
+    ? ['planned', 'ongoing', 'completed']
+    : ['ongoing', 'completed']
   const geplant = status === 'planned'
   const [fortschritt, setFortschritt] = useState(0)
   const [kapitel, setKapitel] = useState(0)

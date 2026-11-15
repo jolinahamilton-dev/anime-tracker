@@ -1,4 +1,5 @@
 export type MediaType = 'ANIME' | 'MANGA'
+// 'started' (früher „Angefangen") ist abgeschafft = 'ongoing'; bleibt nur als Altwert im Typ/CHECK, wird nie mehr geschrieben
 export type EntryStatus = 'ongoing' | 'completed' | 'started' | 'planned' | 'dropped' | 'paused'
 
 export interface Entry {

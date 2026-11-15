@@ -26,7 +26,7 @@ const FORMAT_LABEL: Record<string, string> = {
 }
 
 const STATUS_TEXT: Partial<Record<Entry['status'], string>> = {
-  planned: 'Geplant', started: 'Angefangen', ongoing: 'Ongoing', completed: 'Beendet',
+  planned: 'Geplant', started: 'Laufend', ongoing: 'Laufend', completed: 'Beendet',
 }
 
 const schluesselA = (anilistId: number) => `a${anilistId}`
