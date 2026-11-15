@@ -1,6 +1,7 @@
 import { BrowserWindow, IpcMain } from 'electron'
 import { dbAll, dbGet, dbRun } from '../../db/database'
 import { geschauteFolgen } from './stats'
+import { anzahlBaende, parseBaende } from '../../renderer/baende'
 import type { AchievementUebersicht, AchievementTrackInfo, NeuesAchievement } from '../../types'
 
 // Achievements gibt es in zwei Arten:
@@ -86,6 +87,25 @@ export function lokalesDatum(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+/** Besessene Bände aller Manga zusammen (Sammlung, Textfeld baende_besitz) */
+function regalBaende() {
+  let n = 0
+  for (const r of dbAll("SELECT baende_besitz FROM entries WHERE type='MANGA' AND baende_besitz IS NOT NULL")) n += anzahlBaende(r.baende_besitz as string)
+  return n
+}
+
+/** Mindestens ein Manga mit bekannter Bandzahl (ab 3, damit Einzelbände nicht von selbst zählen), der lückenlos 1..total im Regal steht */
+function reiheKomplett() {
+  for (const r of dbAll("SELECT baende_besitz, total_volumes FROM entries WHERE type='MANGA' AND baende_besitz IS NOT NULL AND total_volumes >= 3")) {
+    const total = Number(r.total_volumes)
+    const hat = new Set(parseBaende(r.baende_besitz as string))
+    let komplett = true
+    for (let n = 1; n <= total && komplett; n++) if (!hat.has(n)) komplett = false
+    if (komplett) return true
+  }
+  return false
+}
+
 const tage = (n: number) => n === 1 ? '1 Tag' : `${n} Tage`
 
 export const TRACKS: Track[] = [
@@ -113,6 +133,12 @@ export const TRACKS: Track[] = [
     schwellen: [10, 50, 100, 200, 500],
     beschreibung: n => `${n} Einträge in der Liste`,
     wert: () => zahl('SELECT COUNT(*) as n FROM entries'),
+  },
+  {
+    id: 'regal', name: 'Regalfüller', icon: '🗄️', einheit: 'Bände',
+    schwellen: [10, 50, 100, 250, 500],
+    beschreibung: n => `${n} Manga-Bände im Regal`,
+    wert: regalBaende,
   },
   {
     id: 'abschluesse', name: 'Durchhalter', icon: '🏆', einheit: 'beendet',
@@ -182,6 +208,7 @@ const EINZELN: Einzeln[] = [
   { id: 'laufend_verfolgt', name: 'Auf dem Laufenden', beschreibung: '5 laufende Serien verfolgt', icon: '📡', pruefe: () => zahl("SELECT COUNT(*) as n FROM entries WHERE status='ongoing'") >= 5 },
   { id: 'pausiert', name: 'Pausen-Profi', beschreibung: 'Ersten Eintrag pausiert', icon: '⏸️', pruefe: () => zahl("SELECT COUNT(*) as n FROM entries WHERE status='paused'") >= 1 },
   { id: 'fuenf_abgebrochen', name: 'Selektiv', beschreibung: '5 Einträge abgebrochen', icon: '🚫', pruefe: () => zahl("SELECT COUNT(*) as n FROM entries WHERE status='dropped'") >= 5 },
+  { id: 'reihe_komplett', name: 'Komplettiert', beschreibung: 'Eine Manga-Reihe lückenlos im Regal', icon: '🏁', pruefe: reiheKomplett },
   { id: 'erster_export', name: 'Exporteur', beschreibung: 'Daten exportiert', icon: '💾', pruefe: () => meta('last_export') !== undefined },
   { id: 'dunkelmodus', name: 'Nachtfalter', beschreibung: 'Dunkelmodus aktiviert', icon: '🦇', pruefe: () => meta('darkMode') === 'true' },
   { id: 'farbe_geaendert', name: 'Individualist', beschreibung: 'Akzentfarbe geändert', icon: '🎨', pruefe: () => { const f = meta('akzentfarbe'); return f !== undefined && f !== '#e85d8a' } },

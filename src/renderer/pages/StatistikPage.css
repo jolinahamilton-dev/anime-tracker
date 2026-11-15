@@ -168,6 +168,11 @@
   color: var(--text-muted);
 }
 
+.stat-unter {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
 .stat-wert {
   font-size: 18px;
   color: var(--text-gelb);
@@ -500,8 +505,9 @@
 
 /* Kurzüberblick: am PC alle sechs Kacheln in einer Reihe */
 @media (min-width: 641px) {
+  /* Bis zu sieben Kacheln in einer Reihe (die siebte, „Bände im Regal“, erscheint nur mit Sammlung) */
   .stat-grid--kompakt {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   }
 }
 

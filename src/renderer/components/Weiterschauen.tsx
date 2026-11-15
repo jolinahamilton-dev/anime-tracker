@@ -10,6 +10,8 @@ interface Props {
   filterTyp: MediaType | 'ALLE' // ANIME → nur Weiterschauen, MANGA → nur Weiterlesen
 }
 
+let letzteEintraege: WeiterschauenEintrag[] = []
+
 /** Angefangene/laufende Manga, die noch nicht zu Ende gelesen sind – zuletzt bearbeitete zuerst */
 export function weiterlesen(entries: Entry[]): Entry[] {
   return entries
@@ -68,9 +70,11 @@ function Karte({ id, titel, cover, leer, unter, stand, plusLabel, plusTitel, onO
 // Leisten „Weiterschauen" (angefangene/laufende Anime, bei denen schon ungesehene Folgen bereitliegen)
 // und „Weiterlesen" (angefangene/laufende Manga – verfügbare Kapitel kennt man meist nicht)
 export default function Weiterschauen({ onOeffnen, entries, filterTyp }: Props) {
-  const [eintraege, setEintraege] = useState<WeiterschauenEintrag[]>([])
+  // Beim Zurückkehren von der Detailseite sofort den letzten Stand zeigen, damit die Leiste
+  // nicht erst nachträglich einspringt und die wiederhergestellte Scrollposition verschiebt
+  const [eintraege, setEintraege] = useState<WeiterschauenEintrag[]>(letzteEintraege)
 
-  const laden = useCallback(() => { api.getWeiterschauen().then(setEintraege) }, [])
+  const laden = useCallback(() => { api.getWeiterschauen().then(e => { letzteEintraege = e; setEintraege(e) }) }, [])
   useEffect(() => { laden() }, [laden])
   useEffect(() => api.onSerienAktualisiert(laden), [laden])
   useBeiAenderung(laden)

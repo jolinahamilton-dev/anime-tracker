@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Entry } from '../../types'
 import { api } from '../api'
 import { useBeiAenderung } from '../aktionen'
@@ -53,13 +53,16 @@ function Abschnitt({ titel, anzahl, leer, children }: { titel: string; anzahl: n
 
 export default function SammlungPage() {
   const navigate = useNavigate()
+  // Von der Statistik geöffnet → „Zurück" führt dorthin (wie bei der Detailseite)
+  const zurueck = (useLocation().state as { zurueck?: number } | null)?.zurueck
+  const zurueckGehen = () => zurueck ? navigate(-zurueck) : navigate('/')
   const [entries, setEntries] = useState<Entry[] | null>(null)
   const lade = useCallback(() => { api.getEntries().then(setEntries) }, [])
   useEffect(lade, [lade])
   useEffect(() => api.onSerienAktualisiert(() => lade()), [lade])
   useBeiAenderung(lade)
   useTasten(e => {
-    if (e.key === 'Escape' && !istTippen(e) && !overlayOffen()) { e.preventDefault(); navigate('/') }
+    if (e.key === 'Escape' && !istTippen(e) && !overlayOffen()) { e.preventDefault(); zurueckGehen() }
   })
 
   const serien = useMemo(() => auswerten((entries ?? []).filter(e => e.type === 'MANGA')), [entries])
@@ -99,7 +102,7 @@ export default function SammlungPage() {
   return (
     <div className="page sammlung-seite">
       <div className="page-header">
-        <button className="back-btn" onClick={() => navigate('/')}>← Zurück</button>
+        <button className="back-btn" onClick={zurueckGehen}>← Zurück</button>
         <h2>📚 Sammlung</h2>
       </div>
       <div className="sammlung-inhalt">

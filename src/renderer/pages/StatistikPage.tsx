@@ -5,6 +5,7 @@ import './StatistikPage.css'
 import { api } from '../api'
 import { STATUS_TEXTFARBE } from '../components/EintragKarte'
 import AchievementBereich from '../components/AchievementBereich'
+import { anzahlBaende, luecken, ungelesen } from '../baende'
 
 interface Stats {
   gesamt: number
@@ -47,6 +48,8 @@ interface Eintrag {
   status: string
   genres: string
   rewatch_count: number | null
+  progress_volumes?: number | null
+  baende_besitz?: string | null
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -145,9 +148,11 @@ function Panel({ id, titel, info, offen, onToggle, children }: {
   )
 }
 
-function Kachel({ zahl, label, title, aktiv, onClick }: {
+function Kachel({ zahl, label, unter, title, aktiv, onClick }: {
   zahl: ReactNode
   label: string
+  /** Zweite, kleinere Zeile unter dem Label (z. B. „in 4 Serien") */
+  unter?: string
   title?: string
   aktiv?: boolean
   onClick?: (ev: React.MouseEvent<HTMLElement>) => void
@@ -157,6 +162,7 @@ function Kachel({ zahl, label, title, aktiv, onClick }: {
       <button className={`stat-karte stat-karte--klickbar ${aktiv ? 'aktiv' : ''}`} title={title} onClick={onClick} aria-pressed={!!aktiv}>
         <span className="stat-zahl">{zahl}</span>
         <span className="stat-label">{label}</span>
+        {unter && <span className="stat-label stat-unter">{unter}</span>}
       </button>
     )
   }
@@ -164,6 +170,7 @@ function Kachel({ zahl, label, title, aktiv, onClick }: {
     <div className="stat-karte" title={title}>
       <span className="stat-zahl">{zahl}</span>
       <span className="stat-label">{label}</span>
+      {unter && <span className="stat-label stat-unter">{unter}</span>}
     </div>
   )
 }
@@ -292,6 +299,21 @@ export default function StatistikPage() {
   const beendetSumme = stats.beendetProMonat.reduce((s, m) => s + m.n, 0)
   const mangaMonatKapitel = stats.mangaBeendetProMonat.reduce((s, m) => s + m.kapitel, 0)
   const mangaMonatTitel = stats.mangaBeendetProMonat.reduce((s, m) => s + m.n, 0)
+  // Sammlung (physische Bände): aus den geladenen Einträgen, Hilfsfunktionen aus baende.ts
+  const regal = (() => {
+    let baende = 0, serien = 0, offen = 0, luecke = 0
+    for (const e of alleEintraege) {
+      if (e.type !== 'MANGA') continue
+      const n = anzahlBaende(e.baende_besitz)
+      if (!n) continue
+      baende += n; serien++
+      offen += ungelesen(e.baende_besitz, e.progress_volumes ?? 0).length
+      luecke += luecken(e.baende_besitz).length
+    }
+    return { baende, serien, offen, luecke }
+  })()
+  const zurSammlung = () => navigate('/sammlung', { state: { zurueck: 1 } })
+
   const topMangaMax = stats.topManga[0]?.kapitel ?? 1
 
   return (
@@ -323,6 +345,12 @@ export default function StatistikPage() {
             />
             <Kachel zahl={zahlText(stats.kapitelGelesen)} label="Kapitel" />
             <Kachel zahl={schnittText(stats.bewertungGesamt)} label="Ø Bewertung" />
+            {regal.baende > 0 && (
+              <Kachel
+                zahl={zahlText(regal.baende)} label="📚 Bände im Regal" unter={`in ${regal.serien} ${regal.serien === 1 ? 'Serie' : 'Serien'}`}
+                title="Zur Sammlung" onClick={zurSammlung}
+              />
+            )}
           </div>
         </section>
 
@@ -396,6 +424,19 @@ export default function StatistikPage() {
                 />
               )}
               <Kachel zahl={schnittText(stats.bewertungManga)} label="Ø Bewertung" />
+              {regal.baende > 0 && (
+                <>
+                  <Kachel zahl={zahlText(regal.baende)} label="Bände im Regal" title="Zur Sammlung" onClick={zurSammlung} />
+                  <Kachel
+                    zahl={zahlText(regal.offen)} label="Ungelesen im Regal"
+                    title="Besessene Bände mit höherer Nummer als der Lese-Stand (Bände gelesen)"
+                  />
+                  <Kachel
+                    zahl={zahlText(regal.luecke)} label="Lücken"
+                    title="Fehlende Bände unterhalb des jeweils höchsten besessenen Bands"
+                  />
+                </>
+              )}
             </div>
 
             {stats.topManga.length > 0 && (

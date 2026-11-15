@@ -451,7 +451,7 @@ export default function ListePage() {
         {/* Weiterschauen/-lesen nur ohne Suche und wenn der Status-Filter Angefangene/Laufende zeigt */}
         {!laden && aktiveListe === null && !verwaltenModus && !suche &&
           (filterStatus.length === 0 || filterStatus.includes('started') || filterStatus.includes('ongoing')) && (
-          <Weiterschauen onOeffnen={id => navigate(`/detail/${id}`)} entries={entries} filterTyp={filterTyp} />
+          <Weiterschauen onOeffnen={oeffneEintrag} entries={entries} filterTyp={filterTyp} />
         )}
 
         {laden ? (
