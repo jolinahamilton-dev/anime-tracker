@@ -75,6 +75,8 @@ export default function Vorschlaege({ onAuswaehlen }: Props) {
   const [gewaehlt, setGewaehlt] = useState<VorschlagBereich | null>(vorschlagSitzung.bereich)
   const [beschaeftigt, setBeschaeftigt] = useState<Set<number>>(new Set())
   const [typ, setTyp] = useState<MediaFilter>(vorschlagSitzung.typ)
+  // Kopf (Stand, Auswahl) schrumpft, sobald man in der Liste nach unten gescrollt hat – mehr Platz für die Titel
+  const [kompakt, setKompakt] = useState(vorschlagSitzung.scrollPosition > 60)
   const [dauer, setDauer] = useState<GeplantDauer>(vorschlagSitzung.geplantDauer)
   const [hervorgehoben, setHervorgehoben] = useState<number | null>(null)
   const listeRef = useRef<HTMLDivElement>(null)
@@ -130,6 +132,7 @@ export default function Vorschlaege({ onAuswaehlen }: Props) {
     setGewaehlt(b)
     vorschlagSitzung.bereich = b
     vorschlagSitzung.scrollPosition = 0
+    setKompakt(false)
     setHervorgehoben(null)
     if (listeRef.current) listeRef.current.scrollTop = 0
   }
@@ -187,6 +190,7 @@ export default function Vorschlaege({ onAuswaehlen }: Props) {
     setTyp(t)
     setHervorgehoben(null)
     vorschlagSitzung.scrollPosition = 0
+    setKompakt(false)
     if (listeRef.current) listeRef.current.scrollTop = 0
   }
 
@@ -222,7 +226,7 @@ export default function Vorschlaege({ onAuswaehlen }: Props) {
   if (laden && !antwort) return <div className="vorschlaege"><Ladeindikator text="Vorschläge werden gesucht…" /></div>
 
   return (
-    <div className="vorschlaege">
+    <div className={kompakt ? 'vorschlaege kompakt' : 'vorschlaege'}>
       <div className="vorschlaege-kopf">
         <span className="vorschlaege-stand" aria-live="polite">
           {berechnen ? 'Wird neu berechnet…' : stand ? `Stand: ${stand}` : ''}
@@ -279,7 +283,14 @@ export default function Vorschlaege({ onAuswaehlen }: Props) {
       <div
         className="vorschlaege-liste"
         ref={listeRef}
-        onScroll={e => { vorschlagSitzung.scrollPosition = e.currentTarget.scrollTop }}
+        onScroll={e => {
+          const el = e.currentTarget
+          vorschlagSitzung.scrollPosition = el.scrollTop
+          // Zwei Schwellen (nicht flackern): erst weit unten schrumpfen, erst ganz oben wieder aufklappen;
+          // bei kurzen Listen gar nicht, sonst würde der gewonnene Platz die Liste unscrollbar machen
+          if (!kompakt && el.scrollTop > 60 && el.scrollHeight - el.clientHeight > 220) setKompakt(true)
+          else if (kompakt && el.scrollTop < 10) setKompakt(false)
+        }}
       >
         {!bereich ? (
           !antwort ? (

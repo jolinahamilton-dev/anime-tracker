@@ -8,6 +8,9 @@
 }
 
 .vorschlaege-kopf {
+  max-height: 70px;
+  overflow: hidden;
+  transition: max-height 0.2s ease, padding 0.2s ease, opacity 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -49,6 +52,9 @@
 @keyframes vorschlag-drehen { to { transform: rotate(360deg); } }
 
 .vorschlaege-hinweis {
+  max-height: 160px;
+  overflow: hidden;
+  transition: max-height 0.2s ease, margin 0.2s ease, padding 0.2s ease, opacity 0.15s ease;
   margin: 4px 20px 2px;
   padding: 8px 12px;
   font-size: 12px;
@@ -371,4 +377,39 @@ button.vorschlag-kopf:focus-visible { outline-offset: -2px; border-radius: var(-
   .vorschlaege-typ { padding: 8px 16px 0; }
   .vorschlaege-bereiche { padding: 8px 16px 10px; }
   .vorschlaege-liste { padding: 4px 16px 24px; }
+}
+
+/* Nach unten gescrollt: Stand/„Neu berechnen“ und Hinweise weg, Auswahl kleiner – mehr Platz für die Titel.
+   visibility:hidden nimmt die ausgeblendeten Knöpfe auch aus der Tab-Reihenfolge. */
+.vorschlaege.kompakt .vorschlaege-kopf,
+.vorschlaege.kompakt .vorschlaege-hinweis {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  border-width: 0;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.vorschlaege-typ,
+.vorschlaege-bereiche { transition: padding 0.2s ease; }
+
+.vorschlaege.kompakt .vorschlaege-typ { padding-top: 6px; }
+.vorschlaege.kompakt .vorschlaege-bereiche { padding-top: 5px; padding-bottom: 6px; }
+
+.vorschlaege.kompakt .vorschlaege-typ .filter-btn,
+.vorschlaege.kompakt .vorschlaege-bereiche .filter-btn {
+  padding: 3px 11px;
+  font-size: 12px;
+}
+
+.vorschlaege.kompakt .bereich-anzahl { font-size: 10px; min-width: 16px; padding: 0 5px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .vorschlaege-kopf,
+  .vorschlaege-hinweis,
+  .vorschlaege-typ,
+  .vorschlaege-bereiche { transition: none; }
 }

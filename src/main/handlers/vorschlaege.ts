@@ -530,7 +530,9 @@ function geplantVorschlaege(eintraege: EigenerEintrag[], profil: Profil): Geplan
 
 // ── Berechnung und Zwischenspeicher ──
 
-type AniListTeil = Pick<VorschlagAntwort, 'empfehlungen' | 'adaptionen' | 'saison'> & { stand: string }
+// Wird die Berechnung geändert, hochzählen – ein Zwischenspeicher älterer Version wird dann gleich neu berechnet
+const ALGO_VERSION = 2
+type AniListTeil = Pick<VorschlagAntwort, 'empfehlungen' | 'adaptionen' | 'saison'> & { stand: string; v?: number }
 
 async function berechneAniListTeil(): Promise<AniListTeil> {
   const { abfrage, anzahl } = erstelleAbfrage()
@@ -546,11 +548,12 @@ async function berechneAniListTeil(): Promise<AniListTeil> {
 
   // Details der besten Kandidaten in einem Rutsch (Fortsetzungen fallen danach noch heraus, daher etwas mehr)
   const empfTop = empfKandidaten.slice(0, 32)
-  // Je Richtung eigene Plätze: wer viel mehr Anime als Manga hat, würde sonst alle 20 Plätze mit „Manga zum Anime“
-  // füllen und „Anime zu deinem Manga“ nie zu sehen bekommen
+  // „Anime zu deinem Manga“ ist selten (die meisten Manga gibt es nicht als Anime) und hat deshalb eigene Plätze;
+  // der Rest bis MAX_JE_LISTE wird mit „Manga zum Anime“ aufgefüllt. Für diese etwas mehr Kandidaten holen,
+  // weil Erwachsenen- und schon bekannte Titel danach noch herausfallen.
   const adaptTop = [
-    ...adaptKandidaten.filter(k => k.quelle.type === 'ANIME').slice(0, 14),
     ...adaptKandidaten.filter(k => k.quelle.type === 'MANGA').slice(0, 14),
+    ...adaptKandidaten.filter(k => k.quelle.type === 'ANIME').slice(0, 28),
   ].sort((a, b) => b.gewicht - a.gewicht)
   const details = await holeDetails(abfrage, [...empfTop.map(k => k.id), ...adaptTop.map(k => k.id)])
 
@@ -567,12 +570,16 @@ async function berechneAniListTeil(): Promise<AniListTeil> {
   }
   empfehlungen.sort((a, b) => b.gewicht - a.gewicht)
 
-  const adaptionen: Vorschlag[] = []
+  const alleAdaptionen: Vorschlag[] = []
   for (const k of adaptTop) {
     const m = details.get(k.id)
     if (!m || m.isAdult || bekannt(m)) continue
-    adaptionen.push(vorschlag(m, 'adaption', adaptionsGrund(k), k.gewicht))
+    alleAdaptionen.push(vorschlag(m, 'adaption', adaptionsGrund(k), k.gewicht))
   }
+  // Anime zu deinen Manga zuerst sichern, dann bis MAX_JE_LISTE mit „Manga zum Anime“ auffüllen
+  const animeZuManga = alleAdaptionen.filter(v => v.media.type === 'ANIME').slice(0, 14)
+  const mangaZuAnime = alleAdaptionen.filter(v => v.media.type !== 'ANIME').slice(0, MAX_JE_LISTE - animeZuManga.length)
+  const adaptionen = [...animeZuManga, ...mangaZuAnime].sort((a, b) => b.gewicht - a.gewicht)
 
   const saison = saisonVorschlaege((saisonRes?.data?.Page?.media ?? []).filter((m: any) => m?.id && !bekannt(m)), eintraege, profil, inListe, aus)
     .map(v => ({ ...v, zeitraum: v.zeitraum ?? `${SAISON_NAME[season]} ${jahr}` }))
@@ -584,6 +591,7 @@ async function berechneAniListTeil(): Promise<AniListTeil> {
     adaptionen,
     saison,
     stand: new Date().toISOString(),
+    v: ALGO_VERSION,
   }
 }
 
@@ -617,7 +625,7 @@ export async function holeVorschlaege(neuBerechnen = false): Promise<VorschlagAn
   const cache = leseCache()
   const alt = cache ? bereinige(cache) : { empfehlungen: [], adaptionen: [], saison: [], stand: null }
 
-  if (!neuBerechnen && cache && Date.now() - Date.parse(cache.stand) < CACHE_DAUER_MS) return { ...alt, geplant }
+  if (!neuBerechnen && cache && cache.v === ALGO_VERSION && Date.now() - Date.parse(cache.stand) < CACHE_DAUER_MS) return { ...alt, geplant }
   if (!neuBerechnen && letzterFehler && Date.now() - letzterFehler.zeit < FEHLER_PAUSE_MS) {
     return { ...alt, geplant, fehler: letzterFehler.meldung }
   }
