@@ -1,4 +1,5 @@
 import { useState, DragEvent } from 'react'
+import { anzeigeTitel } from '../titel'
 import './WatchOrder.css'
 
 export interface WatchItem {
@@ -7,6 +8,8 @@ export interface WatchItem {
   position: number
   is_custom?: number
   title?: string | null
+  /** Titel in der gewählten Titelsprache (nur gelesen – gespeichert wird immer `title`) */
+  anzeige_titel?: string | null
   cover_url?: string | null
   total_episodes?: number | null
   progress_episodes: number
@@ -143,7 +146,7 @@ export default function WatchOrder({ items, onAendern, onReset }: Props) {
               <img src={item.cover_url} alt="" className="watch-cover" />
             )}
             <div className="watch-info">
-              <span className="watch-titel">{item.title ?? `ID ${item.related_anilist_id}`}</span>
+              <span className="watch-titel">{anzeigeTitel(item) || `ID ${item.related_anilist_id}`}</span>
               <span className="watch-relation">
                 {RELATION_LABEL[item.relation_type] ?? item.relation_type}
                 {istNeueStaffel(item) && <span className="staffel-badge staffel-badge--neu">NEU</span>}

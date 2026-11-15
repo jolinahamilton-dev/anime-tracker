@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { api } from './api'
 import { bestaetigen, snackbar } from './meldungen'
+import { anzeigeTitel } from './titel'
 
 // Seitenübergreifendes Signal „Daten haben sich geändert" – z. B. wenn „Rückgängig" in der
 // Snackbar gedrückt wird, nachdem man die Seite schon verlassen hat
@@ -27,7 +28,7 @@ export async function aendereFortschritt(entryId: number, delta: 1 | -1) {
     return
   }
   meldeAenderung()
-  const titel = r.entry.nickname || r.entry.title
+  const titel = r.entry.nickname || anzeigeTitel(r.entry)
   snackbar(`${titel}: ${r.beschreibung} ✓`, r.rueckgaengig ? {
     label: 'Rückgängig',
     ausfuehren: async () => { await api.rueckgaengig(r.rueckgaengig!); meldeAenderung() },

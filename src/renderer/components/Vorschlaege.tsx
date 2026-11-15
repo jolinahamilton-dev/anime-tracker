@@ -5,6 +5,7 @@ import { api } from '../api'
 import { snackbar } from '../meldungen'
 import { GeplantDauer, MediaFilter, VorschlagBereich, vorschlagSitzung } from '../einpflegenZustand'
 import { eintragAusAniList } from './EintragVorschau'
+import { anzeigeTitel, mediaTitel, useTitelSprache } from '../titel'
 import Ladeindikator from './Ladeindikator'
 import './Vorschlaege.css'
 
@@ -56,8 +57,8 @@ const grundAus = (e: any) => String(e?.message ?? e ?? '').split('Error: ').pop(
 /** Snackbar nach dem Hinzufügen (auch aus der Vorschau) – mit Sprung zum Eintrag */
 export function meldeHinzugefuegt(entry: Entry, schonVorhanden: boolean, navigate: NavigateFunction, zusatz = '') {
   const oeffnen = { label: 'Öffnen', ausfuehren: () => navigate(`/detail/${entry.id}`, { state: { zurueck: 1 } }) }
-  if (schonVorhanden) snackbar(`„${entry.title}“ ist schon in deiner Liste${zusatz}`, oeffnen)
-  else snackbar(`„${entry.title}“ hinzugefügt (${STATUS_TEXT[entry.status] ?? entry.status})${zusatz}`, oeffnen)
+  if (schonVorhanden) snackbar(`„${anzeigeTitel(entry)}“ ist schon in deiner Liste${zusatz}`, oeffnen)
+  else snackbar(`„${anzeigeTitel(entry)}“ hinzugefügt (${STATUS_TEXT[entry.status] ?? entry.status})${zusatz}`, oeffnen)
 }
 
 /** Nach dem Hinzufügen über die Vorschau: Karte verschwindet auch nach dem Neuladen */
@@ -174,7 +175,7 @@ export default function Vorschlaege({ onAuswaehlen }: Props) {
   const keinInteresse = (v: Vorschlag) => mitSperre(v.media.id, async () => {
     await api.vorschlagAusblenden(v.media.id)
     entferne(schluesselA(v.media.id))
-    snackbar(`„${v.media.title.romaji}“ wird nicht mehr vorgeschlagen`)
+    snackbar(`„${mediaTitel(v.media)}“ wird nicht mehr vorgeschlagen`)
   })
 
   // ── Geplant-Liste: Filter und Zufallsauswahl ──
@@ -380,7 +381,8 @@ function VorschlagKarte({ v, beschaeftigt, onAnsehen, onGeplant, onAbo, onKeinIn
   const aboMoeglich = v.quelle === 'saison' && m.type === 'ANIME' && (laeuft || m.status === 'NOT_YET_RELEASED')
   const umfang = umfangText(m.type, m.episodes, m.chapters)
   const format = m.format ? FORMAT_LABEL[m.format] ?? m.format : null
-  const titel = m.title.romaji
+  const sprache = useTitelSprache()
+  const titel = mediaTitel(m, sprache)
 
   return (
     <article className="vorschlag-karte" aria-label={titel} data-key={schluesselA(m.id)}>
@@ -441,7 +443,7 @@ function GeplantKarte({ g, hervorgehoben, onOeffnen }: { g: GeplantVorschlag; he
       className={hervorgehoben ? 'vorschlag-karte geplant-karte hervorgehoben' : 'vorschlag-karte geplant-karte'}
       data-entry={g.entry_id}
       onClick={onOeffnen}
-      aria-label={`${g.title} öffnen – passt zu ${passt} %${hervorgehoben ? ' (zufällig ausgewählt)' : ''}`}
+      aria-label={`${anzeigeTitel(g)} öffnen – passt zu ${passt} %${hervorgehoben ? ' (zufällig ausgewählt)' : ''}`}
     >
       <div className="vorschlag-kopf">
         {g.cover_url
@@ -453,7 +455,7 @@ function GeplantKarte({ g, hervorgehoben, onOeffnen }: { g: GeplantVorschlag; he
             {umfang && <span>· {umfang}</span>}
             {hervorgehoben && <span className="zufall-marke">🎲 Heute dran</span>}
           </span>
-          <h4 className="vorschlag-titel">{g.title}</h4>
+          <h4 className="vorschlag-titel">{anzeigeTitel(g)}</h4>
           <div className="passt" aria-hidden="true">
             <div className="passt-balken"><div style={{ width: `${passt}%` }} /></div>
             <span>passt {passt} %</span>

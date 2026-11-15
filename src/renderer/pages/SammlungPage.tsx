@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { Entry } from '../../types'
 import { api } from '../api'
 import { useBeiAenderung } from '../aktionen'
+import { anzeigeTitel } from '../titel'
 import { istTippen, overlayOffen, useTasten } from '../tastatur'
 import { anzahlBaende, anzeigeBaende, luecken, naechsterKauf, parseBaende, ungelesen } from '../baende'
 import './Page.css'
@@ -34,7 +35,7 @@ function auswerten(manga: Entry[]): Serie[] {
   })
 }
 
-const nachTitel = (a: Serie, b: Serie) => a.entry.title.localeCompare(b.entry.title)
+const nachTitel = (a: Serie, b: Serie) => anzeigeTitel(a.entry).localeCompare(anzeigeTitel(b.entry), 'de')
 
 /** Aufklappbarer Abschnitt mit Zähler */
 function Abschnitt({ titel, anzahl, leer, children }: { titel: string; anzahl: number; leer: string; children: React.ReactNode }) {
@@ -84,7 +85,7 @@ export default function SammlungPage() {
           ? <img className="sammlung-cover" src={s.entry.cover_url} alt="" loading="lazy" />
           : <span className="sammlung-cover sammlung-cover--leer">📚</span>}
         <span className="sammlung-serie-text">
-          <span className="sammlung-serie-titel">{s.entry.title}</span>
+          <span className="sammlung-serie-titel">{anzeigeTitel(s.entry)}</span>
           <span className="sammlung-serie-detail">{text}</span>
         </span>
         <span className="sammlung-serie-pfeil" aria-hidden="true">›</span>

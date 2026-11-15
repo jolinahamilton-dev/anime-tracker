@@ -2,6 +2,7 @@ import { IpcMain, BrowserWindow } from 'electron'
 import { dbAll, dbGet, getDb, schedulePersist } from '../../db/database'
 import { anilistAbfrage } from './anilist'
 import { schreibeWatchOrder } from './watchorder'
+import { merkeTitel, titelAnzeige, MediaTitel } from './titel'
 import { nebenInNews, newsRelationErlaubt, newsWatchOrderBedingung } from './news-regel'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -23,7 +24,7 @@ const BATCH = 50
 const AKTUELL_TAGE = 180
 
 const MEDIA_FELDER = `id type status episodes duration nextAiringEpisode { episode }
-  title { romaji } coverImage { large }
+  title { romaji english native } coverImage { large }
   startDate { year month day } endDate { year month day }`
 
 const BATCH_QUERY = `
@@ -46,7 +47,7 @@ interface MediaInfo {
   episodes: number | null
   duration?: number | null
   nextAiringEpisode: { episode: number } | null
-  title: { romaji: string | null } | null
+  title: ({ romaji: string | null } & MediaTitel) | null
   coverImage: { large: string | null } | null
   startDate?: Datum | null
   endDate?: Datum | null
@@ -236,6 +237,11 @@ export async function aktualisiereSerien(win: BrowserWindow | null): Promise<Ser
       for (const k of m.relations?.edges ?? []) if (k.node.duration) dauern.set(k.node.id, k.node.duration)
     }
     for (const [id, min] of dauern) db.run('INSERT OR REPLACE INTO media_dauer (anilist_id, minuten) VALUES (?, ?)', [id, min])
+    // Titel in allen Sprachen für die Anzeige (Titelsprache) – ebenfalls ohne zusätzliche Anfrage
+    for (const m of cache.values()) {
+      merkeTitel(m.id, m.title)
+      for (const k of m.relations?.edges ?? []) merkeTitel(k.node.id, k.node.title)
+    }
 
     for (const e of eintraege) {
       const entryId = e.id as number
@@ -398,7 +404,7 @@ export function registerSerienHandlers(ipcMain: IpcMain) {
   // Neue Staffeln und Ankündigungen der letzten 60 Tage für die News-Seite –
   // nur abonnierte Serien, jede Staffel einmal (auch wenn sie zu mehreren Einträgen gehört)
   ipcMain.handle('serien:neueStaffeln', () => {
-    return dbAll(`
+    const zeilen = dbAll(`
       SELECT MIN(w.entry_id) AS entry_id, w.related_anilist_id, w.title, w.cover_url, w.media_status,
              MAX(w.neu_seit) AS neu_seit, MIN(e.title) AS serie
       FROM watch_order w JOIN entries e ON e.id = w.entry_id
@@ -407,6 +413,13 @@ export function registerSerienHandlers(ipcMain: IpcMain) {
       GROUP BY w.related_anilist_id
       ORDER BY neu_seit DESC
     `, [new Date(Date.now() - 60 * TAG_MS).toISOString()])
+    // Anzeigetitel (Titelsprache) für Staffel und Serie; `title`/`serie` bleiben die Originale
+    const t = titelAnzeige()
+    return zeilen.map(z => {
+      const e = dbGet('SELECT title, anilist_id FROM entries WHERE id = ?', [z.entry_id as number])
+      return { ...z, anzeige_titel: t.anzeige(z.title, z.related_anilist_id),
+        anzeige_serie: e ? t.anzeige(e.title, e.anilist_id) : z.serie }
+    })
   })
 
   ipcMain.handle('serien:letzterAbgleich', () => {

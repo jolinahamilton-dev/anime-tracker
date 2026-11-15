@@ -31,6 +31,12 @@ export interface Entry {
   created_at: string
   updated_at: string
   // ── Nur gelesen (entries:getAll/get berechnen sie, keine DB-Spalten) ──
+  // Titel in der gewählten Titelsprache (`title` bleibt der Originaltitel) und alle bekannten Titel
+  // kleingeschrieben für die Suche – renderer/titel.ts: anzeigeTitel()
+  anzeige_titel?: string | null
+  titel_alle?: string
+  // Nur beim Anlegen (entries:create): alle Titel des AniList-Treffers für den lokalen Titel-Cache
+  titles?: { romaji?: string | null; english?: string | null; native?: string | null }
   // Aktuelle Staffel der Hauptlinie (Prequel/Haupt/Sequels) – dieselbe, die „+1" zählt;
   // nur gesetzt, wenn die Hauptlinie mehr als eine Staffel hat
   staffel_titel?: string | null
@@ -155,6 +161,8 @@ export interface Vorschlag {
 export interface GeplantVorschlag {
   entry_id: number
   title: string
+  /** Titel in der gewählten Titelsprache (Spitzname hat Vorrang), falls der Handler ihn liefert */
+  anzeige_titel?: string | null
   cover_url: string | null
   type: MediaType
   folgen: number | null

@@ -7,6 +7,7 @@ import { snackbar } from '../meldungen'
 import { api } from '../api'
 import { sucheZuruecksetzen } from '../einpflegenZustand'
 import { spitznameAusSuche } from '../spitzname'
+import { anzeigeTitel, mediaTitel, mediaNebentitel, useTitelSprache } from '../titel'
 
 interface Props {
   data: AniListSearchResult
@@ -31,6 +32,8 @@ export function eintragAusAniList(data: AniListSearchResult, status: EntryStatus
     anilist_id: data.id,
     type: data.type,
     title: data.title.romaji,
+    // Titel in allen Sprachen für die Titelsprache (lokaler Cache, wird nicht synchronisiert)
+    titles: data.title,
     cover_url: data.coverImage.large,
     genres: JSON.stringify(data.genres),
     description: data.description?.replace(/<[^>]*>/g, '') ?? '',
@@ -49,6 +52,7 @@ export function eintragAusAniList(data: AniListSearchResult, status: EntryStatus
 
 export default function EintragVorschau({ data, onZurueck, startStatus, onHinzugefuegt, suchtext }: Props) {
   const navigate = useNavigate()
+  const sprache = useTitelSprache()
   const [status, setStatus] = useState<EntryStatus>(startStatus ?? 'ongoing')
   const statusAuswahl: EntryStatus[] = startStatus === 'planned'
     ? ['planned', 'ongoing', 'completed']
@@ -93,7 +97,7 @@ export default function EintragVorschau({ data, onZurueck, startStatus, onHinzug
       }
       if (ergebnis.schonVorhanden) {
         // Gleicher AniList-Titel ist schon in der Liste → keinen Doppelten anlegen, dorthin springen
-        snackbar(`„${ergebnis.title}" ist schon in deiner Liste${nameNachtragen ? ' – Spitzname ergänzt' : ''}`)
+        snackbar(`„${anzeigeTitel(ergebnis)}" ist schon in deiner Liste${nameNachtragen ? ' – Spitzname ergänzt' : ''}`)
         navigate(`/detail/${ergebnis.id}`, { state: { zurueck: 1 } })
         return
       }
@@ -114,12 +118,12 @@ export default function EintragVorschau({ data, onZurueck, startStatus, onHinzug
 
       <div className="vorschau-inhalt">
         <div className="vorschau-oben">
-          <img src={data.coverImage.large} alt={data.title.romaji} className="vorschau-cover" />
+          <img src={data.coverImage.large} alt={mediaTitel(data, sprache)} className="vorschau-cover" />
           <div className="vorschau-meta">
             <span className="ergebnis-typ">{data.type}</span>
-            <h3 className="vorschau-titel">{data.title.romaji}</h3>
-            {data.title.english && data.title.english !== data.title.romaji && (
-              <p className="vorschau-titel-en">{data.title.english}</p>
+            <h3 className="vorschau-titel">{mediaTitel(data, sprache)}</h3>
+            {mediaNebentitel(data, sprache) && (
+              <p className="vorschau-titel-en">{mediaNebentitel(data, sprache)}</p>
             )}
             <div className="ergebnis-genres">
               {data.genres.map(g => <span key={g} className="genre-tag">{g}</span>)}

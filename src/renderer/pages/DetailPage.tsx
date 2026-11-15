@@ -13,6 +13,7 @@ import { api } from '../api'
 import { aendereFortschritt, loescheEintrag, meldeAenderung, useBeiAenderung } from '../aktionen'
 import { hinweis, snackbar } from '../meldungen'
 import { kopiereText } from '../zwischenablage'
+import { anzeigeTitel } from '../titel'
 import { istTippen, overlayOffen, useTasten, useWischen } from '../tastatur'
 
 const RELEVANTE_RELATIONEN = new Set(['MAIN', 'PREQUEL', 'SEQUEL', 'SIDE_STORY', 'SPIN_OFF', 'PARENT', 'ALTERNATIVE'])
@@ -140,6 +141,7 @@ export default function DetailPage() {
           related_anilist_id: e.anilist_id,
           relation_type: 'MAIN',
           title: e.title,
+          anzeige_titel: e.anzeige_titel,
           total_episodes: e.total_episodes ?? null,
           progress_episodes: e.progress_episodes,
           item_status: itemStatusAus(e.status),
@@ -285,7 +287,7 @@ export default function DetailPage() {
   }
 
   async function loeschen() {
-    if (await loescheEintrag(entry!.id, entry!.title)) navigate('/')
+    if (await loescheEintrag(entry!.id, anzeigeTitel(entry!))) navigate('/')
   }
 
   // Zahlenfeld erst beim Verlassen/Enter speichern, nicht bei jedem Tastendruck
@@ -364,7 +366,7 @@ export default function DetailPage() {
           {entry.cover_url ? (
             <img
               src={entry.cover_url}
-              alt={entry.title}
+              alt={anzeigeTitel(entry)}
               className="detail-cover detail-cover--zoombar"
               onClick={() => setCoverGross(true)}
               title="Bild vergrößern"
@@ -380,11 +382,11 @@ export default function DetailPage() {
               <h2
                 className="detail-titel detail-titel--kopierbar"
                 title="Klicken kopiert den Titel – oder Text markieren"
-                onClick={() => titelKopieren(entry.title, true)}
-              >{entry.title}</h2>
+                onClick={() => titelKopieren(anzeigeTitel(entry), true)}
+              >{anzeigeTitel(entry)}</h2>
               <button
                 className="kopier-btn"
-                onClick={() => titelKopieren(entry.title)}
+                onClick={() => titelKopieren(anzeigeTitel(entry))}
                 aria-label="Titel kopieren"
                 title="Titel kopieren"
               >📋</button>
@@ -477,7 +479,7 @@ export default function DetailPage() {
                 <div key={item.related_anilist_id} className={`staffel-counter-zeile ${item.item_status === 'completed' ? 'staffel-counter-fertig' : ''}`}>
                   <div className="staffel-counter-info">
                     <span className="staffel-counter-titel">
-                      {item.title ?? `Teil ${i + 1}`}
+                      {anzeigeTitel(item) || `Teil ${i + 1}`}
                     </span>
                     <span className={`staffel-relation-label staffel-relation-${relFarbe}`}>
                       {relLabel}
@@ -658,7 +660,7 @@ export default function DetailPage() {
       </div>
 
       {coverGross && entry.cover_url && (
-        <BildVergroesserung url={entry.cover_url} alt={entry.title} onSchliessen={() => setCoverGross(false)} />
+        <BildVergroesserung url={entry.cover_url} alt={anzeigeTitel(entry)} onSchliessen={() => setCoverGross(false)} />
       )}
     </div>
   )

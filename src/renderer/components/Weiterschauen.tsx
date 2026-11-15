@@ -2,6 +2,7 @@ import { ReactNode, useCallback, useEffect, useState } from 'react'
 import { api, WeiterschauenEintrag } from '../api'
 import { aendereFortschritt, useBeiAenderung } from '../aktionen'
 import { Entry, MediaType } from '../../types'
+import { anzeigeTitel } from '../titel'
 import './Weiterschauen.css'
 
 interface Props {
@@ -87,16 +88,16 @@ export default function Weiterschauen({ onOeffnen, entries, filterTyp }: Props) 
       {anime.length > 0 && (
         <Leiste symbol="▶" titel="Weiterschauen" zuKey="liste.weiterschauenZu" anzahl={anime.length}>
           {anime.map(w => (
-            <Karte key={w.entry_id} id={w.entry_id} titel={w.title} cover={w.cover_url} leer="🎬" unter={w.staffel}
+            <Karte key={w.entry_id} id={w.entry_id} titel={anzeigeTitel(w)} cover={w.cover_url} leer="🎬" unter={w.staffel}
               stand={<>Folge {w.gesehen}/{w.total ?? w.verfuegbar}<span className="ws-offen">{w.verfuegbar - w.gesehen} neu</span></>}
-              plusLabel={`${w.title}: eine Folge weiter`} plusTitel="+1 Folge" onOeffnen={onOeffnen} />
+              plusLabel={`${anzeigeTitel(w)}: eine Folge weiter`} plusTitel="+1 Folge" onOeffnen={onOeffnen} />
           ))}
         </Leiste>
       )}
       {manga.length > 0 && (
         <Leiste symbol="📖" titel="Weiterlesen" zuKey="liste.weiterlesenZu" anzahl={manga.length}>
           {manga.map(e => {
-            const titel = e.nickname || e.title
+            const titel = e.nickname || anzeigeTitel(e)
             return (
               <Karte key={e.id} id={e.id} titel={titel} cover={e.cover_url} leer="📖"
                 stand={<>Kapitel {e.progress_chapters}{e.total_chapters ? `/${e.total_chapters}` : ''}</>}

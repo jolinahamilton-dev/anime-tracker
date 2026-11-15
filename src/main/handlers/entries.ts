@@ -3,6 +3,11 @@ import { dbAll, dbGet, dbRun, dbRunGetId, getDb, schedulePersist } from '../../d
 import { pruefeAchievements } from './achievements'
 import { pruefeAutoBeendet } from './serien'
 import { nebenInNews } from './news-regel'
+import { mitAnzeigeEintraege, merkeTitel, staffelAnzeige, titelAnzeige, MediaTitel } from './titel'
+
+/** Einzelne Zeile (Eintrag) mit Anzeigetitel – für alles, was ein Eintrag zurückgibt */
+const mitAnzeige = <T extends Record<string, unknown> | undefined | null>(e: T): T =>
+  (e ? mitAnzeigeEintraege([e as Record<string, unknown>])[0] : e) as T
 
 // Fortschritt beim Anlegen; bei „Beendet" wie in entries:update auf das Maximum setzen
 function fortschrittBeimAnlegen(data: Record<string, unknown>): [number, number, number] {
@@ -79,14 +84,14 @@ function aendereFortschritt(id: number, delta: number) {
       const bis = plusIdx >= 0 ? plusIdx : zeilen.length - 1
       for (let i = bis; i >= 0 && !ziel; i--) if ((zeilen[i].progress_episodes as number) > 0) ziel = zeilen[i]
     }
-    if (!ziel) return { entry: e, keinZiel: true }
+    if (!ziel) return { entry: mitAnzeige(e), keinZiel: true }
     const total = ziel.total_episodes as number | null
     neuerWert = Math.max(0, Math.min(total ?? Infinity, (ziel.progress_episodes as number) + delta))
     const itemStatus = total != null && neuerWert >= total ? 'completed' : neuerWert > 0 ? 'started' : 'planned'
     db.run('UPDATE watch_order SET progress_episodes = ?, item_status = ? WHERE entry_id = ? AND related_anilist_id = ?',
       [neuerWert, itemStatus, id, ziel.related_anilist_id as number])
     if (ziel.relation_type === 'MAIN') db.run('UPDATE entries SET progress_episodes = ? WHERE id = ?', [neuerWert, id])
-    beschreibung = `${ziel.title ?? 'Staffel'} · Folge ${neuerWert}${total ? `/${total}` : ''}`
+    beschreibung = `${staffelAnzeige(ziel.title, ziel.related_anilist_id) ?? 'Staffel'} · Folge ${neuerWert}${total ? `/${total}` : ''}`
   } else {
     const feld = e.type === 'ANIME' ? 'progress_episodes' : 'progress_chapters'
     const total = (e.type === 'ANIME' ? e.total_episodes : e.total_chapters) as number | null
@@ -124,7 +129,7 @@ function aendereFortschritt(id: number, delta: number) {
       [w.progress_episodes, w.item_status, id, w.related_anilist_id] as any[])
   })
   return {
-    entry: nachher,
+    entry: mitAnzeige(nachher),
     beschreibung,
     rueckgaengig: token,
     fertigVorschlag: delta > 0 && allesGeschaut && nachher.status !== 'completed',
@@ -134,6 +139,7 @@ function aendereFortschritt(id: number, delta: number) {
 /** Titel, bei denen schon Folgen bereitliegen, die man noch nicht gesehen hat */
 function weiterschauen() {
   const ergebnis: Zeile[] = []
+  const t = titelAnzeige()
   for (const e of dbAll(`SELECT * FROM entries WHERE type = 'ANIME' AND status IN ('started', 'ongoing') ORDER BY updated_at DESC`)) {
     const zeilen = dbAll('SELECT * FROM watch_order WHERE entry_id = ? ORDER BY position', [e.id as number])
       .filter(z => HAUPTLINIE.has(String(z.relation_type)))
@@ -146,8 +152,8 @@ function weiterschauen() {
     const gesehen = (z.progress_episodes as number) ?? 0
     if (verfuegbar == null || gesehen >= verfuegbar) continue
     ergebnis.push({
-      entry_id: e.id, title: e.title, cover_url: e.cover_url,
-      staffel: zeilen.length > 1 ? z.title : null,
+      entry_id: e.id, title: e.title, anzeige_titel: t.anzeige(e.title, e.anilist_id), cover_url: e.cover_url,
+      staffel: zeilen.length > 1 ? t.anzeige(z.title, z.related_anilist_id) : null,
       gesehen, verfuegbar, total: z.total_episodes ?? null, laeuft: z.media_status === 'RELEASING',
     })
   }
@@ -229,21 +235,25 @@ function ergaenzeEintraege(eintraege: Zeile[], woZeilen: Zeile[]): Zeile[] {
 
 export function registerEntryHandlers(ipcMain: IpcMain) {
   ipcMain.handle('entries:getAll', () => {
-    return ergaenzeEintraege(dbAll('SELECT * FROM entries ORDER BY updated_at DESC'),
-      dbAll('SELECT * FROM watch_order ORDER BY entry_id, position'))
+    const woZeilen = dbAll('SELECT * FROM watch_order ORDER BY entry_id, position')
+    return mitAnzeigeEintraege(ergaenzeEintraege(dbAll('SELECT * FROM entries ORDER BY updated_at DESC'), woZeilen), woZeilen)
   })
 
   ipcMain.handle('entries:get', (_, id: number) => {
     const e = dbGet('SELECT * FROM entries WHERE id = ?', [id])
     if (!e) return e
-    return ergaenzeEintraege([e], dbAll('SELECT * FROM watch_order WHERE entry_id = ? ORDER BY position', [id]))[0]
+    const woZeilen = dbAll('SELECT * FROM watch_order WHERE entry_id = ? ORDER BY position', [id])
+    return mitAnzeigeEintraege(ergaenzeEintraege([e], woZeilen), woZeilen)[0]
   })
 
   ipcMain.handle('entries:create', (event, data: Record<string, unknown>) => {
     // Gleicher AniList-Titel schon vorhanden → keinen Doppelten anlegen
     if (data.anilist_id != null) {
       const vorhanden = dbGet('SELECT * FROM entries WHERE anilist_id = ?', [data.anilist_id])
-      if (vorhanden) return { ...vorhanden, schonVorhanden: true }
+      if (vorhanden) {
+        merkeTitel(data.anilist_id as number, data.titles as MediaTitel | undefined)
+        return { ...mitAnzeige(vorhanden), schonVorhanden: true }
+      }
     }
     const id = dbRunGetId(`
       INSERT INTO entries (anilist_id, type, title, nickname, cover_url, genres, description,
@@ -260,8 +270,10 @@ export function registerEntryHandlers(ipcMain: IpcMain) {
        // Abschlussdatum: beim Anlegen unbekannt (der Titel kann vor Jahren beendet worden sein)
        null]
     )
+    // Titel in allen Sprachen gleich mitmerken (sonst erst nach dem nächsten Hintergrund-Abruf)
+    if (data.anilist_id != null) merkeTitel(data.anilist_id as number, data.titles as MediaTitel | undefined)
     pruefeAchievements(BrowserWindow.fromWebContents(event.sender))
-    return dbGet('SELECT * FROM entries WHERE id = ?', [id])
+    return mitAnzeige(dbGet('SELECT * FROM entries WHERE id = ?', [id]))
   })
 
   ipcMain.handle('entries:update', (event, id: number, data: Record<string, unknown>) => {
@@ -285,7 +297,7 @@ export function registerEntryHandlers(ipcMain: IpcMain) {
     }
 
     const keys = Object.keys(data).filter(k => ALLOWED.has(k))
-    if (keys.length === 0) return dbGet('SELECT * FROM entries WHERE id = ?', [id])
+    if (keys.length === 0) return mitAnzeige(dbGet('SELECT * FROM entries WHERE id = ?', [id]))
     const sets = keys.map(k => `${k} = ?`).join(', ')
     const vals = keys.map(k => data[k])
     dbRun(`UPDATE entries SET ${sets}, updated_at = datetime('now') WHERE id = ?`, [...vals, id])
@@ -296,7 +308,7 @@ export function registerEntryHandlers(ipcMain: IpcMain) {
       dbRun("UPDATE entries SET finished_at = datetime('now') WHERE id = ?", [id])
     }
     pruefeAchievements(BrowserWindow.fromWebContents(event.sender))
-    return dbGet('SELECT * FROM entries WHERE id = ?', [id])
+    return mitAnzeige(dbGet('SELECT * FROM entries WHERE id = ?', [id]))
   })
 
   // Abo umschalten – eigener Handler, damit „Zuletzt bearbeitet" (updated_at) unverändert bleibt
@@ -308,7 +320,7 @@ export function registerEntryHandlers(ipcMain: IpcMain) {
       dbRun('UPDATE entries SET bekannte_ids = NULL WHERE id = ?', [id])
       dbRun('UPDATE watch_order SET aired_episodes = NULL WHERE entry_id = ?', [id])
     }
-    return dbGet('SELECT * FROM entries WHERE id = ?', [id])
+    return mitAnzeige(dbGet('SELECT * FROM entries WHERE id = ?', [id]))
   })
 
   ipcMain.handle('entries:fortschritt', (event, id: number, delta: number) => {
@@ -359,7 +371,7 @@ export function registerEntryHandlers(ipcMain: IpcMain) {
       for (const w of woVorher) db.run('UPDATE watch_order SET progress_episodes = ?, item_status = ? WHERE entry_id = ? AND related_anilist_id = ?',
         [w.progress_episodes, w.item_status, id, w.related_anilist_id] as any[])
     }, 10 * 60_000)
-    return { entry: dbGet('SELECT * FROM entries WHERE id = ?', [id]), token }
+    return { entry: mitAnzeige(dbGet('SELECT * FROM entries WHERE id = ?', [id])), token }
   })
 
   ipcMain.handle('entries:delete', (_, id: number) => {

@@ -18,6 +18,7 @@ import { bestaetigen } from '../meldungen'
 import { anzahlBaende } from '../baende'
 import { setzeAnsichtGlobal } from '../ansichtGlobal'
 import { istTippen, overlayOffen, useIstHandy, useTasten } from '../tastatur'
+import { anzeigeTitel } from '../titel'
 import './Page.css'
 import './ListePage.css'
 
@@ -185,7 +186,9 @@ export default function ListePage() {
     if (!verwaltenModus && aktivListeIds !== null && !aktivListeIds.has(e.id)) return false
     if (suche) {
       const q = suche.toLowerCase()
-      const treffer = e.title.toLowerCase().includes(q) || (e.nickname ?? '').toLowerCase().includes(q)
+      // Spitzname, Originaltitel, Anzeigetitel und alle bekannten Titel (englisch/japanisch) – egal welche Sprache eingestellt ist
+      const treffer = e.title.toLowerCase().includes(q) || (e.nickname ?? '').toLowerCase().includes(q) ||
+        anzeigeTitel(e).toLowerCase().includes(q) || (e.titel_alle ?? '').includes(q)
       if (!treffer) return false
     }
     if (filterTyp !== 'ALLE' && e.type !== filterTyp) return false
@@ -200,7 +203,7 @@ export default function ListePage() {
   const gefiltert = ohneStatusFilter
     .filter(e => filterStatus.length === 0 || filterStatus.includes(e.status))
     .sort((a, b) => {
-      if (sortierung === 'alphabetisch') return a.title.localeCompare(b.title)
+      if (sortierung === 'alphabetisch') return anzeigeTitel(a).localeCompare(anzeigeTitel(b), 'de')
       if (sortierung === 'bewertung') return (b.rating ?? 0) - (a.rating ?? 0)
       return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
     })
@@ -550,9 +553,9 @@ export default function ListePage() {
       {vergroessert?.cover_url && (
         <BildVergroesserung
           url={vergroessert.cover_url}
-          alt={vergroessert.title}
+          alt={anzeigeTitel(vergroessert)}
           onSchliessen={() => setVergroessert(null)}
-          bilder={gefiltert.filter(e => e.cover_url).map(e => ({ id: e.id, url: e.cover_url!, titel: e.nickname || e.title }))}
+          bilder={gefiltert.filter(e => e.cover_url).map(e => ({ id: e.id, url: e.cover_url!, titel: e.nickname || anzeigeTitel(e) }))}
           startId={vergroessert.id}
           onOeffnen={id => { setVergroessert(null); oeffneEintrag(id) }}
         />

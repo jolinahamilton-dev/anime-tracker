@@ -2,6 +2,7 @@ import { KeyboardEvent, MouseEvent } from 'react'
 import { Entry } from '../../types'
 import { Ansicht } from '../listenZustand'
 import { anzahlBaende } from '../baende'
+import { anzeigeTitel } from '../titel'
 import './EintragKarte.css'
 
 export const STATUS_FARBE: Record<string, string> = {
@@ -99,7 +100,7 @@ export default function EintragKarte({ entry, onClick, ansicht = 'kacheln', onVe
     <div
       role="button"
       tabIndex={0}
-      aria-label={`${entry.title}, ${STATUS_LABEL[entry.status]}`}
+      aria-label={`${anzeigeTitel(entry)}, ${STATUS_LABEL[entry.status]}`}
       className={`eintrag-karte karte--${ansicht}${entry.status === 'completed' ? ' karte--beendet' : ''}`}
       onClick={onClick}
       onKeyDown={taste}
@@ -132,7 +133,7 @@ export default function EintragKarte({ entry, onClick, ansicht = 'kacheln', onVe
 
       <div className="karte-info">
         <div className="karte-titel-block">
-          <p className="karte-titel">{entry.title}</p>
+          <p className="karte-titel">{anzeigeTitel(entry)}</p>
           {entry.nickname && <p className="karte-nickname">„{entry.nickname}"</p>}
           {naechste && (
             <p className={naechste.heute ? 'karte-naechste karte-naechste--heute' : 'karte-naechste'} title={naechste.lang}>

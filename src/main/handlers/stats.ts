@@ -1,6 +1,7 @@
 import { IpcMain } from 'electron'
 import { dbAll, dbGet, dbRun } from '../../db/database'
 import { anilistAbfrage } from './anilist'
+import { titelAnzeige } from './titel'
 
 const STANDARD_MINUTEN = 24
 const DAUER_QUERY = `query ($ids: [Int]) { Page(perPage: 50) { media(id_in: $ids, type: ANIME) { id duration } } }`
@@ -62,7 +63,7 @@ export function geschauteFolgen(): { folgen: number; minuten: number } {
  * Stand (progress_chapters/-volumes) und dem Abschlussdatum (finished_at) beendeter Manga.
  */
 function mangaStatistik(monate: string[]) {
-  const manga = dbAll(`SELECT id, title, cover_url, status, progress_chapters, total_chapters, progress_volumes
+  const manga = dbAll(`SELECT id, anilist_id, title, cover_url, status, progress_chapters, total_chapters, progress_volumes
     FROM entries WHERE type = 'MANGA'`)
   const zahl = (x: unknown) => (typeof x === 'number' ? x : 0)
 
@@ -80,6 +81,7 @@ function mangaStatistik(monate: string[]) {
     }
   }
 
+  const t = titelAnzeige()
   const topManga = manga
     .filter(m => zahl(m.progress_chapters) > 0)
     .sort((a, b) => zahl(b.progress_chapters) - zahl(a.progress_chapters))
@@ -87,6 +89,7 @@ function mangaStatistik(monate: string[]) {
     .map(m => ({
       id: m.id as number,
       title: m.title as string,
+      anzeige_titel: t.anzeige(m.title, m.anilist_id),
       cover_url: (m.cover_url as string | null) ?? null,
       kapitel: zahl(m.progress_chapters),
       gesamt: (m.total_chapters as number | null) ?? null,

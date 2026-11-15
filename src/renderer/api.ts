@@ -23,6 +23,8 @@ export interface FortschrittErgebnis {
 export interface WeiterschauenEintrag {
   entry_id: number
   title: string
+  /** Titel in der gewählten Titelsprache (Original, wenn nicht bekannt) */
+  anzeige_titel?: string | null
   cover_url: string | null
   staffel: string | null
   gesehen: number

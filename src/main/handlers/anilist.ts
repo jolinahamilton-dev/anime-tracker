@@ -1,12 +1,13 @@
 import { IpcMain, BrowserWindow } from 'electron'
 import { dbAll, dbGet, dbRun } from '../../db/database'
+import { adultFilter } from './einstellungen-kern'
 
 const ANILIST_URL = 'https://graphql.anilist.co'
 
 const SEARCH_QUERY = `
-query ($search: String, $type: MediaType) {
+query ($search: String, $type: MediaType, $adult: Boolean) {
   Page(perPage: 30) {
-    media(search: $search, type: $type, sort: [SEARCH_MATCH, POPULARITY_DESC]) {
+    media(search: $search, type: $type, isAdult: $adult, sort: [SEARCH_MATCH, POPULARITY_DESC]) {
       id
       type
       format
@@ -197,7 +198,7 @@ export function registerAniListHandlers(ipcMain: IpcMain) {
   ipcMain.handle('anilist:search', async (_, search: string, type: string) => {
     // Fehler (Netz, Limit, Störung) werden an die Suche weitergereicht und dort
     // angezeigt, statt als „Keine Ergebnisse" zu erscheinen
-    const result = await anilistAbfrage(SEARCH_QUERY, { search, type })
+    const result = await anilistAbfrage(SEARCH_QUERY, { search, type, ...adultFilter() })
     return result?.data?.Page?.media ?? []
   })
 

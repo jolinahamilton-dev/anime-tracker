@@ -3,6 +3,7 @@ import { AniListSearchResult } from '../../types'
 import './AniListSuche.css'
 import { api } from '../api'
 import { einpflegenSitzung, MediaFilter } from '../einpflegenZustand'
+import { mediaTitel, mediaNebentitel, useTitelSprache } from '../titel'
 
 interface Props {
   onAuswaehlen: (result: AniListSearchResult) => void
@@ -28,6 +29,7 @@ function markiereVorhandene<T extends AniListSearchResult>(treffer: T[], vorhand
 }
 
 export default function AniListSuche({ onAuswaehlen }: Props) {
+  const sprache = useTitelSprache()
   // Startwerte aus der Sitzung → nach „← Zurück“ aus der Vorschau ist alles wie vorher
   const [suchbegriff, setSuchbegriff] = useState(einpflegenSitzung.suchbegriff)
   const [filter, setFilter] = useState<MediaFilter>(einpflegenSitzung.filter)
@@ -166,14 +168,14 @@ export default function AniListSuche({ onAuswaehlen }: Props) {
           >
             <img
               src={item.coverImage.large}
-              alt={item.title.romaji}
+              alt={mediaTitel(item, sprache)}
               className="ergebnis-cover"
             />
             <div className="ergebnis-info">
               <span className={`ergebnis-typ typ-${item.type.toLowerCase()}`}>{item.type}</span>
-              <h3 className="ergebnis-titel">{item.title.romaji}</h3>
-              {item.title.english && item.title.english !== item.title.romaji && (
-                <p className="ergebnis-titel-en">{item.title.english}</p>
+              <h3 className="ergebnis-titel">{mediaTitel(item, sprache)}</h3>
+              {mediaNebentitel(item, sprache) && (
+                <p className="ergebnis-titel-en">{mediaNebentitel(item, sprache)}</p>
               )}
               <div className="ergebnis-genres">
                 {item.genres.slice(0, 3).map(g => (

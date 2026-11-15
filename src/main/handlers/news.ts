@@ -2,6 +2,7 @@ import { IpcMain } from 'electron'
 import { dbAll, dbGet, dbRun } from '../../db/database'
 import { anilistAbfrage } from './anilist'
 import { aboIdsSql, newsWatchOrderBedingung } from './news-regel'
+import { anzeigeSql } from './titel'
 
 const ZWEI_MONATE_SEKUNDEN = 60 * 24 * 3600 * 2
 const ZWEI_WOCHEN_SEKUNDEN = 14 * 24 * 3600
@@ -70,9 +71,11 @@ export function registerNewsHandlers(ipcMain: IpcMain) {
   ipcMain.handle('news:getAll', () => {
     bereinigeAlteNews()
     const grenze = Math.floor(Date.now() / 1000) - ZWEI_MONATE_SEKUNDEN
+    const original = 'COALESCE(e.title, (SELECT w.title FROM watch_order w WHERE w.related_anilist_id = n.anilist_id LIMIT 1))'
     return dbAll(`
       SELECT n.*,
-        COALESCE(e.title, (SELECT w.title FROM watch_order w WHERE w.related_anilist_id = n.anilist_id LIMIT 1)) AS title,
+        ${original} AS title,
+        ${anzeigeSql(original, 'n.anilist_id')} AS anzeige_titel,
         COALESCE(e.cover_url, (SELECT w.cover_url FROM watch_order w WHERE w.related_anilist_id = n.anilist_id LIMIT 1)) AS cover_url,
         COALESCE(e.id, (SELECT w.entry_id FROM watch_order w WHERE w.related_anilist_id = n.anilist_id LIMIT 1)) AS entry_id
       FROM news_cache n

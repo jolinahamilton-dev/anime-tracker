@@ -8,6 +8,9 @@ import './EinstellungenPage.css'
 import { api, kann, istHandyApp, neuLaden, SicherungInfo, LokaleKopie } from '../api'
 import SyncBereich from '../components/SyncBereich'
 import { bestaetigen, snackbar } from '../meldungen'
+import { meldeAenderung } from '../aktionen'
+import { setzeAnsichtGlobal, useAnsichtGlobal } from '../ansichtGlobal'
+import { Ansicht, ladeAnsichten, speichereAnsichten, ansichtKey } from '../listenZustand'
 
 /** Merkt sich über das Neuladen hinweg, dass gerade wiederhergestellt wurde (für den Hinweis mit „Rückgängig“) */
 const NACH_WIEDERHERSTELLUNG = 'nach-wiederherstellung'
@@ -16,6 +19,19 @@ const datumZeit = (iso: string) => new Date(iso).toLocaleString('de-DE', { dateS
 const anzahl = (n: number) => `${n} ${n === 1 ? 'Eintrag' : 'Einträge'}`
 
 type ExportFormat = 'csv' | 'excel' | 'pdf'
+
+const KACHEL_GROESSEN: { key: Ansicht; label: string }[] = [
+  { key: 'liste', label: 'Klein' },
+  { key: 'kacheln', label: 'Mittel' },
+  { key: 'gross', label: 'Groß' },
+]
+
+type TitelSprache = 'englisch' | 'romaji' | 'japanisch'
+const TITEL_SPRACHEN: { key: TitelSprache; label: string }[] = [
+  { key: 'englisch', label: 'Englisch' },
+  { key: 'romaji', label: 'Romaji' },
+  { key: 'japanisch', label: 'Japanisch' },
+]
 
 const ALLE_STATUS = [
   { key: 'ongoing', label: 'Laufend' },
@@ -79,6 +95,33 @@ export default function EinstellungenPage() {
     const neu = !newsNeben
     setNewsNeben(neu)
     api.setMeta('newsNeben', String(neu))
+  }
+
+  // 18+-Titel in Suche und Vorschlägen – Standard: an (ohne gespeicherten Wert)
+  const [adultAnzeigen, setAdultAnzeigen] = useState(true)
+  useEffect(() => { api.getMeta('adultAnzeigen').then(v => setAdultAnzeigen(v !== 'false')) }, [])
+  function schalteAdult() {
+    const neu = !adultAnzeigen
+    setAdultAnzeigen(neu)
+    api.setMeta('adultAnzeigen', String(neu))
+  }
+
+  // Sprache der Titel – Standard: Englisch (fehlt ein Titel in der Sprache, gilt Romaji)
+  const [titelSprache, setTitelSprache] = useState<TitelSprache>('englisch')
+  useEffect(() => {
+    api.getMeta('titelSprache').then(v => { if (v === 'romaji' || v === 'japanisch') setTitelSprache(v) })
+  }, [])
+  async function waehleTitelSprache(neu: TitelSprache) {
+    setTitelSprache(neu)
+    await api.setMeta('titelSprache', neu)
+    meldeAenderung() // Listen laden mit der neuen Sprache neu
+  }
+
+  // Größe der Titel und Kacheln: gilt global und für die Startseite („Alle“)
+  const kachelGroesse = useAnsichtGlobal()
+  function waehleKachelGroesse(a: Ansicht) {
+    setzeAnsichtGlobal(a)
+    speichereAnsichten({ ...ladeAnsichten(), [ansichtKey(null)]: a })
   }
 
   const [importLaeuft, setImportLaeuft] = useState(false)
@@ -322,6 +365,62 @@ export default function EinstellungenPage() {
             >
               <span className="toggle-knopf" />
             </button>
+          </div>
+
+          <div className="einstell-zeile">
+            <div className="einstell-info">
+              <span className="einstell-label">18+-Titel anzeigen</span>
+              <span className="einstell-sub">Titel mit Altersfreigabe 18+ in Suche und Vorschlägen anzeigen</span>
+            </div>
+            <button
+              className={adultAnzeigen ? 'toggle aktiv' : 'toggle'}
+              onClick={schalteAdult}
+              role="switch"
+              aria-checked={adultAnzeigen}
+              aria-label="18+-Titel anzeigen"
+            >
+              <span className="toggle-knopf" />
+            </button>
+          </div>
+
+          <div className="einstell-zeile">
+            <div className="einstell-info">
+              <span className="einstell-label">Sprache der Titel</span>
+              <span className="einstell-sub">Fehlt ein Titel in der gewählten Sprache, wird Romaji gezeigt</span>
+            </div>
+            <div className="status-buttons" role="radiogroup" aria-label="Sprache der Titel">
+              {TITEL_SPRACHEN.map(o => (
+                <button
+                  key={o.key}
+                  role="radio"
+                  aria-checked={titelSprache === o.key}
+                  className={titelSprache === o.key ? 'filter-btn active' : 'filter-btn'}
+                  onClick={() => waehleTitelSprache(o.key)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="einstell-zeile">
+            <div className="einstell-info">
+              <span className="einstell-label">Größe der Titel und Kacheln</span>
+              <span className="einstell-sub">Gilt für Liste, Einpflegen, News, Statistik und Sammlung</span>
+            </div>
+            <div className="status-buttons" role="radiogroup" aria-label="Größe der Titel und Kacheln">
+              {KACHEL_GROESSEN.map(o => (
+                <button
+                  key={o.key}
+                  role="radio"
+                  aria-checked={kachelGroesse === o.key}
+                  className={kachelGroesse === o.key ? 'filter-btn active' : 'filter-btn'}
+                  onClick={() => waehleKachelGroesse(o.key)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="einstell-zeile einstell-zeile--top">

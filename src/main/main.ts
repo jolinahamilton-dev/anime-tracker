@@ -19,6 +19,7 @@ import { registerSicherungHandlers } from './handlers/sicherung'
 import { registerBegruessungHandlers } from './handlers/begruessung'
 import { registerSerienHandlers, aktualisiereSerien } from './handlers/serien'
 import { registerVorschlagHandlers } from './handlers/vorschlaege'
+import { ergaenzeTitel } from './handlers/titel'
 import { erstelleSyncDienst } from '../sync/dienst'
 import { pcPlattform } from './sync-pc'
 
@@ -119,9 +120,13 @@ app.whenReady().then(async () => {
     .catch(console.error)
     .then(() => ergaenzeFolgenlaengen()) // nur beim ersten Mal nennenswert, danach fehlt kaum etwas
     .catch(console.error)
+    .then(() => ergaenzeTitel(BrowserWindow.getAllWindows()[0] ?? null)) // Titel in allen Sprachen, nur Fehlendes
+    .catch(console.error)
   // Erst starten, wenn die Oberfläche geladen ist – sonst ginge der Hinweis-Toast verloren
   win.webContents.once('did-finish-load', () => {
     abgleich()
+    // Titel für die Titelsprache zuerst und eigenständig: sonst warten sie hinter dem Serien-Abgleich
+    setTimeout(() => ergaenzeTitel(win).catch(console.error), 5000)
     // Abgleich mit dem Handy über Google Drive: beim Start und alle 5 Minuten (nur wenn eingerichtet)
     sync.starteAutomatik(5 * 60 * 1000)
   })

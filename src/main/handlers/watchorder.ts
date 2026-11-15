@@ -2,19 +2,20 @@ import { IpcMain } from 'electron'
 import { dbAll, dbRun, getDb, schedulePersist } from '../../db/database'
 import { anilistAbfrage } from './anilist'
 import { pruefeAutoBeendet } from './serien'
+import { merkeTitel, mitAnzeigeStaffeln } from './titel'
 
 const RELATIONS_QUERY = `
 query ($id: Int) {
   Media(id: $id) {
     id
     type
-    title { romaji }
+    title { romaji english native }
     coverImage { large }
     episodes
     relations {
       edges {
         relationType
-        node { id type title { romaji } coverImage { large } episodes }
+        node { id type title { romaji english native } coverImage { large } episodes }
       }
     }
   }
@@ -32,6 +33,9 @@ async function fetchRelations(anilistId: number): Promise<unknown[]> {
   const media = res?.data?.Media
   if (!media) return []
   const eigenerTyp = media.type
+  // Titel in allen Sprachen für die Anzeige gleich merken
+  merkeTitel(media.id, media.title)
+  for (const e of media.relations?.edges ?? []) if (e?.node?.id != null) merkeTitel(e.node.id, e.node.title)
   const edges = media.relations?.edges ?? []
 
   const selbst = {
@@ -52,9 +56,9 @@ async function fetchRelations(anilistId: number): Promise<unknown[]> {
       total_episodes: e.node.episodes ?? null,
     }))
 
-  return [selbst, ...verwandte]
+  return mitAnzeigeStaffeln([selbst, ...verwandte]
     .sort((a, b) => (REIHENFOLGE[a.relation_type] ?? 99) - (REIHENFOLGE[b.relation_type] ?? 99))
-    .map((item, i) => ({ ...item, position: i, is_custom: 0, progress_episodes: 0, item_status: 'planned' }))
+    .map((item, i) => ({ ...item, position: i, is_custom: 0, progress_episodes: 0, item_status: 'planned' })))
 }
 
 export interface WoSpeicherZeile {
@@ -101,7 +105,7 @@ export function schreibeWatchOrder(entryId: number, zeilen: WoSpeicherZeile[]) {
 
 export function registerWatchOrderHandlers(ipcMain: IpcMain) {
   ipcMain.handle('watchorder:get', (_, entryId: number) => {
-    return dbAll('SELECT * FROM watch_order WHERE entry_id = ? ORDER BY position', [entryId])
+    return mitAnzeigeStaffeln(dbAll('SELECT * FROM watch_order WHERE entry_id = ? ORDER BY position', [entryId]))
   })
 
   ipcMain.handle('watchorder:getRelations', async (_, anilistId: number) => {
@@ -148,7 +152,7 @@ export function registerWatchOrderHandlers(ipcMain: IpcMain) {
     return {
       success: true,
       status: zurueck.length ? 'completed' : null,
-      items: dbAll('SELECT * FROM watch_order WHERE entry_id = ? ORDER BY position', [entryId]),
+      items: mitAnzeigeStaffeln(dbAll('SELECT * FROM watch_order WHERE entry_id = ? ORDER BY position', [entryId])),
     }
   })
 

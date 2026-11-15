@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import './Page.css'
 import './NewsPage.css'
 import { api } from '../api'
+import { anzeigeTitel } from '../titel'
 
 interface NewsItem {
   id: number
@@ -11,6 +12,7 @@ interface NewsItem {
   airing_at: number
   seen: number
   title: string | null
+  anzeige_titel?: string | null
   cover_url: string | null
   entry_id: number | null
 }
@@ -19,10 +21,12 @@ interface NeueStaffel {
   entry_id: number
   related_anilist_id: number
   title: string | null
+  anzeige_titel?: string | null
   cover_url: string | null
   media_status: string | null
   neu_seit: string
   serie: string
+  anzeige_serie?: string
 }
 
 type Gruppe = 'erschienen' | 'bald' | 'angekuendigt'
@@ -138,8 +142,8 @@ export default function NewsPage() {
     >
       {s.cover_url && <img src={s.cover_url} alt="" className="news-cover" />}
       <div className="news-info">
-        <p className="news-titel">{s.title ?? `AniList #${s.related_anilist_id}`}</p>
-        <p className="news-folge">zu „{s.serie}"</p>
+        <p className="news-titel">{anzeigeTitel(s) || `AniList #${s.related_anilist_id}`}</p>
+        <p className="news-folge">zu „{s.anzeige_serie ?? s.serie}"</p>
       </div>
       <div className="news-datum">
         <span>{new Date(s.neu_seit).toLocaleDateString('de-DE')}</span>
@@ -235,10 +239,10 @@ function NewsKarte({ item, onOeffnen }: { item: NewsItem, onOeffnen: (entryId: n
       onClick={() => item.entry_id && onOeffnen(item.entry_id)}
     >
       {item.cover_url && (
-        <img src={item.cover_url} alt={item.title ?? ''} className="news-cover" />
+        <img src={item.cover_url} alt={anzeigeTitel(item)} className="news-cover" />
       )}
       <div className="news-info">
-        <p className="news-titel">{item.title ?? `AniList #${item.anilist_id}`}</p>
+        <p className="news-titel">{anzeigeTitel(item) || `AniList #${item.anilist_id}`}</p>
         <p className="news-folge">Folge {item.episode}</p>
       </div>
       <div className="news-datum">

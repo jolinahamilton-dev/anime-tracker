@@ -9,6 +9,8 @@
 import type { IpcMain } from 'electron'
 import { dbAll, dbGet, dbRun } from '../../db/database'
 import { anilistAbfrage, normalisiere } from './anilist'
+import { adultAnzeigen, adultFilter, titelSprache } from './einstellungen-kern'
+import { titelAnzeige } from './titel'
 import type { AniListSearchResult, GeplantVorschlag, MediaType, Vorschlag, VorschlagAntwort } from '../../types'
 
 const CACHE_SCHLUESSEL = 'vorschlaege_cache'
@@ -102,12 +104,15 @@ query ($ids: [Int]) {
 `
 
 const SAISON_QUERY = `
-query ($season: MediaSeason, $jahr: Int) {
+query ($season: MediaSeason, $jahr: Int, $adult: Boolean) {
   Page(perPage: 50) {
-    media(season: $season, seasonYear: $jahr, type: ANIME, format_in: [TV, TV_SHORT, ONA], isAdult: false, sort: POPULARITY_DESC) {${DETAIL_FELDER}}
+    media(season: $season, seasonYear: $jahr, type: ANIME, format_in: [TV, TV_SHORT, ONA], isAdult: $adult, sort: POPULARITY_DESC) {${DETAIL_FELDER}}
   }
 }
 `
+
+// Mit „18+-Titel anzeigen“ wird nichts herausgefiltert (Einstellung adultAnzeigen, standardmäßig an)
+const verborgen = (m: any) => !!m?.isAdult && !adultAnzeigen()
 
 const warte = (ms: number) => new Promise(r => setTimeout(r, ms))
 
@@ -153,7 +158,8 @@ function leseEintraege(): EigenerEintrag[] {
     })
 }
 
-const anzeigeName = (e: EigenerEintrag) => e.nickname || e.title
+// Spitzname, sonst der Titel in der gewählten Sprache (Einstellung „Sprache der Titel“)
+const anzeigeName = (e: EigenerEintrag): string => e.nickname || titelAnzeige().anzeige(e.title, e.anilist_id) || e.title
 
 /** AniList-IDs, die nicht vorgeschlagen werden: alles in der Liste (auch Staffeln) und „Kein Interesse“.
  *  bekannt() prüft zusätzlich den Titel – falls ein Eintrag mit einer anderen AniList-ID verknüpft ist. */
@@ -339,7 +345,7 @@ async function sammleEmpfehlungen(abfrage: Abfrage, eintraege: EigenerEintrag[],
     const s = samenVonId.get(m?.id)
     if (!s) continue
     const knoten = (m.recommendations?.nodes ?? []).filter((n: any) =>
-      n?.rating > 0 && n.mediaRecommendation && !n.mediaRecommendation.isAdult &&
+      n?.rating > 0 && n.mediaRecommendation && !verborgen(n.mediaRecommendation) &&
       (n.mediaRecommendation.type === 'ANIME' || n.mediaRecommendation.type === 'MANGA'))
     if (!knoten.length) continue
     const hoechste = Math.max(...knoten.map((n: any) => n.rating as number))
@@ -418,7 +424,7 @@ async function sammleAdaptionen(abfrage: Abfrage, eintraege: EigenerEintrag[], i
       // Schon ein Gegenstück in der Liste (z. B. eine andere Manga-Fassung) → nichts vorschlagen
       if (gegenseite.some((e: any) => inListe.has(e.node.id))) continue
       const passende = gegenseite
-        .filter((e: any) => ADAPTIONS_BEZIEHUNG.has(e.relationType) && !e.node.isAdult && e.node.status !== 'CANCELLED' && !aus.has(e.node.id))
+        .filter((e: any) => ADAPTIONS_BEZIEHUNG.has(e.relationType) && !verborgen(e.node) && e.node.status !== 'CANCELLED' && !aus.has(e.node.id))
         .filter((e: any) => q.type === 'ANIME' ? e.node.format === 'MANGA' : e.node.format in ANIME_FORMAT_RANG)
       if (!passende.length) continue
       // Vorlage = Manga ist vor dem Anime erschienen (gleicher Monat: eher eine Manga-Fassung zum Anime)
@@ -479,7 +485,7 @@ function saisonVorschlaege(medien: any[], eintraege: EigenerEintrag[], profil: P
 
   const ergebnis: Vorschlag[] = []
   medien.forEach((m, i) => {
-    if (!m?.id || m.isAdult || inListe.has(m.id) || aus.has(m.id)) return
+    if (!m?.id || verborgen(m) || inListe.has(m.id) || aus.has(m.id)) return
     const vor = vorgaenger(m)
     let fortsetzungVon: EigenerEintrag | null = null
     if (vor.length) {
@@ -516,7 +522,8 @@ function geplantVorschlaege(eintraege: EigenerEintrag[], profil: Profil): Geplan
       : 'Noch wenig Bewertungen zu diesen Genres'
     return {
       entry_id: e.id,
-      title: anzeigeName(e),
+      title: e.nickname || e.title,
+      anzeige_titel: anzeigeName(e),
       cover_url: e.cover_url,
       type: e.type,
       folgen: e.total_episodes,
@@ -525,14 +532,16 @@ function geplantVorschlaege(eintraege: EigenerEintrag[], profil: Profil): Geplan
       passt,
       grund: umfang ? `${einschaetzung} · ${umfang}` : einschaetzung,
     }
-  }).sort((a, b) => b.passt - a.passt || a.title.localeCompare(b.title))
+  }).sort((a, b) => b.passt - a.passt || String(a.anzeige_titel).localeCompare(String(b.anzeige_titel), 'de'))
 }
 
 // ── Berechnung und Zwischenspeicher ──
 
 // Wird die Berechnung geändert, hochzählen – ein Zwischenspeicher älterer Version wird dann gleich neu berechnet
-const ALGO_VERSION = 2
-type AniListTeil = Pick<VorschlagAntwort, 'empfehlungen' | 'adaptionen' | 'saison'> & { stand: string; v?: number }
+// (3: Erwachsenen-Titel werden nicht mehr immer herausgefiltert)
+const ALGO_VERSION = 3
+// adult: Stand der Einstellung „18+-Titel anzeigen“ bei der Berechnung – ein Zwischenspeicher mit anderem Wert ist veraltet
+type AniListTeil = Pick<VorschlagAntwort, 'empfehlungen' | 'adaptionen' | 'saison'> & { stand: string; v?: number; adult?: boolean; sprache?: string }
 
 async function berechneAniListTeil(): Promise<AniListTeil> {
   const { abfrage, anzahl } = erstelleAbfrage()
@@ -544,7 +553,7 @@ async function berechneAniListTeil(): Promise<AniListTeil> {
   const empfKandidaten = await sammleEmpfehlungen(abfrage, eintraege, gesperrt)
   const adaptKandidaten = (await sammleAdaptionen(abfrage, eintraege, inListe, aus)).filter(k => !gesperrt.has(k.id))
   const { season, jahr } = aktuelleSaison()
-  const saisonRes = await abfrage(SAISON_QUERY, { season, jahr })
+  const saisonRes = await abfrage(SAISON_QUERY, { season, jahr, ...adultFilter() })
 
   // Details der besten Kandidaten in einem Rutsch (Fortsetzungen fallen danach noch heraus, daher etwas mehr)
   const empfTop = empfKandidaten.slice(0, 32)
@@ -562,7 +571,7 @@ async function berechneAniListTeil(): Promise<AniListTeil> {
   const empfehlungen: Vorschlag[] = []
   for (const k of empfTop) {
     const m = details.get(k.id)
-    if (!m || m.isAdult || bekannt(m) || alsAdaption.has(k.id)) continue
+    if (!m || verborgen(m) || bekannt(m) || alsAdaption.has(k.id)) continue
     // Fortsetzungen ohne den Anfang zu kennen ergeben keinen Sinn – und mit Anfang meldet sie schon der Serien-Abgleich
     if (vorgaenger(m).length) continue
     const p = passung(m.genres ?? [], profil)
@@ -573,7 +582,7 @@ async function berechneAniListTeil(): Promise<AniListTeil> {
   const alleAdaptionen: Vorschlag[] = []
   for (const k of adaptTop) {
     const m = details.get(k.id)
-    if (!m || m.isAdult || bekannt(m)) continue
+    if (!m || verborgen(m) || bekannt(m)) continue
     alleAdaptionen.push(vorschlag(m, 'adaption', adaptionsGrund(k), k.gewicht))
   }
   // Anime zu deinen Manga zuerst sichern, dann bis MAX_JE_LISTE mit „Manga zum Anime“ auffüllen
@@ -592,6 +601,8 @@ async function berechneAniListTeil(): Promise<AniListTeil> {
     saison,
     stand: new Date().toISOString(),
     v: ALGO_VERSION,
+    adult: adultAnzeigen(),
+    sprache: titelSprache(), // die Begründungen („Weil du … mochtest“) enthalten Titel in dieser Sprache
   }
 }
 
@@ -625,7 +636,7 @@ export async function holeVorschlaege(neuBerechnen = false): Promise<VorschlagAn
   const cache = leseCache()
   const alt = cache ? bereinige(cache) : { empfehlungen: [], adaptionen: [], saison: [], stand: null }
 
-  if (!neuBerechnen && cache && cache.v === ALGO_VERSION && Date.now() - Date.parse(cache.stand) < CACHE_DAUER_MS) return { ...alt, geplant }
+  if (!neuBerechnen && cache && cache.v === ALGO_VERSION && cache.adult === adultAnzeigen() && cache.sprache === titelSprache() && Date.now() - Date.parse(cache.stand) < CACHE_DAUER_MS) return { ...alt, geplant }
   if (!neuBerechnen && letzterFehler && Date.now() - letzterFehler.zeit < FEHLER_PAUSE_MS) {
     return { ...alt, geplant, fehler: letzterFehler.meldung }
   }

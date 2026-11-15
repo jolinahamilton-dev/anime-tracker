@@ -14,6 +14,7 @@ import { registerWatchOrderHandlers } from '../main/handlers/watchorder'
 import { registerStatsHandlers, ergaenzeFolgenlaengen } from '../main/handlers/stats'
 import { registerSerienHandlers, aktualisiereSerien } from '../main/handlers/serien'
 import { registerVorschlagHandlers } from '../main/handlers/vorschlaege'
+import { ergaenzeTitel } from '../main/handlers/titel'
 import { trackAppOpen } from '../main/trackAppOpen'
 import { erstelleSyncDienst } from '../sync/dienst'
 import { registerDateiHandlers } from './dateien-web'
@@ -70,10 +71,13 @@ async function start() {
   const serienUndNews = () => aktualisiereSerien(fenster).catch(console.error)
     .then(() => aktualisiereNews()).catch(console.error)
     .then(() => ergaenzeFolgenlaengen()).catch(console.error)
+    .then(() => ergaenzeTitel(fenster)).catch(console.error)
   setTimeout(async () => {
     await sync.abgleichen().catch(console.error)
     serienUndNews()
   }, 1500)
+  // Titel für die Titelsprache früh und eigenständig nachladen (nur was fehlt)
+  setTimeout(() => ergaenzeTitel(fenster).catch(console.error), 5000)
   setInterval(() => sync.abgleichen().catch(console.error), 5 * 60 * 1000)
   setInterval(serienUndNews, 6 * 60 * 60 * 1000)
 

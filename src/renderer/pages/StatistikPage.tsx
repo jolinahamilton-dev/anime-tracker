@@ -6,6 +6,7 @@ import { api } from '../api'
 import { STATUS_TEXTFARBE } from '../components/EintragKarte'
 import AchievementBereich from '../components/AchievementBereich'
 import { anzahlBaende, luecken, ungelesen } from '../baende'
+import { anzeigeTitel } from '../titel'
 
 interface Stats {
   gesamt: number
@@ -33,7 +34,7 @@ interface Stats {
   baendeGelesen: number
   offeneKapitel: number
   schnittKapitel: number | null
-  topManga: Array<{ id: number; title: string; cover_url: string | null; kapitel: number; gesamt: number | null }>
+  topManga: Array<{ id: number; title: string; anzeige_titel?: string | null; cover_url: string | null; kapitel: number; gesamt: number | null }>
   mangaBeendetProMonat: Array<{ monat: string; n: number; kapitel: number }>
 }
 
@@ -278,7 +279,7 @@ export default function StatistikPage() {
       try { return (JSON.parse(e.genres) as string[]).includes(detailFilter.wert) } catch { return false }
     }
     return false
-  }).sort((a, b) => a.title.localeCompare(b.title))
+  }).sort((a, b) => anzeigeTitel(a).localeCompare(anzeigeTitel(b), 'de'))
 
   const { genreVerteilung, genreMax } = useMemo(() => {
     const zaehler = new Map<string, number>()
@@ -448,9 +449,9 @@ export default function StatistikPage() {
                       key={m.id}
                       className="status-row status-row--klickbar top-manga-zeile"
                       onClick={() => oeffneTitel(m.id)}
-                      title={`${m.title}: ${m.gesamt ? `${m.kapitel} von ${m.gesamt} Kapiteln` : `${m.kapitel} Kapitel`}`}
+                      title={`${anzeigeTitel(m)}: ${m.gesamt ? `${m.kapitel} von ${m.gesamt} Kapiteln` : `${m.kapitel} Kapitel`}`}
                     >
-                      <span className="status-name top-manga-titel">{m.title}</span>
+                      <span className="status-name top-manga-titel">{anzeigeTitel(m)}</span>
                       <div className="status-bar-wrap">
                         <div className="status-bar-fill" style={{ width: `${Math.round(m.kapitel / topMangaMax * 100)}%`, background: 'var(--text-lila, var(--accent))' }} />
                       </div>
@@ -665,7 +666,7 @@ export default function StatistikPage() {
                       : <div className="detail-eintrag-cover detail-eintrag-cover--placeholder">{e.type === 'ANIME' ? '🎬' : '📚'}</div>
                     }
                     <div className="detail-eintrag-info">
-                      <span className="detail-eintrag-titel">{e.title}</span>
+                      <span className="detail-eintrag-titel">{anzeigeTitel(e)}</span>
                       <span className={`detail-eintrag-typ typ-${e.type.toLowerCase()}`}>{e.type}</span>
                     </div>
                     {e.rating && (
