@@ -11,7 +11,8 @@ import './Page.css'
 import './DetailPage.css'
 import { api } from '../api'
 import { aendereFortschritt, loescheEintrag, useBeiAenderung } from '../aktionen'
-import { hinweis } from '../meldungen'
+import { hinweis, snackbar } from '../meldungen'
+import { kopiereText } from '../zwischenablage'
 import { istTippen, overlayOffen, useTasten, useWischen } from '../tastatur'
 
 const RELEVANTE_RELATIONEN = new Set(['MAIN', 'PREQUEL', 'SEQUEL', 'SIDE_STORY', 'SPIN_OFF', 'PARENT', 'ALTERNATIVE'])
@@ -156,6 +157,13 @@ export default function DetailPage() {
   const vorherige = aktuellerIdx > 0 ? alleIds[aktuellerIdx - 1] : null
   const naechste = aktuellerIdx >= 0 && aktuellerIdx < alleIds.length - 1 ? alleIds[aktuellerIdx + 1] : null
   const blaettern = (ziel: number | null) => { if (ziel !== null) zuEintrag(ziel) }
+
+  // Titel kopieren (Klick auf den Titel oder auf 📋). Wer gerade nur einen Teil markiert hat, kopiert den mit Strg+C selbst.
+  async function titelKopieren(text: string, ausKlick = false) {
+    if (ausKlick && window.getSelection()?.toString()) return
+    const ok = await kopiereText(text)
+    snackbar(ok ? `Titel kopiert: „${text}"` : 'Kopieren hat nicht geklappt – markiere den Titel und drücke Strg+C')
+  }
 
   // Tastenkürzel: ← → blättern, + − Fortschritt, Esc zurück zur Liste
   useTasten(e => {
@@ -345,7 +353,19 @@ export default function DetailPage() {
           )}
           <div className="detail-meta">
             <span className={`ergebnis-typ typ-${entry.type.toLowerCase()}`}>{entry.type}</span>
-            <h2 className="detail-titel">{entry.title}</h2>
+            <div className="detail-titel-zeile">
+              <h2
+                className="detail-titel detail-titel--kopierbar"
+                title="Klicken kopiert den Titel – oder Text markieren"
+                onClick={() => titelKopieren(entry.title, true)}
+              >{entry.title}</h2>
+              <button
+                className="kopier-btn"
+                onClick={() => titelKopieren(entry.title)}
+                aria-label="Titel kopieren"
+                title="Titel kopieren"
+              >📋</button>
+            </div>
             {nickBearbeiten ? (
               <div className="nickname-edit">
                 <input

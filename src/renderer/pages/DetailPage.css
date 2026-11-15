@@ -105,7 +105,40 @@
   font-size: 20px;
   font-weight: 700;
   line-height: 1.3;
+  min-width: 0;
+  overflow-wrap: anywhere; /* lange Titel laufen am Handy nicht mehr über den Rand */
 }
+
+/* Titel zum Kopieren: markierbar (die App sperrt sonst das Markieren), Klick kopiert ihn */
+.detail-titel-zeile {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.detail-titel--kopierbar {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: copy;
+}
+
+.detail-titel--kopierbar:hover { color: var(--accent-text); }
+
+.kopier-btn {
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1;
+  padding: 5px 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  opacity: 0.8;
+  transition: opacity 0.15s, border-color 0.15s;
+}
+
+.kopier-btn:hover { opacity: 1; border-color: var(--accent); }
+.kopier-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; opacity: 1; }
 
 .nickname-anzeige {
   align-self: flex-start;
