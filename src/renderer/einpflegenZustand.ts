@@ -10,7 +10,7 @@ export type EinpflegenTab = 'suche' | 'manuell' | 'fuerdich'
 export type VorschlagBereich = 'empfehlungen' | 'adaptionen' | 'saison' | 'geplant'
 
 export const einpflegenSitzung = {
-  tab: 'suche' as EinpflegenTab,
+  tab: 'fuerdich' as EinpflegenTab, // „Für dich“ ist der Standard beim Öffnen von Einpflegen
   suchbegriff: '',
   filter: 'ALLE' as MediaFilter,
   ergebnisse: [] as AniListSearchResult[],

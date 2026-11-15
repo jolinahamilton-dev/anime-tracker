@@ -10,9 +10,9 @@ import './Page.css'
 import './EinpflegenPage.css'
 
 const TABS: Array<{ key: EinpflegenTab; label: string }> = [
+  { key: 'fuerdich', label: '✨ Für dich' },
   { key: 'suche', label: 'AniList-Suche' },
   { key: 'manuell', label: 'Manuelle Eingabe' },
-  { key: 'fuerdich', label: '✨ Für dich' },
 ]
 
 export default function EinpflegenPage() {
