@@ -67,6 +67,8 @@ contextBridge.exposeInMainWorld('api', {
 
   // Vorschläge („✨ Für dich“)
   getVorschlaege: (neuBerechnen?: boolean) => ipcRenderer.invoke('vorschlaege:get', neuBerechnen),
+  getAusgeblendeteVorschlaege: (nachladen?: boolean) => ipcRenderer.invoke('vorschlaege:ausgeblendet', nachladen),
+  vorschlagEinblenden: (anilistId: number) => ipcRenderer.invoke('vorschlaege:einblenden', anilistId),
   vorschlagAusblenden: (anilistId: number) => ipcRenderer.invoke('vorschlaege:ausblenden', anilistId),
 
   // Export

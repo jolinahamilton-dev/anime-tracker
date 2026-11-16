@@ -5,6 +5,7 @@ import { LOGOS, logoBild } from '../logos'
 import { installieren, useInstallierbar } from '../installieren'
 import './Page.css'
 import './EinstellungenPage.css'
+import type { AusgeblendeterVorschlag } from '../../types'
 import { api, kann, istHandyApp, neuLaden, SicherungInfo, LokaleKopie, PruefErgebnis } from '../api'
 import VerknuepfenDialog from '../components/VerknuepfenDialog'
 import SyncBereich from '../components/SyncBereich'
@@ -93,6 +94,24 @@ export default function EinstellungenPage() {
   const [pruefung, setPruefung] = useState<PruefErgebnis | null>(null)
   const [pruefungLaeuft, setPruefungLaeuft] = useState(false)
   const [pruefungFehler, setPruefungFehler] = useState('')
+  // Ausgeblendete Vorschläge („Kein Interesse“): Zahl sofort (ohne AniList), Liste mit Titeln beim Aufklappen
+  const [ausgeblendet, setAusgeblendet] = useState<AusgeblendeterVorschlag[]>([])
+  const [ausOffen, setAusOffen] = useState(false)
+  const [ausLaedt, setAusLaedt] = useState(false)
+  useEffect(() => { api.getAusgeblendeteVorschlaege(false).then(setAusgeblendet).catch(() => {}) }, [])
+  const ausUmschalten = async () => {
+    const offen = !ausOffen
+    setAusOffen(offen)
+    if (!offen) return
+    setAusLaedt(true)
+    try { setAusgeblendet(await api.getAusgeblendeteVorschlaege(true)) } catch { /* Liste bleibt, wie sie ist */ }
+    setAusLaedt(false)
+  }
+  const wiederZeigen = async (v: AusgeblendeterVorschlag) => {
+    await api.vorschlagEinblenden(v.anilistId)
+    setAusgeblendet(l => l.filter(x => x.anilistId !== v.anilistId))
+    snackbar(`„${v.titel ?? '#' + v.anilistId}“ wird wieder vorgeschlagen`)
+  }
   const [verknuepfen, setVerknuepfen] = useState<null | { entryId: number; titel: string; suche: string; zielId?: number }>(null)
   useEffect(() => { if (erweitertOffen) api.verknuepfungenErgebnis().then(setPruefung).catch(() => {}) }, [erweitertOffen])
   async function starteVerknuepfungenPruefen() {
@@ -654,6 +673,29 @@ export default function EinstellungenPage() {
           >
             {abgleichLaeuft ? 'Wird abgeglichen…' : '🔄 Jetzt abgleichen'}
           </button>
+        </section>
+
+        {/* Ausgeblendete Vorschläge wieder einblenden */}
+        <section className="einstell-section">
+          <h3 className="section-titel">Ausgeblendete Vorschläge</h3>
+          <p className="einstell-sub" style={{ marginBottom: 10 }}>
+            Titel, bei denen du „Kein Interesse“ gewählt hast. Mit „Wieder zeigen“ tauchen sie wieder unter „Für dich“ auf –
+            auf allen deinen Geräten.
+          </p>
+          <button className="btn-secondary" onClick={ausUmschalten} aria-expanded={ausOffen} disabled={ausgeblendet.length === 0 && !ausOffen}>
+            {ausOffen ? '▾' : '▸'} Ausgeblendete Vorschläge ({ausgeblendet.length})
+          </button>
+          {ausOffen && <ul className="kopien-liste aus-liste" style={{ marginTop: 10 }}>
+            {ausLaedt && ausgeblendet.length > 0 && <li className="einstell-sub">Titel werden geladen…</li>}
+            {!ausLaedt && ausgeblendet.length === 0 && <li className="einstell-sub">Nichts ausgeblendet.</li>}
+            {ausgeblendet.map(v => (
+              <li key={v.anilistId} className="kopie-zeile aus-zeile">
+                {v.cover ? <img className="aus-cover" src={v.cover} alt="" loading="lazy" /> : <span className="aus-cover aus-cover-leer" aria-hidden="true" />}
+                <span className="aus-titel">{v.titel ?? `AniList-ID ${v.anilistId}`}</span>
+                <button className="btn-secondary" onClick={() => wiederZeigen(v)}>Wieder zeigen</button>
+              </li>
+            ))}
+          </ul>}
         </section>
 
         {/* Verknüpfungen prüfen: Einträge, die vermutlich am falschen AniList-Titel hängen */}

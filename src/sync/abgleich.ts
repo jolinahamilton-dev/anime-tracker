@@ -91,7 +91,10 @@ export function gesamtstand(): { bisNr: number; zeilen: LogZeile[] } {
     neu('list_entries', `${le.l_uuid}:${le.e_uuid}`, '*', null)
   }
   for (const a of dbAll('SELECT id, unlocked_at FROM achievements')) neu('achievements', String(a.id), 'unlocked_at', a.unlocked_at)
-  for (const v of dbAll('SELECT anilist_id, zeit FROM vorschlag_aus')) neu('vorschlag_aus', String(v.anilist_id), 'zeit', v.zeit)
+  for (const v of dbAll('SELECT anilist_id, zeit, aktiv FROM vorschlag_aus')) {
+    neu('vorschlag_aus', String(v.anilist_id), 'zeit', v.zeit)
+    neu('vorschlag_aus', String(v.anilist_id), 'aktiv', v.aktiv)
+  }
   for (const v of dbAll('SELECT * FROM verlauf')) neu('verlauf', String(v.id), 'row', JSON.stringify(verlaufDaten(v)))
   for (const k of SYNC_META) { const v = meta(k); if (v != null) neu('app_meta', k, 'value', v) }
   // Löschvermerke für Zeilen, die es nicht mehr gibt – sonst blieben sie auf einem Gerät, das die
@@ -263,10 +266,20 @@ export function spieleEin(zeilen: LogZeile[], stand?: { geraet: string; bisNr: n
         return
       }
       case 'vorschlag_aus': {
-        // Vereinigung wie bei den Achievements: „Kein Interesse“ auf irgendeinem Gerät gilt überall
+        // Schalter „ausgeblendet / wieder eingeblendet“: die spätere Änderung gewinnt (bei gleicher Zeit das
+        // Gerät mit der größeren Kennung). 'zeit' (ältere Versionen, ohne Schalter) zählt als „ausgeblendet“.
         const id = Number(r.zeile)
         if (!Number.isInteger(id) || id <= 0) return
-        db.run('INSERT OR IGNORE INTO vorschlag_aus (anilist_id, zeit) VALUES (?, ?)', [id, (r.wert as any) ?? zeitSql])
+        if (r.feld !== 'aktiv' && r.feld !== 'zeit') return
+        const an = r.feld === 'aktiv' ? Number(r.wert) !== 0 : true
+        const letzte = letzteAenderung('vorschlag_aus', r.zeile, 'aktiv')
+        if (letzte && !(r.feld === 'aktiv' ? neuer(r, letzte) : r.zeit > letzte.zeit)) return
+        const aktuell = dbGet('SELECT aktiv FROM vorschlag_aus WHERE anilist_id = ?', [id])
+        if (!aktuell) {
+          db.run('INSERT INTO vorschlag_aus (anilist_id, zeit, aktiv) VALUES (?, ?, ?)', [id, zeitSql, an ? 1 : 0])
+        } else if (Number(aktuell.aktiv) !== (an ? 1 : 0)) {
+          db.run('UPDATE vorschlag_aus SET aktiv = ?, zeit = ? WHERE anilist_id = ?', [an ? 1 : 0, zeitSql, id])
+        }
         return
       }
       case 'verlauf': {

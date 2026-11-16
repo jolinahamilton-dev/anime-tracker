@@ -159,6 +159,9 @@ export interface Vorschlag {
   zeitraum: string | null
 }
 
+/** Ausgeblendeter Vorschlag („Kein Interesse“) für die Liste in den Einstellungen; titel = null, solange unbekannt */
+export interface AusgeblendeterVorschlag { anilistId: number; titel: string | null; cover: string | null; zeit: string }
+
 /** Titel aus der eigenen Geplant-Liste mit Einschätzung, wie gut er passt */
 export interface GeplantVorschlag {
   entry_id: number

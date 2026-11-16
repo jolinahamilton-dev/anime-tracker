@@ -158,8 +158,12 @@ export function migrateSchema(db: Database) {
   // (ausgeblendet ist ausgeblendet), damit keine Ausblendung eines anderen Geräts verloren geht
   db.run(`CREATE TABLE IF NOT EXISTS vorschlag_aus (
     anilist_id INTEGER PRIMARY KEY,
-    zeit TEXT NOT NULL DEFAULT (datetime('now'))
+    zeit TEXT NOT NULL DEFAULT (datetime('now')),
+    aktiv INTEGER NOT NULL DEFAULT 1
   )`)
+  // aktiv = 0: wieder eingeblendet (Zeile bleibt als Vermerk stehen, damit der Abgleich sie nicht zurückbringt)
+  const vaCols = db.exec('PRAGMA table_info(vorschlag_aus)')[0]?.values?.map((r: any) => r[1]) ?? []
+  if (!vaCols.includes('aktiv')) db.run('ALTER TABLE vorschlag_aus ADD COLUMN aktiv INTEGER NOT NULL DEFAULT 1')
 
   // Verlauf „gesehen am“: jede Fortschrittsänderung als eigene Zeile (nur anfügen, nie ändern).
   // eintrag = uuid des Eintrags, staffel = AniList-ID der Staffel (NULL = Eintrag selbst), art =
@@ -314,6 +318,12 @@ function richteSyncEin(db: Database, entryCols: unknown[]) {
   END`)
   db.run(`CREATE TRIGGER sync_vorschlag_aus_neu AFTER INSERT ON vorschlag_aus WHEN ${NICHT_PAUSIERT} BEGIN
     ${log('vorschlag_aus', 'CAST(NEW.anilist_id AS TEXT)', 'zeit', 'NEW.zeit')}
+    ${log('vorschlag_aus', 'CAST(NEW.anilist_id AS TEXT)', 'aktiv', 'NEW.aktiv')}
+  END`)
+  // Wieder einblenden / erneut ausblenden: nur der Schalter wird protokolliert, der spätere Zeitpunkt gewinnt
+  db.run(`CREATE TRIGGER sync_vorschlag_aus_aktiv AFTER UPDATE OF aktiv ON vorschlag_aus
+    WHEN ${NICHT_PAUSIERT} AND NEW.aktiv != OLD.aktiv BEGIN
+    ${log('vorschlag_aus', 'CAST(NEW.anilist_id AS TEXT)', 'aktiv', 'NEW.aktiv')}
   END`)
   // Verlauf: eine Protokollzeile je Eintrag, der ganze Datensatz als JSON im Wert (nie geändert)
   db.run(`CREATE TRIGGER sync_verlauf_neu AFTER INSERT ON verlauf WHEN ${NICHT_PAUSIERT} BEGIN

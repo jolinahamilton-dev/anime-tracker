@@ -3,7 +3,7 @@
 // liefert hier eine eigene Umsetzung derselben Schnittstelle (z. B. Datenbank im Browser) –
 // alle Seiten und Komponenten bleiben dabei unverändert.
 import type { Entry, EntryStatus, MehrfachAktion, MehrfachErgebnis, AchievementUebersicht, NeuesAchievement } from '../types'
-import type { VorschlagAntwort } from '../types'
+import type { AusgeblendeterVorschlag, VorschlagAntwort } from '../types'
 
 export interface CustomListMitEintraegen {
   id: number
@@ -140,6 +140,8 @@ export interface TrackerApi {
   getVorschlaege(neuBerechnen?: boolean): Promise<VorschlagAntwort>
   /** „Kein Interesse“ – wird mit den anderen Geräten abgeglichen */
   vorschlagAusblenden(anilistId: number): Promise<void>
+  getAusgeblendeteVorschlaege(nachladen?: boolean): Promise<AusgeblendeterVorschlag[]>
+  vorschlagEinblenden(anilistId: number): Promise<void>
 
   // Watch-Order
   getWatchOrder(entryId: number): Promise<any[]>

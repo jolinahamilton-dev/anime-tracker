@@ -67,6 +67,8 @@ export function baueApi() {
     abgleichAniList: () => invoke('anilist:abgleichen'),
     onAbgleichFortschritt: ereignis('anilist:abgleichFortschritt'),
     getVorschlaege: (neuBerechnen?: boolean) => invoke('vorschlaege:get', neuBerechnen),
+    getAusgeblendeteVorschlaege: (nachladen?: boolean) => invoke('vorschlaege:ausgeblendet', nachladen),
+    vorschlagEinblenden: (anilistId: number) => invoke('vorschlaege:einblenden', anilistId),
     vorschlagAusblenden: (anilistId: number) => invoke('vorschlaege:ausblenden', anilistId),
 
     syncSerien: () => invoke('serien:sync'),

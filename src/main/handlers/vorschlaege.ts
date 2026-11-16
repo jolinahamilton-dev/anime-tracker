@@ -5,13 +5,14 @@
 //  • geplant      – die eigene Geplant-Liste, eingeschätzt nach dem Genre-Profil (ohne AniList)
 // Die AniList-Teile werden höchstens einmal am Tag berechnet und lokal zwischengespeichert
 // (app_meta 'vorschlaege_cache', wird weder abgeglichen noch gesichert). „Kein Interesse“ steht in
-// der Tabelle vorschlag_aus und wird als Vereinigung zwischen den Geräten abgeglichen.
+// der Tabelle vorschlag_aus (aktiv = 1) und wird zwischen den Geräten abgeglichen; „Wieder zeigen“ setzt
+// aktiv = 0 (die spätere Änderung gewinnt, die Zeile bleibt als Vermerk stehen).
 import type { IpcMain } from 'electron'
 import { dbAll, dbGet, dbRun } from '../../db/database'
 import { anilistAbfrage, normalisiere } from './anilist'
 import { adultAnzeigen, adultFilter, titelSprache } from './einstellungen-kern'
-import { titelAnzeige } from './titel'
-import type { AniListSearchResult, GeplantVorschlag, MediaType, Vorschlag, VorschlagAntwort } from '../../types'
+import { merkeTitel, titelAnzeige } from './titel'
+import type { AniListSearchResult, AusgeblendeterVorschlag, GeplantVorschlag, MediaType, Vorschlag, VorschlagAntwort } from '../../types'
 
 const CACHE_SCHLUESSEL = 'vorschlaege_cache'
 const CACHE_DAUER_MS = 24 * 60 * 60 * 1000
@@ -171,7 +172,7 @@ function ausgeschlossen() {
     for (const t of [r.title, r.nickname]) if (t) titel.add(`${r.type}|${normalisiere(String(t))}`)
   }
   for (const r of dbAll('SELECT related_anilist_id AS id FROM watch_order')) inListe.add(Number(r.id))
-  const aus = new Set(dbAll('SELECT anilist_id AS id FROM vorschlag_aus').map(r => Number(r.id)))
+  const aus = new Set(dbAll('SELECT anilist_id AS id FROM vorschlag_aus WHERE aktiv = 1').map(r => Number(r.id)))
   const bekannt = (m: { id: number; type: string; title?: { romaji?: string | null; english?: string | null; native?: string | null } }) =>
     inListe.has(m.id) || aus.has(m.id) ||
     [m.title?.romaji, m.title?.english, m.title?.native].some(t => t && titel.has(`${m.type}|${normalisiere(t)}`))
@@ -659,12 +660,58 @@ export async function holeVorschlaege(neuBerechnen = false): Promise<VorschlagAn
 export function blendeVorschlagAus(anilistId: number) {
   const id = Number(anilistId)
   if (!Number.isInteger(id) || id <= 0) return
-  dbRun('INSERT OR IGNORE INTO vorschlag_aus (anilist_id) VALUES (?)', [id])
+  // Neu ausblenden oder (nach „Wieder zeigen“) erneut ausblenden
+  dbRun(`INSERT INTO vorschlag_aus (anilist_id) VALUES (?)
+    ON CONFLICT (anilist_id) DO UPDATE SET aktiv = 1, zeit = datetime('now') WHERE aktiv = 0`, [id])
   const cache = leseCache()
   if (cache) speichereCache(bereinige(cache))
 }
 
+const COVER_SCHLUESSEL = 'vorschlag_aus_cover' // lokal (nicht abgeglichen): { [anilistId]: coverUrl }
+const AUSGEBLENDET_QUERY = `query ($ids: [Int]) {
+  Page(perPage: 50) { media(id_in: $ids) { id title { romaji english native } coverImage { large } } }
+}`
+
+function leseCover(): Record<string, string> {
+  try { return JSON.parse(String(dbGet('SELECT value FROM app_meta WHERE key = ?', [COVER_SCHLUESSEL])?.value ?? '{}')) } catch { return {} }
+}
+
+/** Die ausgeblendeten Vorschläge (neueste zuerst). Fehlende Titel/Cover werden – nur beim Öffnen der Liste – mit einer Anfrage nachgeladen. */
+export async function holeAusgeblendete(nachladen = true, abfrage: typeof anilistAbfrage = anilistAbfrage): Promise<AusgeblendeterVorschlag[]> {
+  const ids = dbAll('SELECT anilist_id AS id FROM vorschlag_aus WHERE aktiv = 1').map(r => Number(r.id))
+  let cover = leseCover()
+  const fehlt = ids.filter(id => !cover[id] || !dbGet('SELECT 1 AS x FROM titel_cache WHERE anilist_id = ? AND (romaji IS NOT NULL OR english IS NOT NULL)', [id]))
+  if (nachladen && fehlt.length) {
+    try {
+      const res = await abfrage(AUSGEBLENDET_QUERY, { ids: fehlt.slice(0, 50) }, false)
+      const neu = { ...cover }
+      for (const m of res?.data?.Page?.media ?? []) {
+        merkeTitel(m.id, m.title)
+        neu[m.id] = m.coverImage?.large ?? ''
+      }
+      // IDs, die AniList nicht kennt, nicht bei jedem Öffnen erneut anfragen
+      for (const id of fehlt.slice(0, 50)) neu[id] ??= ''
+      dbRun('INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)', [COVER_SCHLUESSEL, JSON.stringify(neu)])
+      cover = neu
+    } catch { /* offline: nur die ID anzeigen, nächstes Öffnen versucht es erneut */ }
+  }
+  const t = titelAnzeige()
+  return dbAll('SELECT anilist_id AS id, zeit FROM vorschlag_aus WHERE aktiv = 1 ORDER BY zeit DESC, anilist_id DESC').map(r => ({
+    anilistId: Number(r.id), titel: t.anzeige(null, Number(r.id)), cover: cover[Number(r.id)] || null, zeit: String(r.zeit),
+  }))
+}
+
+/** Hebt „Kein Interesse“ für einen Titel auf (läuft über den Abgleich aufs andere Gerät) und verwirft den Zwischenspeicher */
+export function blendeVorschlagEin(anilistId: number) {
+  const id = Number(anilistId)
+  if (!Number.isInteger(id) || id <= 0) return
+  dbRun('UPDATE vorschlag_aus SET aktiv = 0 WHERE anilist_id = ? AND aktiv = 1', [id])
+  dbRun('DELETE FROM app_meta WHERE key = ?', [CACHE_SCHLUESSEL])
+}
+
 export function registerVorschlagHandlers(ipcMain: IpcMain) {
   ipcMain.handle('vorschlaege:get', (_, neuBerechnen?: boolean) => holeVorschlaege(!!neuBerechnen))
+  ipcMain.handle('vorschlaege:ausgeblendet', (_, nachladen?: boolean) => holeAusgeblendete(nachladen !== false))
+  ipcMain.handle('vorschlaege:einblenden', (_, anilistId: number) => { blendeVorschlagEin(anilistId) })
   ipcMain.handle('vorschlaege:ausblenden', (_, anilistId: number) => { blendeVorschlagAus(anilistId) })
 }

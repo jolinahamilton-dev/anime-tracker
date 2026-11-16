@@ -272,8 +272,9 @@ export function spieleSicherungEin(s: Sicherung): SicherungInfo {
     // Ausgeblendete Vorschläge: ergänzen (läuft über den Trigger, kommt also auch aufs andere Gerät)
     for (const v of s.vorschlag_aus) {
       if (typeof v.anilist_id !== 'number') continue
-      db.run('INSERT OR IGNORE INTO vorschlag_aus (anilist_id, zeit) VALUES (?, ?)',
-        [v.anilist_id, typeof v.zeit === 'string' ? v.zeit : new Date().toISOString().replace('T', ' ').slice(0, 19)])
+      // Nur ergänzen: Was hier schon steht (auch „wieder eingeblendet“), bleibt unverändert
+      db.run('INSERT OR IGNORE INTO vorschlag_aus (anilist_id, zeit, aktiv) VALUES (?, ?, ?)',
+        [v.anilist_id, typeof v.zeit === 'string' ? v.zeit : new Date().toISOString().replace('T', ' ').slice(0, 19), v.aktiv === 0 ? 0 : 1])
     }
 
     // Verlauf: nur ergänzen (gleiche id = gleicher Eintrag), läuft über den Trigger auch aufs andere Gerät
