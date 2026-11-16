@@ -29,6 +29,8 @@ export interface SyncStatus {
   fehler: string | null
   /** E-Mail-Adresse des verbundenen Google-Kontos (nur zur Anzeige, bleibt auf dem Gerät) */
   konto: string | null
+  /** Nur als Ergebnis von abgleichen(): hat dieser Lauf etwas eingespielt oder hochgeladen? (für den Takt am Handy) */
+  geaendert?: boolean
 }
 
 export interface KontoInfo {
@@ -131,6 +133,7 @@ export function erstelleSyncDienst(plattform: SyncPlattform) {
     if (!schluessel || !(await plattform.istVerbunden())) return status()
     laeuft = true
     const probleme: string[] = []
+    let hatteAenderung = false
     try {
       const alle = await ablage.liste()
 
@@ -220,6 +223,7 @@ export function erstelleSyncDienst(plattform: SyncPlattform) {
         const name = `log_${eigene}_${zeilen[0].nr}_${bisNeu}.json`
         await ablage.speichere(name, await verschluessele(schluessel, { zeilen }, name))
         setzeHochgeladenBis(bisNeu)
+        hatteAenderung = true
       }
 
       // 3) Aufräumen: viele kleine Dateien → ein neuer Gesamtstand, alte eigene Dateien weg
@@ -233,14 +237,14 @@ export function erstelleSyncDienst(plattform: SyncPlattform) {
 
       setzeMeta('sync_letzter', new Date().toISOString())
       fehler = probleme.length ? probleme.join(' ') : null
-      if (geaendert.size || einstellungen() !== einstellungenVorher) plattform.benachrichtige([...geaendert])
+      if (geaendert.size || einstellungen() !== einstellungenVorher) { hatteAenderung = true; plattform.benachrichtige([...geaendert]) }
     } catch (e: any) {
       fehler = e?.message ?? String(e)
       console.error('Abgleich fehlgeschlagen:', e)
     } finally {
       laeuft = false
     }
-    return status()
+    return { ...(await status()), geaendert: hatteAenderung }
   }
 
   function registriere(ipcMain: IpcMain) {

@@ -310,7 +310,9 @@
 /* ── Touch-Geräte: kein Hover → Glocke und Lupe immer (dezent) zeigen.
    Lupe unten rechts – oben rechts sitzen 🔔/⭐, unten links das Typ-Badge ── */
 @media (hover: none) {
-  .karte-abo { opacity: 0.75; }
+  .karte-abo { opacity: 0.75; position: relative; }
+  /* Unsichtbar vergrößerte Tippfläche (mind. 44 px) – die sichtbare Glocke bleibt klein */
+  .karte-abo::after { content: ''; position: absolute; inset: 50% auto auto 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
   .karte-zoom {
     opacity: 0.85;
     top: auto;
@@ -332,7 +334,7 @@
     font-size: 11px;
   }
   /* Unsichtbar vergrößerte Tippfläche – die sichtbare Lupe bleibt klein */
-  .karte-zoom::after { content: ''; position: absolute; inset: -7px; }
+  .karte-zoom::after { content: ''; position: absolute; inset: 50% auto auto 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
   .eintrag-karte:hover { transform: none; border-color: var(--border); }
   .karte--beendet:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
 }

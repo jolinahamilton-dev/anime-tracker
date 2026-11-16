@@ -3,6 +3,7 @@ import { api, WeiterschauenEintrag } from '../api'
 import { aendereFortschritt, useBeiAenderung } from '../aktionen'
 import { Entry, MediaType } from '../../types'
 import { anzeigeTitel } from '../titel'
+import { kapitelStand, offenText, staffelZeile } from '../anzeige'
 import './Weiterschauen.css'
 
 interface Props {
@@ -22,8 +23,18 @@ export function weiterlesen(entries: Entry[]): Entry[] {
 }
 
 // Auf-/Zuklappbare Leiste; ob sie zu ist, merkt sich jede Leiste einzeln
+// Ohne gespeicherte Wahl: am Handy zunächst zu (spart Platz), am PC offen
+function startZu(zuKey: string): boolean {
+  try {
+    const v = localStorage.getItem(zuKey)
+    if (v === '1') return true
+    if (v === '0') return false
+  } catch { /* egal */ }
+  return window.matchMedia('(max-width: 640px)').matches
+}
+
 function Leiste({ symbol, titel, zuKey, anzahl, children }: { symbol: string; titel: string; zuKey: string; anzahl: number; children: ReactNode }) {
-  const [zu, setZu] = useState(() => { try { return localStorage.getItem(zuKey) === '1' } catch { return false } })
+  const [zu, setZu] = useState(() => startZu(zuKey))
 
   function umschalten() {
     setZu(!zu)
@@ -88,8 +99,8 @@ export default function Weiterschauen({ onOeffnen, entries, filterTyp }: Props) 
       {anime.length > 0 && (
         <Leiste symbol="▶" titel="Weiterschauen" zuKey="liste.weiterschauenZu" anzahl={anime.length}>
           {anime.map(w => (
-            <Karte key={w.entry_id} id={w.entry_id} titel={anzeigeTitel(w)} cover={w.cover_url} leer="🎬" unter={w.staffel}
-              stand={<>Folge {w.gesehen}/{w.total ?? w.verfuegbar}<span className="ws-offen">{w.verfuegbar - w.gesehen} neu</span></>}
+            <Karte key={w.entry_id} id={w.entry_id} titel={anzeigeTitel(w)} cover={w.cover_url} leer="🎬" unter={staffelZeile(w.staffel, w.title, anzeigeTitel(w))}
+              stand={<>Folge {w.gesehen}/{w.total ?? w.verfuegbar}<span className="ws-offen">{offenText(w.verfuegbar - w.gesehen, w.laeuft)}</span></>}
               plusLabel={`${anzeigeTitel(w)}: eine Folge weiter`} plusTitel="+1 Folge" onOeffnen={onOeffnen} />
           ))}
         </Leiste>
@@ -100,7 +111,7 @@ export default function Weiterschauen({ onOeffnen, entries, filterTyp }: Props) 
             const titel = e.nickname || anzeigeTitel(e)
             return (
               <Karte key={e.id} id={e.id} titel={titel} cover={e.cover_url} leer="📖"
-                stand={<>Kapitel {e.progress_chapters}{e.total_chapters ? `/${e.total_chapters}` : ''}</>}
+                stand={kapitelStand(e.progress_chapters, e.total_chapters, true)}
                 plusLabel={`${titel}: ein Kapitel weiter`} plusTitel="+1 Kapitel" onOeffnen={onOeffnen} />
             )
           })}

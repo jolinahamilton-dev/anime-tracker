@@ -542,7 +542,7 @@ export default function DetailPage() {
                 <span className="fortschritt-label">Kapitel</span>
                 <button className="zaehler-btn" aria-label="Ein Kapitel zurück" onClick={() => aendereProgress('progress_chapters', entry.progress_chapters - 1)}>−</button>
                 {zahlenFeld(entry.progress_chapters, n => aendereProgress('progress_chapters', n), entry.total_chapters)}
-                <span className="zaehler-von">von {entry.total_chapters ?? '?'}</span>
+                <span className="zaehler-von">{entry.total_chapters ? `von ${entry.total_chapters}` : entry.status === 'completed' ? '' : '· läuft noch'}</span>
                 <button className="zaehler-btn" aria-label="Ein Kapitel weiter" onClick={() => aendereProgress('progress_chapters', entry.progress_chapters + 1)}>+</button>
               </div>
               <div className="fortschritt-zeile">

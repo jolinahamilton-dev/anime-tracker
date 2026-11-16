@@ -3,6 +3,7 @@ import { Entry } from '../../types'
 import { Ansicht } from '../listenZustand'
 import { anzahlBaende } from '../baende'
 import { anzeigeTitel } from '../titel'
+import { kapitelStand } from '../anzeige'
 import './EintragKarte.css'
 
 export const STATUS_FARBE: Record<string, string> = {
@@ -84,6 +85,8 @@ export default function EintragKarte({ entry, onClick, ansicht = 'kacheln', onVe
   // Sammlung: Bände im Regal (nur Manga mit mindestens einem Band)
   const imRegal = entry.type === 'MANGA' ? anzahlBaende(entry.baende_besitz) : 0
 
+  // Manga ohne Gesamtzahl: nicht „5/?“ – wenn die Serie noch läuft, steht dort „läuft noch“
+  const ohneZahl = entry.type === 'MANGA' && !fortschritt.gesamt
   const prozent = fortschritt.gesamt
     ? Math.min(100, Math.round((fortschritt.aktuell / fortschritt.gesamt) * 100))
     : null
@@ -151,7 +154,7 @@ export default function EintragKarte({ entry, onClick, ansicht = 'kacheln', onVe
             </span>
           )}
         </span>
-        {prozent !== null || staffel ? (
+        {prozent !== null || staffel || ohneZahl ? (
           <div className="karte-progress">
             {prozent !== null && (
               <div className="progress-bar">
@@ -164,7 +167,7 @@ export default function EintragKarte({ entry, onClick, ansicht = 'kacheln', onVe
                   Staffel {staffel.staffel_nr}/{staffel.staffel_anzahl}<span className="karte-staffel-trenner"> · </span>
                 </span>
               )}
-              {fortschritt.aktuell}/{fortschritt.gesamt ?? '?'}
+              {ohneZahl ? kapitelStand(fortschritt.aktuell, null, entry.status !== 'completed') : `${fortschritt.aktuell}/${fortschritt.gesamt ?? '?'}`}
             </span>
           </div>
         ) : ansicht === 'liste' && <div className="karte-progress" />}

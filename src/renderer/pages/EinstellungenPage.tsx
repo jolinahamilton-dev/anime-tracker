@@ -368,6 +368,9 @@ export default function EinstellungenPage() {
             <button
               className={settings.darkMode ? 'toggle aktiv' : 'toggle'}
               onClick={() => speichern({ darkMode: !settings.darkMode })}
+              role="switch"
+              aria-checked={!!settings.darkMode}
+              aria-label="Dark Mode"
             >
               <span className="toggle-knopf" />
             </button>
@@ -381,6 +384,9 @@ export default function EinstellungenPage() {
             <button
               className={newsNeben ? 'toggle aktiv' : 'toggle'}
               onClick={schalteNewsNeben}
+              role="switch"
+              aria-checked={!!newsNeben}
+              aria-label="Nebengeschichten in den News zeigen"
             >
               <span className="toggle-knopf" />
             </button>

@@ -20,6 +20,8 @@ import { trackAppOpen } from '../main/trackAppOpen'
 import { erstelleSyncDienst } from '../sync/dienst'
 import { registerDateiHandlers } from './dateien-web'
 import { registerBegruessungHandlers } from '../main/handlers/begruessung'
+import { erstelleRhythmus } from '../sync/rhythmus'
+import { hochgeladenBis, neueEigeneAenderungen } from '../sync/abgleich'
 
 async function start() {
   verarbeiteRueckkehr()
@@ -79,7 +81,30 @@ async function start() {
   }, 1500)
   // Titel für die Titelsprache früh und eigenständig nachladen (nur was fehlt)
   setTimeout(() => ergaenzeTitel(fenster).catch(console.error), 5000)
-  setInterval(() => sync.abgleichen().catch(console.error), 5 * 60 * 1000)
+  // Abgleich nur bei sichtbarer App: alle 5 Minuten, nach 3 Läufen ohne Änderung alle 15; sofort beim
+  // Zurückkehren und 10 s nach einer eigenen Änderung. Versteckt läuft kein Zeitgeber.
+  const rhythmus = erstelleRhythmus()
+  let abgleichTimer: ReturnType<typeof setTimeout> | null = null
+  let faelligAm = 0
+  const planeAbgleich = (inMs: number, nurFrueher = false) => {
+    if (document.visibilityState !== 'visible') return
+    const am = Date.now() + inMs
+    if (abgleichTimer && nurFrueher && faelligAm <= am) return
+    if (abgleichTimer) clearTimeout(abgleichTimer)
+    faelligAm = am
+    abgleichTimer = setTimeout(lauf, inMs)
+  }
+  const lauf = async () => {
+    abgleichTimer = null
+    if (document.visibilityState !== 'visible') return
+    const status = await sync.abgleichen().catch(e => { console.error(e); return null })
+    planeAbgleich(rhythmus.nachLauf(!!status?.geaendert))
+  }
+  window.addEventListener('daten-gespeichert', () => {
+    if (abgleichTimer === null && document.visibilityState !== 'visible') return
+    if (neueEigeneAenderungen(hochgeladenBis() ?? -1).length) planeAbgleich(rhythmus.aktivitaet(), true)
+  })
+  planeAbgleich(rhythmus.wartezeit())
   setInterval(serienUndNews, 6 * 60 * 60 * 1000)
 
   // App wird verlassen → sofort speichern und eigene Änderungen hochladen;
@@ -89,7 +114,9 @@ async function start() {
       persistDb()
       sync.abgleichen().catch(console.error)
     } else if (!stilleErneuerung()) {
-      sync.abgleichen().catch(console.error)
+      if (abgleichTimer) { clearTimeout(abgleichTimer); abgleichTimer = null }
+      rhythmus.aktivitaet()
+      lauf()
     }
   })
 

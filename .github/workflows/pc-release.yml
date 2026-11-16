@@ -33,6 +33,9 @@ jobs:
       - name: Abhängigkeiten installieren
         run: npm ci
 
+      - name: Tests (schlägt einer fehl, wird nichts veröffentlicht)
+        run: npm test
+
       - name: Clientschlüssel für die Google-Anmeldung (aus den Repository-Secrets)
         shell: pwsh
         env:

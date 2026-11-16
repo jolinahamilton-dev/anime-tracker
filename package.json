@@ -53,6 +53,11 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "overrides": {
+    "app-builder-lib": {
+      "minimatch": ">=11.0.1"
+    }
+  },
   "devDependencies": {
     "@types/node": "^25.9.3",
     "@types/react": "^19.2.17",

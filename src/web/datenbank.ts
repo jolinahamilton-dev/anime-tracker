@@ -155,6 +155,7 @@ export async function initDb(): Promise<Database> {
 export function persistDb(): Promise<void> {
   if (!db) return Promise.resolve()
   const fertig = schreibe(db.export())
+  fertig.then(() => window.dispatchEvent(new Event('daten-gespeichert'))).catch(() => {})
   // App bleibt am Handy oft tagelang offen → auch nach Änderungen höchstens einmal am Tag kopieren
   if (Date.now() >= naechsteKopie) fertig.then(() => legeKopieAn()).catch(e => console.error('Kopie konnte nicht angelegt werden:', e))
   return fertig
