@@ -36,6 +36,18 @@ interface Stats {
   schnittKapitel: number | null
   topManga: Array<{ id: number; title: string; anzeige_titel?: string | null; cover_url: string | null; kapitel: number; gesamt: number | null }>
   mangaBeendetProMonat: Array<{ monat: string; n: number; kapitel: number }>
+  aktivitaet: {
+    seit: string | null
+    folgenProMonat: Array<{ monat: string; wert: number }>
+    kapitelProMonat: Array<{ monat: string; wert: number }>
+    folgenProWoche: Array<{ woche: string; wert: number }>
+    kapitelProWoche: Array<{ woche: string; wert: number }>
+    aktiveTage: number
+    laengsteSerie: number
+    aktuelleSerie: number
+    folgenGesamt: number
+    kapitelGesamt: number
+  }
 }
 
 const MONAT_KURZ = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
@@ -177,7 +189,7 @@ function Kachel({ zahl, label, unter, title, aktiv, onClick }: {
 }
 
 function MonatsChart({ daten, beschriftung, ariaLabel }: {
-  daten: Array<{ monat: string; wert: number; tooltip: string }>
+  daten: Array<{ monat: string; wert: number; tooltip: string; name?: string }>
   beschriftung?: (wert: number) => string
   ariaLabel: string
 }) {
@@ -188,7 +200,7 @@ function MonatsChart({ daten, beschriftung, ariaLabel }: {
         <div key={m.monat} className="monats-spalte" title={m.tooltip}>
           <span className="monats-zahl">{m.wert ? (beschriftung ? beschriftung(m.wert) : m.wert) : ''}</span>
           <div className="monats-balken" style={{ height: `${m.wert / max * 100}%` }} />
-          <span className="monats-name">{MONAT_KURZ[Number(m.monat.slice(5)) - 1]}</span>
+          <span className="monats-name">{m.name ?? MONAT_KURZ[Number(m.monat.slice(5)) - 1]}</span>
         </div>
       ))}
     </div>
@@ -315,6 +327,13 @@ export default function StatistikPage() {
   })()
   const zurSammlung = () => navigate('/sammlung', { state: { zurueck: 1 } })
 
+  const akt = stats.aktivitaet
+  const verlaufSeit = akt.seit ? akt.seit.split('-').reverse().join('.') : null
+  const wochenDaten = (liste: Array<{ woche: string; wert: number }>, einheit: string) => liste.map(w => ({
+    monat: w.woche, wert: w.wert, name: `${w.woche.slice(8)}.${w.woche.slice(5, 7)}.`,
+    tooltip: `Woche ab ${w.woche.split('-').reverse().join('.')}: ${w.wert} ${einheit}`,
+  }))
+  const monatsDaten = (liste: Array<{ monat: string; wert: number }>, einheit: string) => liste.map(m => ({ ...m, tooltip: `${m.wert} ${einheit}` }))
   const topMangaMax = stats.topManga[0]?.kapitel ?? 1
 
   return (
@@ -462,6 +481,19 @@ export default function StatistikPage() {
               </>
             )}
 
+            {akt.kapitelGesamt > 0 ? (
+              <>
+                <h4 className="stat-unter-titel">
+                  Kapitel pro Monat
+                  <span className="achievement-count">{zahlText(akt.kapitelGesamt)} in 12 Monaten</span>
+                </h4>
+                <MonatsChart
+                  daten={monatsDaten(akt.kapitelProMonat, 'Kapitel')} beschriftung={kurzZahl}
+                  ariaLabel={`Gelesene Kapitel pro Monat, insgesamt ${akt.kapitelGesamt}`}
+                />
+                <p className="empty-hint">Echte Lesetage: Verlauf seit {verlaufSeit}. Davor gibt es keine Aufzeichnung.</p>
+              </>
+            ) : null}
             <h4 className="stat-unter-titel">
               Kapitel pro Monat (beendete Manga)
               {mangaMonatTitel > 0 && <span className="achievement-count">{zahlText(mangaMonatKapitel)} in 12 Monaten</span>}
@@ -481,6 +513,44 @@ export default function StatistikPage() {
                 ? 'Nach dem Abschlussdatum: Die Kapitel eines Manga zählen in dem Monat, in dem du ihn auf „Beendet" gestellt hast. Einzelne Lesetage werden nicht aufgezeichnet.'
                 : 'Noch kein Manga in den letzten 12 Monaten beendet. Gezählt werden die Kapitel eines Manga in dem Monat, in dem du ihn auf „Beendet" stellst.'}
             </p>
+          </Panel>
+
+          {/* Aktivität (aus dem Verlauf) */}
+          <Panel
+            id="aktivitaet" titel="Aktivität" offen={istOffen('aktivitaet')} onToggle={togglePanel}
+            info={akt.seit ? `${akt.aktiveTage} ${akt.aktiveTage === 1 ? 'aktiver Tag' : 'aktive Tage'}` : undefined}
+          >
+            {akt.seit ? (
+              <>
+                <div className="stat-grid stat-grid--kompakt">
+                  <Kachel zahl={zahlText(akt.aktiveTage)} label="Aktive Tage" />
+                  <Kachel zahl={zahlText(akt.aktuelleSerie)} label="Tage in Folge" unter="aktuell" />
+                  <Kachel zahl={zahlText(akt.laengsteSerie)} label="Tage in Folge" unter="längste Serie" />
+                </div>
+                <h4 className="stat-unter-titel">Folgen pro Woche</h4>
+                <MonatsChart
+                  daten={wochenDaten(akt.folgenProWoche, 'Folgen')}
+                  ariaLabel={`Geschaute Folgen pro Woche, ${akt.folgenProWoche.reduce((s, w) => s + w.wert, 0)} in 12 Wochen`}
+                />
+                <h4 className="stat-unter-titel">Folgen pro Monat</h4>
+                <MonatsChart
+                  daten={monatsDaten(akt.folgenProMonat, 'Folgen')} beschriftung={kurzZahl}
+                  ariaLabel={`Geschaute Folgen pro Monat, insgesamt ${akt.folgenGesamt}`}
+                />
+                {akt.kapitelGesamt > 0 && (
+                  <>
+                    <h4 className="stat-unter-titel">Kapitel pro Woche</h4>
+                    <MonatsChart
+                      daten={wochenDaten(akt.kapitelProWoche, 'Kapitel')}
+                      ariaLabel={`Gelesene Kapitel pro Woche, ${akt.kapitelProWoche.reduce((s, w) => s + w.wert, 0)} in 12 Wochen`}
+                    />
+                  </>
+                )}
+                <p className="empty-hint">Verlauf seit {verlaufSeit}. Aufgefüllte Folgen („Beendet“), Wiederholungen und Import zählen nicht als gesehen.</p>
+              </>
+            ) : (
+              <p className="empty-hint">Wird ab jetzt aufgezeichnet: Jedes „+“ und jede Änderung des Fortschritts erscheint hier. Ältere Daten gibt es nicht.</p>
+            )}
           </Panel>
 
           {/* Beendet pro Monat */}

@@ -504,3 +504,13 @@
 
 .detail-naechste-wann { color: var(--text); font-weight: 600; }
 .detail-naechste--heute .detail-naechste-wann { color: var(--text-gruen); }
+
+/* Wo schauen (Streaming-Dienste der aktuellen Staffel) */
+.wo-schauen { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 2px; }
+.wo-schauen-titel { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.wo-schauen-chip {
+  font-size: 12px; padding: 3px 10px; border-radius: 20px; text-decoration: none; color: var(--text);
+  background: var(--border); border-left: 4px solid var(--accent);
+}
+.wo-schauen-chip:hover { filter: brightness(1.12); }
+.wo-schauen-hinweis { flex-basis: 100%; font-size: 11px; color: var(--text-muted); }

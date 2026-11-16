@@ -2,6 +2,7 @@ import { IpcMain } from 'electron'
 import { dbAll, dbGet, dbRun } from '../../db/database'
 import { anilistAbfrage } from './anilist'
 import { titelAnzeige } from './titel'
+import { verlaufAuswertung } from './verlauf'
 
 const STANDARD_MINUTEN = 24
 const DAUER_QUERY = `query ($ids: [Int]) { Page(perPage: 50) { media(id_in: $ids, type: ANIME) { id duration } } }`
@@ -206,6 +207,7 @@ export function registerStatsHandlers(ipcMain: IpcMain) {
       schnittKapitel: mangaStats.schnittKapitel,
       topManga: mangaStats.topManga,
       mangaBeendetProMonat: mangaStats.beendetProMonat,
+      aktivitaet: verlaufAuswertung(),
     }
   })
 }

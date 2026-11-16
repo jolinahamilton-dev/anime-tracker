@@ -92,6 +92,7 @@ export function gesamtstand(): { bisNr: number; zeilen: LogZeile[] } {
   }
   for (const a of dbAll('SELECT id, unlocked_at FROM achievements')) neu('achievements', String(a.id), 'unlocked_at', a.unlocked_at)
   for (const v of dbAll('SELECT anilist_id, zeit FROM vorschlag_aus')) neu('vorschlag_aus', String(v.anilist_id), 'zeit', v.zeit)
+  for (const v of dbAll('SELECT * FROM verlauf')) neu('verlauf', String(v.id), 'row', JSON.stringify(verlaufDaten(v)))
   for (const k of SYNC_META) { const v = meta(k); if (v != null) neu('app_meta', k, 'value', v) }
   // Löschvermerke für Zeilen, die es nicht mehr gibt – sonst blieben sie auf einem Gerät, das die
   // Einzeldatei mit der Löschung verpasst hat, für immer stehen
@@ -100,6 +101,9 @@ export function gesamtstand(): { bisNr: number; zeilen: LogZeile[] } {
   }
   return { bisNr: hoechsteEigeneNr(), zeilen }
 }
+
+const verlaufDaten = (v: Record<string, unknown>) => ({ eintrag: v.eintrag, staffel: v.staffel ?? null, art: v.art,
+  von: v.von, bis: v.bis, zeit: v.zeit, quelle: v.quelle })
 
 const gleich = (a: unknown, b: unknown) => (a == null && b == null) || (a != null && b != null && String(a) === String(b))
 
@@ -265,6 +269,16 @@ export function spieleEin(zeilen: LogZeile[], stand?: { geraet: string; bisNr: n
         db.run('INSERT OR IGNORE INTO vorschlag_aus (anilist_id, zeit) VALUES (?, ?)', [id, (r.wert as any) ?? zeitSql])
         return
       }
+      case 'verlauf': {
+        // Nur anfügen: gleiche id = gleicher Eintrag (OR IGNORE). Der Datensatz steckt als JSON im Wert.
+        let d: any
+        try { d = typeof r.wert === 'string' ? JSON.parse(r.wert) : r.wert } catch { return }
+        if (!d || typeof d.eintrag !== 'string' || !['folge', 'kapitel', 'band'].includes(d.art)) return
+        if (![d.von, d.bis, d.zeit].every(Number.isFinite)) return
+        db.run('INSERT OR IGNORE INTO verlauf (id, eintrag, staffel, art, von, bis, zeit, quelle) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [r.zeile, d.eintrag, Number.isFinite(d.staffel) ? d.staffel : null, d.art, d.von, d.bis, d.zeit, String(d.quelle ?? 'hand')])
+        return
+      }
       case 'app_meta': {
         if (!SYNC_META.includes(r.zeile)) return
         const { uebernehmen, wert } = entscheide(r, meta(r.zeile), 'app_meta')
@@ -273,4 +287,35 @@ export function spieleEin(zeilen: LogZeile[], stand?: { geraet: string; bisNr: n
       }
     }
   }
+}
+
+/**
+ * Hält das Änderungsprotokoll klein (Plan Nr. 17). Der Abgleich braucht je (Tabelle, Zeile, Feld) nur die
+ * letzte Änderung – Wert, Zeit und Gerät (Konfliktentscheidung, Gesamtstand); ältere Zeilen sind überholt.
+ * Verlauf-Zeilen sind Anhänge ohne Konflikt: das Protokoll braucht sie nur bis zum Hochladen, danach
+ * steht alles in der Tabelle (der Gesamtstand liest sie von dort).
+ * Bleibt immer stehen: die jeweils letzte Zeile je Feld (gleiche Reihenfolge wie `letzteAenderung`: Zeit,
+ * dann nr), die höchste Nummer jedes Geräts (hoechsteEigeneNr) und eigene Zeilen, die noch nicht
+ * hochgeladen sind. Fremde Zeilen sind schon eingespielt (stehen nur zur Konfliktprüfung hier). Was
+ * Drive-Dateien anderer Geräte betrifft, ändert sich nichts. Liefert die Zahl gelöschter Zeilen.
+ */
+export function verdichteSyncLog(): number {
+  const db = getDb()
+  const bis = hochgeladenBis()
+  // Ohne Upload-Stand wird beim Verbinden ohnehin der Gesamtstand geschickt, nicht das Protokoll
+  const offen = bis === null ? '0' : '(a.geraet = ? AND a.nr > ?)'
+  const params = bis === null ? [] : [eigeneGeraeteId(), bis]
+  const zaehle = () => Number(dbGet('SELECT COUNT(*) AS n FROM sync_log')?.n ?? 0)
+  const vorher = zaehle()
+  db.run(`DELETE FROM sync_log WHERE nr IN (
+    SELECT a.nr FROM sync_log a
+    WHERE a.nr NOT IN (SELECT MAX(nr) FROM sync_log GROUP BY geraet)
+      AND NOT ${offen}
+      AND (a.tabelle = 'verlauf' OR EXISTS (
+        SELECT 1 FROM sync_log b WHERE b.tabelle = a.tabelle AND b.zeile = a.zeile AND b.feld = a.feld
+          AND (b.zeit > a.zeit OR (b.zeit = a.zeit AND b.nr > a.nr))))
+  )`, params as any[])
+  const geloescht = vorher - zaehle()
+  if (geloescht > 0) schedulePersist()
+  return geloescht
 }

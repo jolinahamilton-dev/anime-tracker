@@ -26,7 +26,7 @@ export const BrowserWindow = {
   getAllWindows: () => [fenster],
 }
 
-export const shell = { openExternal: (url: string) => { window.open(url, '_blank') } }
+export const shell = { openExternal: (url: string) => { window.open(url, '_blank', 'noopener,noreferrer') } }
 export const ipcMain = { handle() {} }
 export const app = {}
 export const dialog = {}

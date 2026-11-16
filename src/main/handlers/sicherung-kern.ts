@@ -30,6 +30,8 @@ export interface Sicherung {
   media_dauer: Zeile[]
   /** „Kein Interesse“ bei Vorschlägen (fehlt in älteren Sicherungen) */
   vorschlag_aus: Zeile[]
+  /** Verlauf „gesehen am“ (fehlt in älteren Sicherungen) */
+  verlauf: Zeile[]
   app_meta: Array<{ key: string; value: string }>
 }
 
@@ -79,6 +81,8 @@ export function erstelleSicherung(d: Database = getDb()): Sicherung {
     // Lokale Kopien von vor der Einführung haben die Tabelle noch nicht
     vorschlag_aus: d.exec("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'vorschlag_aus'").length
       ? alle_('SELECT * FROM vorschlag_aus') : [],
+    verlauf: d.exec("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'verlauf'").length
+      ? alle_('SELECT * FROM verlauf ORDER BY zeit') : [],
     app_meta: alle_(`SELECT key, value FROM app_meta WHERE key IN (${META_SCHLUESSEL.map(() => '?').join(', ')})`,
       META_SCHLUESSEL) as any,
   }
@@ -108,7 +112,7 @@ export function leseSicherung(text: string): { sicherung: Sicherung; info: Siche
   if (s?.format !== SICHERUNG_FORMAT || !Array.isArray(s.entries)) throw new Error('Die Datei ist keine Sicherung des Anime Trackers.')
   if (s.version > VERSION) throw new Error('Die Sicherung stammt aus einer neueren App-Version. Bitte zuerst die App aktualisieren.')
   if (s.entries.some(e => typeof e.uuid !== 'string' || typeof e.title !== 'string')) throw new Error('Die Sicherung ist beschädigt.')
-  for (const k of ['custom_lists', 'list_entries', 'watch_order', 'achievements', 'media_dauer', 'vorschlag_aus', 'app_meta'] as const) {
+  for (const k of ['custom_lists', 'list_entries', 'watch_order', 'achievements', 'media_dauer', 'vorschlag_aus', 'verlauf', 'app_meta'] as const) {
     if (!Array.isArray(s[k])) (s as any)[k] = []
   }
   return { sicherung: s, info: infoMitVergleich(s) }
@@ -270,6 +274,14 @@ export function spieleSicherungEin(s: Sicherung): SicherungInfo {
       if (typeof v.anilist_id !== 'number') continue
       db.run('INSERT OR IGNORE INTO vorschlag_aus (anilist_id, zeit) VALUES (?, ?)',
         [v.anilist_id, typeof v.zeit === 'string' ? v.zeit : new Date().toISOString().replace('T', ' ').slice(0, 19)])
+    }
+
+    // Verlauf: nur ergänzen (gleiche id = gleicher Eintrag), läuft über den Trigger auch aufs andere Gerät
+    for (const v of s.verlauf) {
+      if (typeof v.id !== 'string' || typeof v.eintrag !== 'string' || !['folge', 'kapitel', 'band'].includes(v.art as string)) continue
+      if (![v.von, v.bis, v.zeit].every(Number.isFinite)) continue
+      db.run('INSERT OR IGNORE INTO verlauf (id, eintrag, staffel, art, von, bis, zeit, quelle) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [v.id, v.eintrag, Number.isFinite(v.staffel) ? (v.staffel as number) : null, v.art as string, v.von as number, v.bis as number, v.zeit as number, String(v.quelle ?? 'hand')])
     }
 
     // Einstellungen und Zähler; „seit" bleibt das frühere Datum, Öffnungstage werden vereinigt

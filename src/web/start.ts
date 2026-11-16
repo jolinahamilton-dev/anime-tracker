@@ -15,6 +15,7 @@ import { registerStatsHandlers, ergaenzeFolgenlaengen } from '../main/handlers/s
 import { registerSerienHandlers, aktualisiereSerien } from '../main/handlers/serien'
 import { registerVorschlagHandlers } from '../main/handlers/vorschlaege'
 import { registerVerknuepfungHandlers } from '../main/handlers/verknuepfung'
+import { registerStreamingHandlers } from '../main/handlers/streaming'
 import { ergaenzeTitel } from '../main/handlers/titel'
 import { trackAppOpen } from '../main/trackAppOpen'
 import { erstelleSyncDienst } from '../sync/dienst'
@@ -39,7 +40,7 @@ async function start() {
 
   for (const registriere of [registerEntryHandlers, registerListHandlers, registerAchievementHandlers, registerNewsHandlers,
     registerMetaHandlers, registerAniListHandlers, registerWatchOrderHandlers, registerStatsHandlers, registerSerienHandlers,
-    registerVorschlagHandlers, registerVerknuepfungHandlers]) {
+    registerVorschlagHandlers, registerVerknuepfungHandlers, registerStreamingHandlers]) {
     registriere(registry)
   }
   const sync = erstelleSyncDienst(webPlattform)

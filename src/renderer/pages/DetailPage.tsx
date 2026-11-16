@@ -87,6 +87,8 @@ export default function DetailPage() {
   // Fenster mit AniList-Suche: Neu verknüpfen bzw. Staffel hinzufügen
   const [verknuepfen, setVerknuepfen] = useState<null | 'umhaengen' | 'staffel'>(null)
   // Nächste Ausstrahlung: kommt nur mit getEntry (nicht mit dem Ergebnis von update/setAbo) – daher eigener Zustand
+  // „Wo schauen“: Streaming-Dienste der aktuellen Staffel (AniList, 7 Tage zwischengespeichert)
+  const [streaming, setStreaming] = useState<{ links: Array<{ site: string; url: string; color: string | null }>; offline: boolean } | null>(null)
   const [naechsteFolge, setNaechsteFolge] = useState<ReturnType<typeof naechsteFolgeText>>(null)
 
   const ladeNeu = useCallback(async () => {
@@ -105,6 +107,16 @@ export default function DetailPage() {
   }), [entryId, ladeNeu])
   // +1/−1 per Taste, Rückgängig aus der Snackbar
   useBeiAenderung(ladeNeu)
+
+  const istAnimeEintrag = entry?.type === 'ANIME'
+  useEffect(() => {
+    setStreaming(null)
+    if (!istAnimeEintrag) return
+    let aktuell = true
+    api.getStreaming(entryId).then(r => { if (aktuell) setStreaming(r) }).catch(() => {})
+    return () => { aktuell = false }
+    // Staffeln neu geladen/geändert → die aktuelle Staffel kann wechseln (kommt aus dem Cache, kein neuer Abruf)
+  }, [entryId, istAnimeEintrag, watchItems.length])
 
   // Pfeile blättern durch die zuletzt gefilterte Liste; ohne (z. B. aus der Statistik) durch alle
   useEffect(() => {
@@ -210,15 +222,15 @@ export default function DetailPage() {
         return item.total_episodes != null
           ? { ...item, progress_episodes: item.total_episodes, item_status: 'completed' as const }
           : item
-      }))
+      }), 'auto') // „Beendet“ füllt auf – zählt im Verlauf nicht als gesehen
     }
   }
 
   // Einzige Stelle, die die Watch-Order speichert (Fortschritt-Sektion UND Watch-Order-Sektion)
-  async function speichereWatchItems(neu: WatchItem[]) {
+  async function speichereWatchItems(neu: WatchItem[], quelle?: 'auto') {
     const mitPosition = neu.map((it, i) => ({ ...it, position: i }))
     setWatchItems(mitPosition)
-    const antwort = await api.saveWatchOrder(entryId, mitPosition)
+    const antwort = await api.saveWatchOrder(entryId, mitPosition, quelle)
     // Gespeicherten Stand übernehmen (enthält ggf. vom Abgleich ergänzte Staffeln/Folgenzahlen)
     if (antwort?.items) setWatchItems(antwort.items)
     // Automatisch auf „Ongoing" gesetzt und jetzt alles geschaut → App hat zurück auf „Beendet" gestellt
@@ -422,6 +434,19 @@ export default function DetailPage() {
             {genres.length > 0 && (
               <div className="ergebnis-genres">
                 {genres.map(g => <span key={g} className="genre-tag">{g}</span>)}
+              </div>
+            )}
+            {isAnime && streaming && streaming.links.length > 0 && (
+              <div className="wo-schauen">
+                <span className="wo-schauen-titel">Wo schauen:</span>
+                {streaming.links.map(l => (
+                  <a
+                    key={l.url} className="wo-schauen-chip" href={l.url} target="_blank" rel="noopener noreferrer"
+                    style={l.color ? { borderLeftColor: l.color } : undefined}
+                    onClick={ev => { ev.preventDefault(); void api.oeffneStreaming(l.url) }}
+                  >{l.site}</a>
+                ))}
+                <span className="wo-schauen-hinweis">Verfügbarkeit je nach Land{streaming.offline ? ' · offline, Stand vom letzten Abruf' : ''}</span>
               </div>
             )}
             <div className="detail-aktionen">

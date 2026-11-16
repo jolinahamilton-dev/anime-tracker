@@ -161,6 +161,24 @@ export function migrateSchema(db: Database) {
     zeit TEXT NOT NULL DEFAULT (datetime('now'))
   )`)
 
+  // Verlauf „gesehen am“: jede Fortschrittsänderung als eigene Zeile (nur anfügen, nie ändern).
+  // eintrag = uuid des Eintrags, staffel = AniList-ID der Staffel (NULL = Eintrag selbst), art =
+  // folge|kapitel|band, von/bis = Stand davor/danach (bis < von = zurückgezählt), zeit = ms,
+  // quelle = plus|hand|auto|wiederholung|import (nur plus und hand zählen als „gesehen“).
+  // Wird synchronisiert (Vereinigung wie bei den Achievements), siehe richteSyncEin.
+  db.run(`CREATE TABLE IF NOT EXISTS verlauf (
+    id TEXT PRIMARY KEY, eintrag TEXT NOT NULL, staffel INTEGER, art TEXT NOT NULL,
+    von INTEGER NOT NULL, bis INTEGER NOT NULL, zeit INTEGER NOT NULL, quelle TEXT NOT NULL
+  )`)
+  db.run('CREATE INDEX IF NOT EXISTS idx_verlauf_zeit ON verlauf(zeit)')
+
+  // Wo man schauen kann (AniList externalLinks, Typ STREAMING) je AniList-ID als JSON – lokaler Cache
+  // wie titel_cache: wird weder synchronisiert noch gesichert, jedes Gerät holt ihn selbst (7 Tage gültig)
+  db.run(`CREATE TABLE IF NOT EXISTS streaming_cache (
+    anilist_id INTEGER PRIMARY KEY, json TEXT NOT NULL,
+    geprueft TEXT NOT NULL DEFAULT (datetime('now'))
+  )`)
+
   // Reste gelöschter Einträge entfernen (früher hat entries:delete sie nicht mitgelöscht)
   db.run('DELETE FROM list_entries WHERE entry_id NOT IN (SELECT id FROM entries)')
   db.run('DELETE FROM watch_order WHERE entry_id NOT IN (SELECT id FROM entries)')
@@ -296,6 +314,11 @@ function richteSyncEin(db: Database, entryCols: unknown[]) {
   END`)
   db.run(`CREATE TRIGGER sync_vorschlag_aus_neu AFTER INSERT ON vorschlag_aus WHEN ${NICHT_PAUSIERT} BEGIN
     ${log('vorschlag_aus', 'CAST(NEW.anilist_id AS TEXT)', 'zeit', 'NEW.zeit')}
+  END`)
+  // Verlauf: eine Protokollzeile je Eintrag, der ganze Datensatz als JSON im Wert (nie geändert)
+  db.run(`CREATE TRIGGER sync_verlauf_neu AFTER INSERT ON verlauf WHEN ${NICHT_PAUSIERT} BEGIN
+    ${log('verlauf', 'NEW.id', 'row', `json_object('eintrag', NEW.eintrag, 'staffel', NEW.staffel, 'art', NEW.art,
+      'von', NEW.von, 'bis', NEW.bis, 'zeit', NEW.zeit, 'quelle', NEW.quelle)`)}
   END`)
   db.run(`CREATE TRIGGER sync_app_meta_neu AFTER INSERT ON app_meta
     WHEN ${NICHT_PAUSIERT} AND NEW.key IN (${SYNC_META.map(k => `'${k}'`).join(', ')}) BEGIN

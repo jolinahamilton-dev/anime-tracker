@@ -42,6 +42,8 @@ contextBridge.exposeInMainWorld('api', {
 
   // Statistiken
   getStats: () => ipcRenderer.invoke('stats:get'),
+  getStreaming: (entryId: number) => ipcRenderer.invoke('streaming:get', entryId),
+  oeffneStreaming: (url: string) => ipcRenderer.invoke('streaming:oeffne', url),
 
   // Achievements
   getAchievements: () => ipcRenderer.invoke('achievements:getAll'),
@@ -103,6 +105,6 @@ contextBridge.exposeInMainWorld('api', {
   // Watch Order
   getWatchOrder: (entryId: number) => ipcRenderer.invoke('watchorder:get', entryId),
   getAniListRelations: (anilistId: number) => ipcRenderer.invoke('watchorder:getRelations', anilistId),
-  saveWatchOrder: (entryId: number, items: unknown[]) => ipcRenderer.invoke('watchorder:save', entryId, items),
+  saveWatchOrder: (entryId: number, items: unknown[], quelle?: string) => ipcRenderer.invoke('watchorder:save', entryId, items, quelle),
   deleteWatchOrder: (entryId: number) => ipcRenderer.invoke('watchorder:delete', entryId),
 })

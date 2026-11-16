@@ -1,5 +1,6 @@
 // Liest CSV-Text ein und legt neue Einträge an – ohne Dateisystem, damit PC und Handy denselben Code nutzen.
 import { dbGet, dbRunGetId } from '../../db/database'
+import { verlaufAusDifferenz } from './verlauf'
 
 const STATUS_MAP: Record<string, string> = {
   'angefangen': 'ongoing', // „Angefangen" gibt es nicht mehr, es heißt Laufend
@@ -127,7 +128,7 @@ export function importiereCsv(inhalt: string) {
       )
       if (duplikat) { uebersprungen++; continue }
 
-      dbRunGetId(
+      const neueId = dbRunGetId(
         `INSERT INTO entries (anilist_id, type, title, genres, status, rating,
           progress_episodes, total_episodes, progress_chapters, total_chapters)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -136,6 +137,8 @@ export function importiereCsv(inhalt: string) {
          toInt(mapped['progress_episodes']) ?? 0, toInt(mapped['total_episodes']),
          toInt(mapped['progress_chapters']) ?? 0, toInt(mapped['total_chapters'])]
       )
+      // Import hinterlässt Verlauf-Einträge, zählt aber nicht als gesehen
+      verlaufAusDifferenz(neueId, {}, dbGet('SELECT * FROM entries WHERE id = ?', [neueId]) ?? {}, 'import')
       importiert++
     } catch (e: any) {
       fehler.push(String(e?.message ?? e))

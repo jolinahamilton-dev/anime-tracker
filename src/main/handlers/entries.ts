@@ -3,6 +3,7 @@ import { dbAll, dbGet, dbRun, dbRunGetId, getDb, schedulePersist } from '../../d
 import { pruefeAchievements } from './achievements'
 import { pruefeAutoBeendet } from './serien'
 import { nebenInNews } from './news-regel'
+import { hatStaffeln, schreibeVerlauf, verlaufAusDifferenz, verlaufAusStaffeln } from './verlauf'
 import { mitAnzeigeEintraege, merkeTitel, staffelAnzeige, titelAnzeige, MediaTitel } from './titel'
 
 /** Einzelne Zeile (Eintrag) mit Anzeigetitel – für alles, was ein Eintrag zurückgibt */
@@ -40,7 +41,7 @@ function fuegeEin(tabelle: string, zeile: Zeile) {
     spalten.map(s => zeile[s]) as any[])
 }
 
-const HAUPTLINIE = new Set(['MAIN', 'PREQUEL', 'SEQUEL'])
+export const HAUPTLINIE = new Set(['MAIN', 'PREQUEL', 'SEQUEL'])
 const naechsteFrei = (z: Zeile) => z.item_status !== 'completed' && z.media_status !== 'NOT_YET_RELEASED' &&
   (z.progress_episodes as number) < ((z.total_episodes as number | null) ?? Infinity)
 
@@ -49,7 +50,7 @@ const naechsteFrei = (z: Zeile) => z.item_status !== 'completed' && z.media_stat
  * sonst die nächste freie danach. Ein nie geschautes Prequel davor wird so nicht weitergezählt,
  * wenn man mit der Hauptstaffel eingestiegen ist. Gibt -1 zurück, wenn alles geschaut ist.
  */
-function aktuelleStaffel(zeilen: Zeile[]): number {
+export function aktuelleStaffel(zeilen: Zeile[]): number {
   let letzte = -1
   zeilen.forEach((z, i) => { if ((z.progress_episodes as number) > 0 || z.item_status === 'completed') letzte = i })
   if (letzte >= 0 && naechsteFrei(zeilen[letzte])) return letzte
@@ -75,6 +76,9 @@ function aendereFortschritt(id: number, delta: number) {
   const woVorher = dbAll('SELECT related_anilist_id, progress_episodes, item_status FROM watch_order WHERE entry_id = ?', [id])
   let neuerWert: number
   let beschreibung: string
+  let verlaufStaffel: number | null = null
+  let verlaufArt: 'folge' | 'kapitel' = 'folge'
+  let verlaufVon = 0
 
   if (zeilen.length) {
     const plusIdx = aktuelleStaffel(zeilen)
@@ -91,12 +95,16 @@ function aendereFortschritt(id: number, delta: number) {
     db.run('UPDATE watch_order SET progress_episodes = ?, item_status = ? WHERE entry_id = ? AND related_anilist_id = ?',
       [neuerWert, itemStatus, id, ziel.related_anilist_id as number])
     if (ziel.relation_type === 'MAIN') db.run('UPDATE entries SET progress_episodes = ? WHERE id = ?', [neuerWert, id])
+    verlaufStaffel = ziel.related_anilist_id as number
+    verlaufVon = ziel.progress_episodes as number
     beschreibung = `${staffelAnzeige(ziel.title, ziel.related_anilist_id) ?? 'Staffel'} · Folge ${neuerWert}${total ? `/${total}` : ''}`
   } else {
     const feld = e.type === 'ANIME' ? 'progress_episodes' : 'progress_chapters'
     const total = (e.type === 'ANIME' ? e.total_episodes : e.total_chapters) as number | null
     neuerWert = Math.max(0, Math.min(total ?? Infinity, (e[feld] as number) + delta))
     db.run(`UPDATE entries SET ${feld} = ? WHERE id = ?`, [neuerWert, id])
+    verlaufArt = e.type === 'ANIME' ? 'folge' : 'kapitel'
+    verlaufVon = e[feld] as number
     beschreibung = `${e.type === 'ANIME' ? 'Folge' : 'Kapitel'} ${neuerWert}${total ? `/${total}` : ''}`
   }
 
@@ -105,6 +113,7 @@ function aendereFortschritt(id: number, delta: number) {
     db.run("UPDATE entries SET status = 'ongoing', auto_offen = NULL WHERE id = ?", [id])
   }
   db.run("UPDATE entries SET updated_at = datetime('now') WHERE id = ?", [id])
+  schreibeVerlauf(id, verlaufStaffel, verlaufArt, verlaufVon, neuerWert, 'plus')
   schedulePersist()
   pruefeAutoBeendet(id)
 
@@ -127,6 +136,8 @@ function aendereFortschritt(id: number, delta: number) {
       vorher.auto_offen, vorher.finished_at, vorher.updated_at, id] as any[])
     for (const w of woVorher) db.run('UPDATE watch_order SET progress_episodes = ?, item_status = ? WHERE entry_id = ? AND related_anilist_id = ?',
       [w.progress_episodes, w.item_status, id, w.related_anilist_id] as any[])
+    // Verlauf wird nie geändert: das Rückgängig ist ein eigener Gegeneintrag
+    schreibeVerlauf(id, verlaufStaffel, verlaufArt, neuerWert, verlaufVon, 'hand')
   })
   return {
     entry: mitAnzeige(nachher),
@@ -272,6 +283,8 @@ export function registerEntryHandlers(ipcMain: IpcMain) {
     )
     // Titel in allen Sprachen gleich mitmerken (sonst erst nach dem nächsten Hintergrund-Abruf)
     if (data.anilist_id != null) merkeTitel(data.anilist_id as number, data.titles as MediaTitel | undefined)
+    // Wurde gleich mit einem Stand angelegt (z. B. als „Beendet“), ist das keine Schau-Leistung → auto
+    verlaufAusDifferenz(id, {}, dbGet('SELECT * FROM entries WHERE id = ?', [id]) ?? {}, 'auto')
     pruefeAchievements(BrowserWindow.fromWebContents(event.sender))
     return mitAnzeige(dbGet('SELECT * FROM entries WHERE id = ?', [id]))
   })
@@ -281,7 +294,8 @@ export function registerEntryHandlers(ipcMain: IpcMain) {
       'total_chapters','total_volumes','progress_episodes','progress_chapters','progress_volumes',
       'status','rating','is_favorite','review','rewatch_count','baende_besitz','baende_wunsch','ausgabe'])
 
-    const current = dbGet('SELECT status, type, total_episodes, total_chapters, total_volumes FROM entries WHERE id = ?', [id])
+    const current = dbGet('SELECT * FROM entries WHERE id = ?', [id])
+    const vonHand = new Set(Object.keys(data))
     // Fix #5: Bei status=completed → Fortschritt automatisch auf Maximalwert setzen
     if (data.status === 'completed') {
       if (current) {
@@ -301,6 +315,14 @@ export function registerEntryHandlers(ipcMain: IpcMain) {
     const sets = keys.map(k => `${k} = ?`).join(', ')
     const vals = keys.map(k => data[k])
     dbRun(`UPDATE entries SET ${sets}, updated_at = datetime('now') WHERE id = ?`, [...vals, id])
+    if (current) {
+      // Anime mit Staffeln: die Folgen stehen im Verlauf der Staffel (watchorder:save), nicht doppelt hier
+      const neu = dbGet('SELECT * FROM entries WHERE id = ?', [id]) ?? {}
+      const ohne = current.type === 'ANIME' && hatStaffeln(id) ? ['progress_episodes'] : []
+      const felder = ['progress_episodes', 'progress_chapters', 'progress_volumes']
+      verlaufAusDifferenz(id, current, neu, 'hand', [...ohne, ...felder.filter(f => !vonHand.has(f))])
+      verlaufAusDifferenz(id, current, neu, 'auto', [...ohne, ...felder.filter(f => vonHand.has(f))])
+    }
     // Status von Hand gesetzt → keine automatische Rückkehr auf „Beendet" mehr
     if ('status' in data) dbRun('UPDATE entries SET auto_offen = NULL WHERE id = ?', [id])
     // Gerade beendet → Abschlussdatum merken (Statistik „Beendet pro Monat")
@@ -344,8 +366,22 @@ export function registerEntryHandlers(ipcMain: IpcMain) {
     const db = getDb()
     const woVorher = istAnime ? dbAll('SELECT related_anilist_id, progress_episodes, item_status FROM watch_order WHERE entry_id = ?', [id]) : []
 
+    const staffeln = istAnime && hatStaffeln(id)
+    // Zurücksetzen (und beim Rückgängig das Wiederherstellen) steht im Verlauf, zählt aber nicht als gesehen
+    const verlaufReset = (rueckwaerts: boolean) => {
+      const p = (von: unknown, bis = 0) => rueckwaerts ? [bis, Number(von ?? 0)] : [Number(von ?? 0), bis]
+      if (istAnime) {
+        if (staffeln) for (const w of woVorher) schreibeVerlauf(id, w.related_anilist_id as number, 'folge', p(w.progress_episodes)[0], p(w.progress_episodes)[1], 'wiederholung')
+        else schreibeVerlauf(id, null, 'folge', p(vorher.progress_episodes)[0], p(vorher.progress_episodes)[1], 'wiederholung')
+      } else {
+        schreibeVerlauf(id, null, 'kapitel', p(vorher.progress_chapters)[0], p(vorher.progress_chapters)[1], 'wiederholung')
+        schreibeVerlauf(id, null, 'band', p(vorher.progress_volumes)[0], p(vorher.progress_volumes)[1], 'wiederholung')
+      }
+    }
+
     db.run('BEGIN TRANSACTION')
     try {
+      verlaufReset(false)
       if (istAnime) {
         db.run('UPDATE entries SET progress_episodes = 0 WHERE id = ?', [id])
         db.run("UPDATE watch_order SET progress_episodes = 0, item_status = 'planned' WHERE entry_id = ?", [id])
@@ -370,6 +406,7 @@ export function registerEntryHandlers(ipcMain: IpcMain) {
          vorher.rewatch_count, vorher.finished_at, vorher.auto_offen, vorher.updated_at, id] as any[])
       for (const w of woVorher) db.run('UPDATE watch_order SET progress_episodes = ?, item_status = ? WHERE entry_id = ? AND related_anilist_id = ?',
         [w.progress_episodes, w.item_status, id, w.related_anilist_id] as any[])
+      verlaufReset(true)
     }, 10 * 60_000)
     return { entry: mitAnzeige(dbGet('SELECT * FROM entries WHERE id = ?', [id])), token }
   })

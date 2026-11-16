@@ -5,7 +5,7 @@ import { drive, DriveDatei, DriveFehler } from './drive'
 import { entschluessele, erzeugePruefwert, leiteSchluesselAb, MIN_PASSWORT, neuesSalz, passtSchluessel, verschluessele } from './krypto'
 import {
   eigeneGeraeteId, gesamtstand, hochgeladenBis, letzteNr, LogZeile, neueEigeneAenderungen, setzeAbgleichZurueck,
-  setzeHochgeladenBis, spieleEin,
+  setzeHochgeladenBis, spieleEin, verdichteSyncLog,
 } from './abgleich'
 import { dbGet, getDb, schedulePersist, SYNC_META } from '../db/kern'
 
@@ -127,10 +127,13 @@ export function erstelleSyncDienst(plattform: SyncPlattform) {
     }
   }
 
+  /** Protokoll klein halten (Plan 17); ein Fehler hier darf den Abgleich nie stören */
+  function verdichte() { try { verdichteSyncLog() } catch (e) { console.error('Protokoll verdichten fehlgeschlagen', e) } }
+
   async function abgleichen(): Promise<SyncStatus> {
     if (laeuft) return status()
     const schluessel = await plattform.ladeSchluessel()
-    if (!schluessel || !(await plattform.istVerbunden())) return status()
+    if (!schluessel || !(await plattform.istVerbunden())) { verdichte(); return status() }
     laeuft = true
     const probleme: string[] = []
     let hatteAenderung = false
@@ -235,6 +238,7 @@ export function erstelleSyncDienst(plattform: SyncPlattform) {
         for (const n of dateien.filter(n => n.geraet === eigene && n.bis <= gs.bisNr)) await ablage.loesche(n.datei.id)
       }
 
+      verdichte()
       setzeMeta('sync_letzter', new Date().toISOString())
       fehler = probleme.length ? probleme.join(' ') : null
       if (geaendert.size || einstellungen() !== einstellungenVorher) { hatteAenderung = true; plattform.benachrichtige([...geaendert]) }

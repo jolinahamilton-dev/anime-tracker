@@ -20,6 +20,7 @@ import { registerBegruessungHandlers } from './handlers/begruessung'
 import { registerSerienHandlers, aktualisiereSerien } from './handlers/serien'
 import { registerVorschlagHandlers } from './handlers/vorschlaege'
 import { registerVerknuepfungHandlers } from './handlers/verknuepfung'
+import { registerStreamingHandlers } from './handlers/streaming'
 import { ergaenzeTitel } from './handlers/titel'
 import { erstelleSyncDienst } from '../sync/dienst'
 import { pcPlattform } from './sync-pc'
@@ -102,6 +103,7 @@ app.whenReady().then(async () => {
   registerSerienHandlers(ipcMain)
   registerVorschlagHandlers(ipcMain)
   registerVerknuepfungHandlers(ipcMain)
+  registerStreamingHandlers(ipcMain)
   // Neu laden (z. B. nach einer Wiederherstellung): ein location.reload() aus der Seite fängt der
   // Navigationsschutz (will-navigate) ab – der Main-Prozess lädt dasselbe Fenster mit derselben Adresse neu
   ipcMain.handle('fenster:neuLaden', (event) => { event.sender.reload() })

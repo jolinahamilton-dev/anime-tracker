@@ -1,3 +1,4 @@
+import { verlaufAusStaffeln, VerlaufQuelle } from './verlauf'
 import { IpcMain } from 'electron'
 import { dbAll, dbRun, getDb, schedulePersist } from '../../db/database'
 import { anilistAbfrage } from './anilist'
@@ -112,7 +113,7 @@ export function registerWatchOrderHandlers(ipcMain: IpcMain) {
     return fetchRelations(anilistId)
   })
 
-  ipcMain.handle('watchorder:save', (_, entryId: number, items: any[]) => {
+  ipcMain.handle('watchorder:save', (_, entryId: number, items: any[], quelle?: string) => {
     const db_ = getDb()
     // Was der Serien-Abgleich pflegt (Folgenzahlen, AniList-Status, NEU-Markierung), kommt aus
     // der DB – eine länger offene Detailseite hätte sonst einen veralteten Stand zurückgeschrieben
@@ -140,6 +141,10 @@ export function registerWatchOrderHandlers(ipcMain: IpcMain) {
           neu_seit: db ? db.neu_seit : (item.neu_seit ?? null),
         }
       }))
+      // Verlauf: je Staffel mit geändertem Stand ein Eintrag („Beendet“ auf der Detailseite füllt auf = auto)
+      verlaufAusStaffeln(entryId, [...inDb.values()] as any[],
+        dbAll("SELECT related_anilist_id, progress_episodes FROM watch_order WHERE entry_id = ?", [entryId]) as any[],
+        (quelle === 'auto' ? 'auto' : 'hand') as VerlaufQuelle)
       db_.run('COMMIT')
       schedulePersist()
     } catch (e) {

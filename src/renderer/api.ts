@@ -124,6 +124,8 @@ export interface TrackerApi {
   /** Nur PC: Fenster neu laden – Seiten rufen stattdessen neuLaden() auf */
   fensterNeuLaden?(): Promise<unknown>
   getStats(): Promise<any>
+  getStreaming(entryId: number): Promise<{ links: Array<{ site: string; url: string; language: string | null; color: string | null }>; geprueft: string | null; offline: boolean }>
+  oeffneStreaming(url: string): Promise<boolean>
   getAchievements(): Promise<AchievementUebersicht>
   pruefeAchievements(): Promise<unknown>
   onAchievementNeu(cb: (neu: NeuesAchievement[]) => void): Abmelden
@@ -141,7 +143,7 @@ export interface TrackerApi {
   // Watch-Order
   getWatchOrder(entryId: number): Promise<any[]>
   getAniListRelations(anilistId: number): Promise<any[]>
-  saveWatchOrder(entryId: number, items: unknown[]): Promise<{ success: boolean; status: EntryStatus | null; items: any[] }>
+  saveWatchOrder(entryId: number, items: unknown[], quelle?: 'auto'): Promise<{ success: boolean; status: EntryStatus | null; items: any[] }>
   deleteWatchOrder(entryId: number): Promise<{ success: boolean }>
 
   // Abgleich PC ↔ Handy über Google Drive

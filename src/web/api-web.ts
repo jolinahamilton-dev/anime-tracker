@@ -56,6 +56,8 @@ export function baueApi() {
     getMeta: (key: string) => invoke('meta:get', key),
     setMeta: (key: string, value: string) => invoke('meta:set', key, value),
     getStats: () => invoke('stats:get'),
+    getStreaming: (entryId: number) => invoke('streaming:get', entryId),
+    oeffneStreaming: (url: string) => invoke('streaming:oeffne', url),
     getAchievements: () => invoke('achievements:getAll'),
     pruefeAchievements: () => Promise.resolve(),
     onAchievementNeu: ereignis('achievements:neu'),
@@ -83,7 +85,7 @@ export function baueApi() {
 
     getWatchOrder: (entryId: number) => invoke('watchorder:get', entryId),
     getAniListRelations: (anilistId: number) => invoke('watchorder:getRelations', anilistId),
-    saveWatchOrder: (entryId: number, items: unknown[]) => invoke('watchorder:save', entryId, items),
+    saveWatchOrder: (entryId: number, items: unknown[], quelle?: string) => invoke('watchorder:save', entryId, items, quelle),
     deleteWatchOrder: (entryId: number) => invoke('watchorder:delete', entryId),
 
     exportStarten: (opts: unknown) => invoke('export:start', opts),
