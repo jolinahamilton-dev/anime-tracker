@@ -93,6 +93,14 @@ export function baueApi() {
 
     exportStarten: (opts: unknown) => invoke('export:start', opts),
     importCsv: () => invoke('import:csv'),
+    importAnilist: (opts: unknown) => invoke('importlauf:anilist', opts),
+    importDatei: () => invoke('importlauf:datei'),
+    importUebernehmen: (nummern: number[]) => invoke('importlauf:uebernehmen', nummern),
+    importStarten: () => invoke('importlauf:starten'),
+    importAbbrechen: () => invoke('importlauf:abbrechen'),
+    importLetzter: () => invoke('importlauf:letzter'),
+    importZurueck: () => invoke('importlauf:zurueck'),
+    onImportFortschritt: ereignis('importlauf:fortschritt'),
     sicherungErstellen: () => invoke('sicherung:erstellen'),
     sicherungWaehlen: () => invoke('sicherung:waehlen'),
     // Vor dem Einspielen den bisherigen Stand als Sicherheitskopie ablegen (für „Rückgängig“)

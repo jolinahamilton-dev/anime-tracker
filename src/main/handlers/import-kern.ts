@@ -35,7 +35,7 @@ const HEADER_MAP: Record<string, string> = {
   'anilist_id': 'anilist_id',
 }
 
-function parseCSV(inhalt: string): Array<Record<string, string>> {
+export function parseCSV(inhalt: string): Array<Record<string, string>> {
   const zeilen = inhalt.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter(z => z.trim())
   if (zeilen.length < 2) return []
 

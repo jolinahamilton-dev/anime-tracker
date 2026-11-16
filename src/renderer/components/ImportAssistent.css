@@ -1,0 +1,24 @@
+.import-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.import-tabs button {
+  padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border); background: transparent;
+  color: inherit; font: inherit; font-size: 14px; cursor: pointer;
+}
+.import-tabs button.aktiv { background: var(--accent); border-color: var(--accent); color: #fff; }
+.import-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.import-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.import-eingabe {
+  flex: 1 1 200px; min-width: 0; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+  background: transparent; color: inherit; font: inherit;
+}
+.import-haken { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+.import-hinweis { flex-basis: 100%; margin: 0; }
+.import-fortschritt { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; font-size: 14px; flex-wrap: wrap; }
+.import-ergebnis { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+.import-zahlen { margin: 0; font-size: 14px; line-height: 1.5; }
+.import-block summary { cursor: pointer; font-size: 14px; font-weight: 600; }
+.import-liste { list-style: none; margin: 8px 0; padding: 0; font-size: 14px; display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; }
+.import-liste li { overflow-wrap: anywhere; }
+.import-serien li.vorhanden > details > summary { opacity: .6; }
+.import-serien ul { margin: 6px 0 6px 18px; padding: 0; font-size: 13px; }
+.import-knoepfe { display: flex; gap: 10px; flex-wrap: wrap; }
+.import-zurueck { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }

@@ -76,6 +76,18 @@ contextBridge.exposeInMainWorld('api', {
 
   // Import
   importCsv: () => ipcRenderer.invoke('import:csv'),
+  importAnilist: (opts: unknown) => ipcRenderer.invoke('importlauf:anilist', opts),
+  importDatei: () => ipcRenderer.invoke('importlauf:datei'),
+  importUebernehmen: (nummern: number[]) => ipcRenderer.invoke('importlauf:uebernehmen', nummern),
+  importStarten: () => ipcRenderer.invoke('importlauf:starten'),
+  importAbbrechen: () => ipcRenderer.invoke('importlauf:abbrechen'),
+  importLetzter: () => ipcRenderer.invoke('importlauf:letzter'),
+  importZurueck: () => ipcRenderer.invoke('importlauf:zurueck'),
+  onImportFortschritt: (cb: (p: { phase: string; aktuell: number; gesamt: number }) => void) => {
+    const handler = (_: unknown, p: { phase: string; aktuell: number; gesamt: number }) => cb(p)
+    ipcRenderer.on('importlauf:fortschritt', handler)
+    return () => ipcRenderer.removeListener('importlauf:fortschritt', handler)
+  },
 
   // Begrüßung, Erinnerung an die Sicherung
   startInfo: () => ipcRenderer.invoke('start:info'),

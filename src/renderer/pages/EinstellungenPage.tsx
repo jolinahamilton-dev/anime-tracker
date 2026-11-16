@@ -9,6 +9,7 @@ import type { AusgeblendeterVorschlag } from '../../types'
 import { api, kann, istHandyApp, neuLaden, SicherungInfo, LokaleKopie, PruefErgebnis } from '../api'
 import VerknuepfenDialog from '../components/VerknuepfenDialog'
 import SyncBereich from '../components/SyncBereich'
+import ImportAssistent from '../components/ImportAssistent'
 import { bestaetigen, snackbar } from '../meldungen'
 import { meldeAenderung } from '../aktionen'
 import { setzeAnsichtGlobal, useAnsichtGlobal } from '../ansichtGlobal'
@@ -639,6 +640,8 @@ export default function EinstellungenPage() {
             {importLaeuft ? 'Wird importiert…' : '⬆ CSV importieren'}
           </button>
         </section>}
+
+        {kann.dateien && <ImportAssistent />}
 
         {/* AniList-Abgleich */}
         <section className="einstell-section">

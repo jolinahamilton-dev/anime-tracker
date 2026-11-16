@@ -231,3 +231,10 @@ export function registerAniListHandlers(ipcMain: IpcMain) {
     }
   })
 }
+
+/** Titelsuche für den Import: bester eindeutiger Treffer (oder null) plus alle Kandidaten als Vorschlag */
+export async function sucheTitel(titel: string, typ: 'ANIME' | 'MANGA'): Promise<{ treffer: any | null; kandidaten: any[] }> {
+  const res = await anilistAbfrage(ABGLEICH_SUCHE_QUERY, { search: titel, type: typ }, true)
+  const kandidaten: any[] = res?.data?.Page?.media ?? []
+  return { treffer: findeTreffer(titel, kandidaten), kandidaten }
+}

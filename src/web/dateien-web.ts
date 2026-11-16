@@ -2,7 +2,9 @@
 // Dateiauswahl des Handys, Exporte und Sicherungen landen als Download (Ordner „Downloads“).
 import { importiereCsv } from '../main/handlers/import-kern'
 import { erstelleExport, merkeExport, ExportOptions } from '../main/handlers/export-kern'
-import { persistDb } from './datenbank'
+import { persistDb, leseWert, schreibeWert } from './datenbank'
+import { registerImportLaufHandlers, ImportAblage } from '../main/handlers/anilist-import'
+import { istGzip } from '../main/handlers/import-fremd'
 import { sicherungAlsDatei, leseSicherung, spieleSicherungEin, merkeSicherung, Sicherung } from '../main/handlers/sicherung-kern'
 
 /** Öffnet die Dateiauswahl; null, wenn abgebrochen. Muss direkt aus einem Tippen heraus aufgerufen werden. */
@@ -70,5 +72,34 @@ export function registerDateiHandlers(registry: { handle(kanal: string, fn: (...
     ausgewaehlt = null
     await persistDb() // vor dem Neuladen der Seite sicher im Browser-Speicher
     return { info }
+  })
+}
+
+// Sicherheitskopie vor einem Import und Merkzettel des letzten Laufs im Browser-Speicher
+const importAblage: ImportAblage = {
+  lies: s => leseWert<string>(s === 'sicherung' ? 'vor-import' : 'import-lauf'),
+  schreib: (s, text) => schreibeWert(s === 'sicherung' ? 'vor-import' : 'import-lauf', text),
+}
+
+/** Entpackt .gz mit dem Browser (DecompressionStream), sonst Text unverändert */
+async function alsText(datei: File): Promise<string> {
+  const bytes = new Uint8Array(await datei.arrayBuffer())
+  if (!istGzip(bytes)) return new TextDecoder().decode(bytes)
+  if (typeof DecompressionStream === 'undefined') throw new Error('Dieser Browser kann .gz nicht entpacken – bitte die Datei vorher entpacken.')
+  try {
+    const strom = new Blob([bytes as BlobPart]).stream().pipeThrough(new DecompressionStream('gzip'))
+    return await new Response(strom).text()
+  } catch {
+    throw new Error('Die Datei ließ sich nicht entpacken (kaputte .gz-Datei?).')
+  }
+}
+
+export function registerImportLauf(registry: { handle(kanal: string, fn: (...args: any[]) => unknown): void }) {
+  registerImportLaufHandlers(registry as any, {
+    ablage: importAblage,
+    async waehleDatei() {
+      const datei = await waehleDatei('.xml,.gz,.csv,text/xml,text/csv,application/gzip,application/x-gzip,text/plain')
+      return datei ? { name: datei.name, text: await alsText(datei) } : null
+    },
   })
 }

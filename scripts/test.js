@@ -15,7 +15,7 @@ const QUELLEN = ['src/sync', 'src/db/kern.ts', 'src/db/database.ts', 'src/main/h
   'src/renderer/spitzname.ts', 'src/renderer/anzeige.ts', 'src/renderer/baende.ts', 'src/renderer/listenLogik.ts', 'src/main/handlers/mehrfach.ts', 'src/renderer/listenZustand.ts', 'src/main/handlers/sicherung-kern.ts',
   'src/main/handlers/entries.ts', 'src/main/handlers/serien.ts', 'src/main/handlers/watchorder.ts',
   'src/main/handlers/import-kern.ts', 'src/main/handlers/einstellungen-kern.ts',
-  'src/main/handlers/titel.ts', 'src/main/handlers/news.ts', 'src/main/handlers/lists.ts', 'src/main/handlers/verknuepfung.ts', 'src/main/handlers/verlauf.ts', 'src/main/handlers/streaming.ts']
+  'src/main/handlers/anilist-import.ts', 'src/main/handlers/import-gruppen.ts', 'src/main/handlers/import-fremd.ts', 'src/main/handlers/titel.ts', 'src/main/handlers/news.ts', 'src/main/handlers/lists.ts', 'src/main/handlers/verknuepfung.ts', 'src/main/handlers/verlauf.ts', 'src/main/handlers/streaming.ts']
 
 const ziel = fs.mkdtempSync(path.join(os.tmpdir(), 'anime-tracker-tests-'))
 process.on('exit', () => { try { fs.rmSync(ziel, { recursive: true, force: true }) } catch { /* egal */ } })

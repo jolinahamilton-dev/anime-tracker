@@ -20,7 +20,7 @@ import { registerStreamingHandlers } from '../main/handlers/streaming'
 import { ergaenzeTitel } from '../main/handlers/titel'
 import { trackAppOpen } from '../main/trackAppOpen'
 import { erstelleSyncDienst } from '../sync/dienst'
-import { registerDateiHandlers } from './dateien-web'
+import { registerDateiHandlers, registerImportLauf } from './dateien-web'
 import { registerBegruessungHandlers } from '../main/handlers/begruessung'
 import { erstelleRhythmus } from '../sync/rhythmus'
 import { hochgeladenBis, neueEigeneAenderungen } from '../sync/abgleich'
@@ -47,6 +47,7 @@ async function start() {
   const sync = erstelleSyncDienst(webPlattform)
   sync.registriere(registry)
   registerDateiHandlers(registry)
+  registerImportLauf(registry)
   registerBegruessungHandlers(registry)
   ;(window as any).api = baueApi()
   trackAppOpen()

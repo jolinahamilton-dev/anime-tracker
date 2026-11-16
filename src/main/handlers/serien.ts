@@ -53,6 +53,24 @@ export interface MediaInfo {
   startDate?: Datum | null
   endDate?: Datum | null
   relations?: { edges: Array<{ relationType: string; node: MediaInfo }> }
+  // Nur beim Import mitgeladen (anilist-import.ts)
+  idMal?: number | null
+  genres?: string[] | null
+  description?: string | null
+  chapters?: number | null
+  volumes?: number | null
+  isAdult?: boolean | null
+}
+
+/** Einstellungen für das Nachladen von Ketten (Standard = Serien-Abgleich); der Import nutzt eine eigene Abfrage, kleinere Pakete und kann abbrechen */
+export interface LadeOptionen {
+  query?: string
+  paket?: number
+  /** Pause zwischen zwei Anfragen in ms (Standard 2100 wegen des AniList-Limits; Tests: 0) */
+  wartezeit?: number
+  abbrechen?: () => boolean
+  /** Meldet nach jeder Anfrage die Zahl der gerade abgefragten IDs */
+  fortschritt?: (abgefragt: number) => void
 }
 
 interface WoZeile {
@@ -109,26 +127,29 @@ function istAktuell(m: MediaInfo): boolean {
 }
 
 /** Holt Medien in Paketen; schlägt ein großes Paket fehl (z. B. Komplexitätslimit), wird es halbiert */
-async function holePaket(ids: number[], cache: Map<number, MediaInfo>): Promise<void> {
+async function holePaket(ids: number[], cache: Map<number, MediaInfo>, opt: LadeOptionen = {}): Promise<void> {
+  if (opt.abbrechen?.()) throw new Error('Abgebrochen')
   try {
-    const res = await anilistAbfrage(BATCH_QUERY, { ids, page: 1 }, true)
+    const res = await anilistAbfrage(opt.query ?? BATCH_QUERY, { ids, page: 1 }, true)
     for (const m of res?.data?.Page?.media ?? []) cache.set(m.id, m)
+    opt.fortschritt?.(ids.length)
   } catch (e) {
-    if (ids.length <= 10) throw e
+    if (ids.length <= 10 || (e as Error)?.message === 'Abgebrochen') throw e
     const mitte = Math.ceil(ids.length / 2)
-    await holePaket(ids.slice(0, mitte), cache)
-    await warte(2100)
-    await holePaket(ids.slice(mitte), cache)
+    await holePaket(ids.slice(0, mitte), cache, opt)
+    await warte(opt.wartezeit ?? 2100)
+    await holePaket(ids.slice(mitte), cache, opt)
   }
 }
 
-export async function holeMedien(ids: number[], cache: Map<number, MediaInfo>, versucht: Set<number>) {
+export async function holeMedien(ids: number[], cache: Map<number, MediaInfo>, versucht: Set<number>, opt: LadeOptionen = {}) {
   // Jede ID nur einmal anfragen – auch wenn AniList sie nicht liefert (gelöscht o. ä.)
   const offen = [...new Set(ids)].filter(id => !versucht.has(id))
   offen.forEach(id => versucht.add(id))
-  for (let i = 0; i < offen.length; i += BATCH) {
-    if (i > 0) await warte(2100)
-    await holePaket(offen.slice(i, i + BATCH), cache)
+  const paket = opt.paket ?? BATCH
+  for (let i = 0; i < offen.length; i += paket) {
+    if (i > 0) await warte(opt.wartezeit ?? 2100)
+    await holePaket(offen.slice(i, i + paket), cache, opt)
   }
 }
 
@@ -151,10 +172,10 @@ export function elternSerieVon(m: MediaInfo | undefined): MediaInfo | null {
  * Lädt alle Medien der Kette (SEQUEL/PREQUEL) rundenweise in den Zwischenspeicher. Für die Hauptmedien
  * in `hauptIds`, die eine OVA/Special mit Elternserie sind, wird zusätzlich die Elternserie geholt.
  */
-export async function ladeKetten(zuHolen: number[], cache: Map<number, MediaInfo>, versucht: Set<number>, hauptIds: Set<number>) {
+export async function ladeKetten(zuHolen: number[], cache: Map<number, MediaInfo>, versucht: Set<number>, hauptIds: Set<number>, opt: LadeOptionen = {}) {
   for (let runde = 0; runde < MAX_RUNDEN && zuHolen.length > 0; runde++) {
-    if (runde > 0) await warte(2100)
-    await holeMedien(zuHolen, cache, versucht)
+    if (runde > 0) await warte(opt.wartezeit ?? 2100)
+    await holeMedien(zuHolen, cache, versucht, opt)
     zuHolen = []
     for (const m of cache.values()) {
       for (const kante of m.relations?.edges ?? []) {

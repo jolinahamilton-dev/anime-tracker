@@ -168,6 +168,16 @@ export interface TrackerApi {
   exportStarten(opts: unknown): Promise<any>
   importCsv(): Promise<any>
 
+  // Import per AniList-Benutzername und aus anderer App (MyAnimeList-XML, CSV): erst prüfen (Trockenlauf), dann importieren
+  importAnilist(opts: { benutzer: string; anime: boolean; manga: boolean }): Promise<ImportPruefung | ImportFehler>
+  importDatei(): Promise<(ImportPruefung & { format: string; zuordnung: Array<{ spalte: string; feld: string }> }) | ImportFehler | { abgebrochen: true }>
+  importUebernehmen(nummern: number[]): Promise<ImportPruefung | ImportFehler>
+  importStarten(): Promise<{ ergebnis: { angelegt: number; vorhanden: number; staffeln: number } } | ImportFehler>
+  importAbbrechen(): Promise<boolean>
+  importLetzter(): Promise<{ zeit: string; quelle: string; anzahl: number } | null>
+  importZurueck(): Promise<{ geloescht: number } | ImportFehler>
+  onImportFortschritt(cb: (p: { phase: string; aktuell: number; gesamt: number }) => void): () => void
+
   // Komplette Sicherung: wählen prüft die Datei, einspielen ersetzt danach den Stand
   sicherungErstellen(): Promise<{ success: boolean; pfad?: string }>
   sicherungWaehlen(): Promise<{ abgebrochen?: boolean; fehler?: string; info?: SicherungInfo }>
@@ -218,4 +228,23 @@ export const istHandyApp = (window as any).api?.istHandy === true
 export function neuLaden() {
   if (api.fensterNeuLaden) api.fensterNeuLaden().catch(() => location.reload())
   else location.reload()
+}
+
+export interface ImportFehler { fehler: string }
+export interface ImportPruefung {
+  quelle: string
+  eintraegeQuelle: number
+  serien: number
+  zusammengefasst: number
+  vorhanden: number
+  neu: number
+  staffelnNeu: number
+  nichtZugeordnet: Array<{ nr: number; titel: string; typ: string; grund: string }>
+  pruefen: Array<{ nr: number; titel: string; typ: string; vorschlag: { id: number; titel: string; cover: string | null } }>
+  uebersprungen18: number
+  uebersprungenDatei: number
+  liste: Array<{
+    titel: string; typ: string; vorhanden: boolean; status: string; bewertung: number | null; quellZeilen: number
+    staffeln: Array<{ titel: string | null; relation: string; status: string; fortschritt: number; total: number | null; inListe: boolean }>
+  }>
 }
