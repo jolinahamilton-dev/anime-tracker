@@ -5,7 +5,8 @@ import { LOGOS, logoBild } from '../logos'
 import { installieren, useInstallierbar } from '../installieren'
 import './Page.css'
 import './EinstellungenPage.css'
-import { api, kann, istHandyApp, neuLaden, SicherungInfo, LokaleKopie } from '../api'
+import { api, kann, istHandyApp, neuLaden, SicherungInfo, LokaleKopie, PruefErgebnis } from '../api'
+import VerknuepfenDialog from '../components/VerknuepfenDialog'
 import SyncBereich from '../components/SyncBereich'
 import { bestaetigen, snackbar } from '../meldungen'
 import { meldeAenderung } from '../aktionen'
@@ -86,6 +87,24 @@ export default function EinstellungenPage() {
     const neu = !erweitertOffen
     setErweitertOffen(neu)
     try { sessionStorage.setItem(ERWEITERT_KEY, neu ? '1' : '0') } catch { /* egal */ }
+  }
+
+  // Verknüpfungen prüfen: nur auf Knopfdruck (AniList in großen Blöcken); das letzte Ergebnis liegt lokal
+  const [pruefung, setPruefung] = useState<PruefErgebnis | null>(null)
+  const [pruefungLaeuft, setPruefungLaeuft] = useState(false)
+  const [pruefungFehler, setPruefungFehler] = useState('')
+  const [verknuepfen, setVerknuepfen] = useState<null | { entryId: number; titel: string; suche: string; zielId?: number }>(null)
+  useEffect(() => { if (erweitertOffen) api.verknuepfungenErgebnis().then(setPruefung).catch(() => {}) }, [erweitertOffen])
+  async function starteVerknuepfungenPruefen() {
+    setPruefungLaeuft(true); setPruefungFehler('')
+    try { setPruefung(await api.verknuepfungenPruefen()) } catch (e: any) {
+      const grund = String(e?.message ?? '').split('Error: ').pop()
+      setPruefungFehler(`Die Prüfung hat nicht geklappt${grund ? ` (${grund})` : ''}. Internetverbindung prüfen.`)
+    } finally { setPruefungLaeuft(false) }
+  }
+  async function ignoriereVerdacht(entryId: number) {
+    await api.verknuepfungIgnorieren(entryId)
+    setPruefung(p => p ? { ...p, verdaechtig: p.verdaechtig.filter(v => v.entryId !== entryId) } : p)
   }
 
   // Nebengeschichten (Side Stories, Spin-offs, Filme, Kurzserien) in den News – Standard: aus
@@ -513,7 +532,7 @@ export default function EinstellungenPage() {
           >
             <span className="aufklapp-pfeil" aria-hidden="true">▸</span>
             <span className="section-titel">Erweitert</span>
-            <span className="einstell-sub">Sicherung, Import, Export, AniList-Abgleich</span>
+            <span className="einstell-sub">Sicherung, Import, Export, AniList-Abgleich, Verknüpfungen</span>
           </button>
         {erweitertOffen && <div id="einstell-erweitert" className="einstell-erweitert">
 
@@ -631,6 +650,49 @@ export default function EinstellungenPage() {
           </button>
         </section>
 
+        {/* Verknüpfungen prüfen: Einträge, die vermutlich am falschen AniList-Titel hängen */}
+        <section className="einstell-section">
+          <h3 className="section-titel">Verknüpfungen prüfen</h3>
+          <p className="einstell-sub" style={{ marginBottom: 10 }}>
+            Sucht Anime, die vermutlich am falschen AniList-Titel hängen (z.&thinsp;B. an einer OVA statt an der Serie,
+            sodass Staffeln fehlen). Nichts wird von selbst geändert. Die Prüfung fragt AniList nur beim Drücken ab
+            (wenige große Anfragen).
+          </p>
+          {pruefungFehler && <p className="fehler-text" style={{ marginBottom: 10 }}>{pruefungFehler}</p>}
+          {pruefung && (
+            <p className="einstell-sub" style={{ marginBottom: 10 }}>
+              Zuletzt geprüft: {datumZeit(pruefung.zeit)} – {pruefung.geprueft} Anime,{' '}
+              {pruefung.verdaechtig.length === 0 ? 'nichts Verdächtiges' : `${pruefung.verdaechtig.length} verdächtig`}.
+            </p>
+          )}
+          {pruefung && pruefung.verdaechtig.length > 0 && (
+            <ul className="vk-verdacht-liste">
+              {pruefung.verdaechtig.map(v => (
+                <li key={v.entryId} className="vk-verdacht">
+                  <div className="vk-verdacht-titel">{v.titel}{v.nickname ? ` („${v.nickname}“)` : ''}</div>
+                  <ul className="vk-verdacht-gruende">{v.gruende.map((g, i) => <li key={i}>{g}</li>)}</ul>
+                  <div className="vk-verdacht-knoepfe">
+                    {v.vorschlagId != null && (
+                      <button className="btn-primary" onClick={() => setVerknuepfen({ entryId: v.entryId, titel: v.titel, suche: '', zielId: v.vorschlagId! })}>
+                        Auf Serie umhängen{v.vorschlagTitel ? `: ${v.vorschlagTitel}` : ''}
+                      </button>
+                    )}
+                    <button className="btn-secondary" onClick={() => setVerknuepfen({ entryId: v.entryId, titel: v.titel, suche: v.nickname || v.titel })}>
+                      Anderen Titel suchen
+                    </button>
+                    <button className="btn-secondary" onClick={() => ignoriereVerdacht(v.entryId)} title="Ist in Ordnung – nicht mehr anzeigen">
+                      Ist richtig
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <button className="btn-primary" onClick={starteVerknuepfungenPruefen} disabled={pruefungLaeuft}>
+            {pruefungLaeuft ? 'Wird geprüft…' : pruefung ? '🔍 Erneut prüfen' : '🔍 Jetzt prüfen'}
+          </button>
+        </section>
+
         {/* Export */}
         {kann.dateien && <section className="einstell-section">
           <h3 className="section-titel">Export</h3>
@@ -701,6 +763,11 @@ export default function EinstellungenPage() {
         </section>
 
       </div>
+      {verknuepfen && (
+        <VerknuepfenDialog modus="umhaengen" entryId={verknuepfen.entryId} titel={verknuepfen.titel} suche={verknuepfen.suche}
+          zielId={verknuepfen.zielId} onSchliessen={() => setVerknuepfen(null)}
+          onFertig={() => setPruefung(p => p ? { ...p, verdaechtig: p.verdaechtig.filter(v => v.entryId !== verknuepfen.entryId) } : p)} />
+      )}
     </div>
   )
 }

@@ -1,0 +1,48 @@
+.vk-dialog {
+  max-width: 520px;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.vk-text { margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.45; }
+.vk-text strong { color: var(--text); }
+.vk-suche { display: flex; gap: 8px; }
+.vk-eingabe { flex: 1; min-width: 0; height: 38px; font-size: 14px; }
+.vk-leer { margin: 0; font-size: 13px; color: var(--text-muted); }
+.vk-fehler { margin: 0; }
+.vk-liste { display: flex; flex-direction: column; gap: 6px; max-height: 40vh; overflow-y: auto; }
+.vk-treffer {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 6px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg-card);
+  min-height: 44px;
+}
+.vk-treffer:hover:not(:disabled) { border-color: var(--text-muted); }
+.vk-treffer.aktiv { border-color: var(--accent); background: var(--bg-hover, var(--bg-card)); }
+.vk-cover { width: 34px; height: 48px; flex: none; object-fit: cover; border-radius: 4px; background: var(--border); }
+.vk-info { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.vk-titel { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.vk-meta { font-size: 12px; color: var(--text-muted); }
+.vk-wohin { display: flex; flex-direction: column; gap: 8px; }
+.vk-knoepfe { display: flex; flex-wrap: wrap; gap: 8px; }
+.vk-vorschau { display: flex; flex-direction: column; gap: 8px; }
+.vk-staffeln { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 38vh; overflow-y: auto; }
+.vk-staffeln li {
+  display: flex; flex-direction: column; gap: 1px; padding: 6px 8px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px;
+}
+.vk-staffeln li.neu { border-color: var(--accent); }
+.vk-s-titel { font-weight: 600; overflow-wrap: anywhere; }
+.vk-s-meta { font-size: 12px; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.vk-neu { font-size: 11px; font-weight: 700; color: var(--accent-text); border: 1px solid var(--accent); border-radius: 8px; padding: 0 6px; }
+.vk-hinweis { margin: 0; font-size: 12px; color: var(--text-muted); }
+.vk-dialog .dialog-knoepfe { flex-wrap: wrap; margin-top: 4px; }
+
+@media (max-width: 640px) {
+  .vk-dialog { max-width: none; padding: 16px; }
+  .vk-liste { max-height: 36vh; }
+}
+@media (hover: none) {
+  .vk-dialog .dialog-btn { min-height: 44px; }
+}

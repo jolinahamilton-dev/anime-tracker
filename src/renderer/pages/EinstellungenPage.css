@@ -317,3 +317,13 @@ kbd {
 @media (prefers-reduced-motion: reduce) {
   .aufklapp-pfeil { transition: none; }
 }
+
+/* ── Verknüpfungen prüfen ── */
+.vk-verdacht-liste { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.vk-verdacht { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.vk-verdacht-titel { font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
+.vk-verdacht-gruende { margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-muted); }
+.vk-verdacht-knoepfe { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 640px) {
+  .vk-verdacht-knoepfe > button { flex: 1 1 100%; }
+}

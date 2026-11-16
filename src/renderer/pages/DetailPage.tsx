@@ -5,6 +5,7 @@ import Sterne from '../components/Sterne'
 import Sammlung from '../components/Sammlung'
 import WatchOrder, { WatchItem, istNeueStaffel, istNebensache } from '../components/WatchOrder'
 import BildVergroesserung from '../components/BildVergroesserung'
+import VerknuepfenDialog from '../components/VerknuepfenDialog'
 import { naechsteFolgeText } from '../components/EintragKarte'
 import { sitzung } from '../listenZustand'
 import './Page.css'
@@ -83,6 +84,8 @@ export default function DetailPage() {
 
   const [coverGross, setCoverGross] = useState(false)
   const [wiederholtLaeuft, setWiederholtLaeuft] = useState(false)
+  // Fenster mit AniList-Suche: Neu verknüpfen bzw. Staffel hinzufügen
+  const [verknuepfen, setVerknuepfen] = useState<null | 'umhaengen' | 'staffel'>(null)
   // Nächste Ausstrahlung: kommt nur mit getEntry (nicht mit dem Ergebnis von update/setAbo) – daher eigener Zustand
   const [naechsteFolge, setNaechsteFolge] = useState<ReturnType<typeof naechsteFolgeText>>(null)
 
@@ -428,6 +431,12 @@ export default function DetailPage() {
               >
                 {entry.is_favorite ? '⭐ Favorit' : '☆ Favorit'}
               </button>
+              {isAnime && (
+                <button className="favorit-btn" onClick={() => setVerknuepfen('umhaengen')}
+                  title="Hängt der Eintrag am falschen AniList-Titel (z. B. an einer OVA statt an der Serie)? Hier korrigieren.">
+                  🔗 Falscher Titel? Neu verknüpfen
+                </button>
+              )}
               {isAnime && entry.anilist_id && (
                 <button
                   className={entry.abonniert ? 'favorit-btn abo-btn aktiv' : 'favorit-btn abo-btn'}
@@ -655,9 +664,14 @@ export default function DetailPage() {
 
         {/* Watch Order – nur für Anime, Manga werden separat behandelt */}
         {isAnime && entry.anilist_id && (
-          <WatchOrder items={watchItems} onAendern={speichereWatchItems} onReset={resetWatchOrder} />
+          <WatchOrder items={watchItems} onAendern={speichereWatchItems} onReset={resetWatchOrder} onStaffelHinzufuegen={() => setVerknuepfen('staffel')} />
         )}
       </div>
+
+      {verknuepfen && (
+        <VerknuepfenDialog modus={verknuepfen} entryId={entry.id} titel={entry.nickname || anzeigeTitel(entry)}
+          suche={verknuepfen === 'umhaengen' ? (entry.nickname || anzeigeTitel(entry)) : ''} onSchliessen={() => setVerknuepfen(null)} />
+      )}
 
       {coverGross && entry.cover_url && (
         <BildVergroesserung url={entry.cover_url} alt={anzeigeTitel(entry)} onSchliessen={() => setCoverGross(false)} />

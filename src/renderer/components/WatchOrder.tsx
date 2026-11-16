@@ -31,6 +31,8 @@ interface Props {
   items: WatchItem[]
   onAendern: (items: WatchItem[]) => void
   onReset: () => void
+  /** Staffel hinzufügen: öffnet die AniList-Suche (für Titel, die AniList nicht selbst verbindet) */
+  onStaffelHinzufuegen?: () => void
 }
 
 const RELATION_LABEL: Record<string, string> = {
@@ -59,7 +61,7 @@ const ITEM_STATUS_LABEL: Record<string, string> = {
   completed: 'Fertig',
 }
 
-export default function WatchOrder({ items, onAendern, onReset }: Props) {
+export default function WatchOrder({ items, onAendern, onReset, onStaffelHinzufuegen }: Props) {
   // Während des Ziehens nur eine Vorschau umsortieren; übernommen wird erst beim Drop
   const [vorschau, setVorschau] = useState<WatchItem[] | null>(null)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
@@ -124,7 +126,10 @@ export default function WatchOrder({ items, onAendern, onReset }: Props) {
     <div className="watch-order">
       <div className="section-header">
         <h3 className="section-titel">Watch Order</h3>
-        <button className="edit-btn" onClick={onReset} title="Automatische Reihenfolge wiederherstellen">↺ Reset</button>
+        <span className="watch-kopf-knoepfe">
+          {onStaffelHinzufuegen && <button className="edit-btn" onClick={onStaffelHinzufuegen} title="Einen Titel hinzufügen, den AniList nicht selbst verbindet (z. B. eine erste Staffel)">+ Staffel hinzufügen</button>}
+          <button className="edit-btn" onClick={onReset} title="Automatische Reihenfolge wiederherstellen">↺ Reset</button>
+        </span>
       </div>
       {/* Drop auf der ganzen Liste annehmen – auch im Spalt zwischen zwei Einträgen */}
       <div className="watch-liste" onDragOver={e => e.preventDefault()} onDrop={onDrop}>
