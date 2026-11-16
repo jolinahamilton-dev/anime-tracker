@@ -38,6 +38,8 @@ query ($search: String, $type: MediaType, $adult: Boolean) {
 // Abgleich: schlanke Abfragen ohne Relationen
 const ABGLEICH_FELDER = `
   id
+  format
+  popularity
   title { romaji native english }
   synonyms
   coverImage { large }
@@ -124,13 +126,29 @@ export function normalisiere(s: string | null | undefined) {
   return (s ?? '').toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}]+/gu, '')
 }
 
-function findeTreffer(titel: string, kandidaten: any[]) {
+// Rang des Formats: kleiner = eher die „richtige" Serie (TV vor Film vor ONA vor OVA/Special)
+const FORMAT_RANG: Record<string, number> = {
+  TV: 0, MANGA: 0, TV_SHORT: 1, NOVEL: 1, MOVIE: 2, ONE_SHOT: 2, ONA: 3, OVA: 4, SPECIAL: 4, MUSIC: 4,
+}
+const formatRang = (m: any) => FORMAT_RANG[String(m?.format)] ?? 5
+
+/**
+ * Wählt unter allen Treffern, deren Titel oder Synonym passt, den besten: erst nach Format
+ * (TV > Film > ONA > OVA/Special), dann nach Beliebtheit. Bei Gleichstand wird nicht geraten (null).
+ * Der erste Treffer allein genügt nicht: „Attack on Titan" ist auch Synonym einer OVA.
+ */
+export function findeTreffer(titel: string, kandidaten: any[]) {
   const ziel = normalisiere(titel)
   if (!ziel) return null
-  return kandidaten.find(m =>
+  const passend = kandidaten.filter(m =>
     [m.title?.romaji, m.title?.english, m.title?.native, ...(m.synonyms ?? [])]
-      .some(t => normalisiere(t) === ziel)
-  ) ?? null
+      .some(t => normalisiere(t) === ziel))
+  if (passend.length <= 1) return passend[0] ?? null
+  const sortiert = [...passend].sort((a, b) =>
+    formatRang(a) - formatRang(b) || (b.popularity ?? 0) - (a.popularity ?? 0))
+  const [erster, zweiter] = sortiert
+  const gleich = formatRang(erster) === formatRang(zweiter) && (erster.popularity ?? 0) === (zweiter.popularity ?? 0)
+  return gleich ? null : erster
 }
 
 interface AbgleichErgebnis {

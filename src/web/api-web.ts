@@ -33,6 +33,13 @@ export function baueApi() {
     getWeiterschauen: () => invoke('entries:weiterschauen'),
     wiederholen: (id: number) => invoke('entries:wiederholen', id),
     rueckgaengig: (token: string) => invoke('entries:rueckgaengig', token),
+    verknuepfungSuchen: (text: string) => invoke('verknuepfung:suchen', text),
+    verknuepfungVorschau: (entryId: number, anilistId: number) => invoke('verknuepfung:vorschau', entryId, anilistId),
+    verknuepfungAnwenden: (entryId: number, anilistId: number) => invoke('verknuepfung:anwenden', entryId, anilistId),
+    staffelHinzufuegen: (entryId: number, anilistId: number, wo: string) => invoke('verknuepfung:staffelHinzufuegen', entryId, anilistId, wo),
+    verknuepfungenPruefen: () => invoke('verknuepfung:pruefen'),
+    verknuepfungenErgebnis: () => invoke('verknuepfung:ergebnis'),
+    verknuepfungIgnorieren: (entryId: number) => invoke('verknuepfung:ignorieren', entryId),
 
     getLists: () => invoke('lists:getAll'),
     createList: (name: string) => invoke('lists:create', name),

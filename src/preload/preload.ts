@@ -12,6 +12,13 @@ contextBridge.exposeInMainWorld('api', {
   getWeiterschauen: () => ipcRenderer.invoke('entries:weiterschauen'),
   wiederholen: (id: number) => ipcRenderer.invoke('entries:wiederholen', id),
   rueckgaengig: (token: string) => ipcRenderer.invoke('entries:rueckgaengig', token),
+  verknuepfungSuchen: (text: string) => ipcRenderer.invoke('verknuepfung:suchen', text),
+  verknuepfungVorschau: (entryId: number, anilistId: number) => ipcRenderer.invoke('verknuepfung:vorschau', entryId, anilistId),
+  verknuepfungAnwenden: (entryId: number, anilistId: number) => ipcRenderer.invoke('verknuepfung:anwenden', entryId, anilistId),
+  staffelHinzufuegen: (entryId: number, anilistId: number, wo: string) => ipcRenderer.invoke('verknuepfung:staffelHinzufuegen', entryId, anilistId, wo),
+  verknuepfungenPruefen: () => ipcRenderer.invoke('verknuepfung:pruefen'),
+  verknuepfungenErgebnis: () => ipcRenderer.invoke('verknuepfung:ergebnis'),
+  verknuepfungIgnorieren: (entryId: number) => ipcRenderer.invoke('verknuepfung:ignorieren', entryId),
 
   // Custom Lists
   getLists: () => ipcRenderer.invoke('lists:getAll'),

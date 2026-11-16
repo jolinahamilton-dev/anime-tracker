@@ -26,7 +26,7 @@ type Zeile = Record<string, unknown>
 // gelöschte Einträge samt Listen/Watch-Order und der Stand vor einem „+1"
 // ttl: wie lange der Token gilt (Standard 5 Minuten; „Wiederholen" braucht länger)
 const rueckgaengig = new Map<string, { ablauf: number; wiederherstellen: () => void }>()
-function merkeRueckgaengig(wiederherstellen: () => void, ttl = 5 * 60_000): string {
+export function merkeRueckgaengig(wiederherstellen: () => void, ttl = 5 * 60_000): string {
   const jetzt = Date.now()
   for (const [k, v] of rueckgaengig) if (jetzt > v.ablauf) rueckgaengig.delete(k)
   const token = `${jetzt}-${Math.random().toString(36).slice(2)}`

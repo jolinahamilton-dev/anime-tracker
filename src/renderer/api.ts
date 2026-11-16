@@ -12,6 +12,32 @@ export interface CustomListMitEintraegen {
   entries?: Array<{ entry_id: number }>
 }
 
+export interface SuchTreffer {
+  id: number
+  titel: string
+  format: string | null
+  folgen: number | null
+  jahr: number | null
+  status: string | null
+  cover: string | null
+}
+
+export interface VerknuepfungVorschau {
+  haupt: { id: number; titel: string | null; format: string | null; folgen: number | null; jahr: number | null }
+  staffeln: Array<{ id: number; titel: string | null; relation: string; format: string | null; folgen: number | null; gesehen: number; neu: boolean; nebengeschichte: boolean }>
+  alt: { schicksal: 'gleich' | 'drin' | 'neben' | 'weg'; titel: string | null }
+}
+
+export interface Verdacht {
+  entryId: number
+  titel: string
+  nickname: string | null
+  gruende: string[]
+  vorschlagId: number | null
+  vorschlagTitel: string | null
+}
+export interface PruefErgebnis { zeit: string; geprueft: number; verdaechtig: Verdacht[] }
+
 export interface FortschrittErgebnis {
   entry: Entry
   keinZiel?: boolean
@@ -65,6 +91,13 @@ export interface TrackerApi {
   /** „Noch einmal schauen/lesen" (nur bei Beendet): Fortschritt auf 0, Wiederholung +1; token für Rückgängig (10 Min.) */
   wiederholen(id: number): Promise<{ entry: Entry; token: string } | { fehler: string }>
   rueckgaengig(token: string): Promise<{ success: boolean }>
+  verknuepfungSuchen(text: string): Promise<SuchTreffer[]>
+  verknuepfungVorschau(entryId: number, anilistId: number): Promise<VerknuepfungVorschau | { fehler: string }>
+  verknuepfungAnwenden(entryId: number, anilistId: number): Promise<{ entry: Entry | null; token: string; staffeln: number } | { fehler: string }>
+  staffelHinzufuegen(entryId: number, anilistId: number, wo: 'vorgaenger' | 'nachfolger'): Promise<{ token: string; items: any[] } | { fehler: string }>
+  verknuepfungenPruefen(): Promise<PruefErgebnis>
+  verknuepfungenErgebnis(): Promise<PruefErgebnis | null>
+  verknuepfungIgnorieren(entryId: number): Promise<{ success: boolean }>
 
   // Eigene Listen
   getLists(): Promise<CustomListMitEintraegen[]>

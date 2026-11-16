@@ -23,7 +23,7 @@ const BATCH = 50
 // alte OVA, die AniList-Redakteure nachträglich verknüpfen
 const AKTUELL_TAGE = 180
 
-const MEDIA_FELDER = `id type status episodes duration nextAiringEpisode { episode }
+const MEDIA_FELDER = `id type format status episodes duration nextAiringEpisode { episode }
   title { romaji english native } coverImage { large }
   startDate { year month day } endDate { year month day }`
 
@@ -40,9 +40,10 @@ query ($ids: [Int], $page: Int) {
 
 interface Datum { year: number | null; month: number | null; day: number | null }
 
-interface MediaInfo {
+export interface MediaInfo {
   id: number
   type?: string
+  format?: string | null
   status: string | null
   episodes: number | null
   duration?: number | null
@@ -70,7 +71,7 @@ interface WoZeile {
   neu_seit: string | null
 }
 
-interface Kandidat { id: number; media: MediaInfo; relation: string; quelle: number }
+export interface Kandidat { id: number; media: MediaInfo; relation: string; quelle: number }
 
 export interface SerienAenderung {
   entryId: number
@@ -91,7 +92,7 @@ function alsDatum(d?: Datum | null): Date | null {
  * `alt` = zuletzt bekannter Wert – bei laufenden Serien ohne Sendeplan (Pause zwischen
  * zwei Cours) wird er beibehalten, statt auf die geplante Gesamtzahl zu springen.
  */
-function ausgestrahlt(m: MediaInfo, alt: number | null): number | null {
+export function ausgestrahlt(m: MediaInfo, alt: number | null): number | null {
   if (m.nextAiringEpisode) return Math.max(0, m.nextAiringEpisode.episode - 1)
   if (m.status === 'NOT_YET_RELEASED') return 0
   if (m.status === 'RELEASING') return alt
@@ -121,7 +122,7 @@ async function holePaket(ids: number[], cache: Map<number, MediaInfo>): Promise<
   }
 }
 
-async function holeMedien(ids: number[], cache: Map<number, MediaInfo>, versucht: Set<number>) {
+export async function holeMedien(ids: number[], cache: Map<number, MediaInfo>, versucht: Set<number>) {
   // Jede ID nur einmal anfragen – auch wenn AniList sie nicht liefert (gelöscht o. ä.)
   const offen = [...new Set(ids)].filter(id => !versucht.has(id))
   offen.forEach(id => versucht.add(id))
@@ -131,8 +132,87 @@ async function holeMedien(ids: number[], cache: Map<number, MediaInfo>, versucht
   }
 }
 
+/** Formate, die meist nur ein Anhängsel einer Serie sind (OVA, Special, Musikvideo) */
+const NEBENFORMATE = new Set(['OVA', 'SPECIAL', 'MUSIC'])
+const SERIENFORMATE = new Set(['TV', 'TV_SHORT', 'MOVIE'])
+
+/**
+ * Ist das Hauptmedium eine OVA/Special/Musik mit einer Elternserie (TV/Film) – also vermutlich ein
+ * falscher Treffer („Attack on Titan" → OVA)? Dann die Elternserie liefern, von der die Kette ausgeht.
+ */
+export function elternSerieVon(m: MediaInfo | undefined): MediaInfo | null {
+  if (!m || !NEBENFORMATE.has(String(m.format))) return null
+  const kante = (m.relations?.edges ?? []).find(k =>
+    k.relationType === 'PARENT' && k.node.type === 'ANIME' && SERIENFORMATE.has(String(k.node.format)))
+  return kante ? kante.node : null
+}
+
+/**
+ * Lädt alle Medien der Kette (SEQUEL/PREQUEL) rundenweise in den Zwischenspeicher. Für die Hauptmedien
+ * in `hauptIds`, die eine OVA/Special mit Elternserie sind, wird zusätzlich die Elternserie geholt.
+ */
+export async function ladeKetten(zuHolen: number[], cache: Map<number, MediaInfo>, versucht: Set<number>, hauptIds: Set<number>) {
+  for (let runde = 0; runde < MAX_RUNDEN && zuHolen.length > 0; runde++) {
+    if (runde > 0) await warte(2100)
+    await holeMedien(zuHolen, cache, versucht)
+    zuHolen = []
+    for (const m of cache.values()) {
+      for (const kante of m.relations?.edges ?? []) {
+        if (kante.node.type === 'ANIME' && (kante.relationType === 'SEQUEL' || kante.relationType === 'PREQUEL') && !versucht.has(kante.node.id)) {
+          zuHolen.push(kante.node.id)
+        }
+      }
+      const eltern = hauptIds.has(m.id) ? elternSerieVon(m) : null
+      if (eltern && !versucht.has(eltern.id)) zuHolen.push(eltern.id)
+    }
+  }
+}
+
+/** Alle zur Serie gehörenden Medien ab `start`: Kette ablaufen, je Kettenglied alle relevanten Verknüpfungen */
+function sammleKandidaten(start: MediaInfo, cache: Map<number, MediaInfo>): Map<number, Kandidat> {
+  const kandidaten = new Map<number, Kandidat>()
+  kandidaten.set(start.id, { id: start.id, media: start, relation: 'MAIN', quelle: start.id })
+  const warteschlange = [start.id]
+  while (warteschlange.length) {
+    const glied = cache.get(warteschlange.shift()!)
+    if (!glied) continue
+    for (const kante of glied.relations?.edges ?? []) {
+      const n = kante.node
+      if (n.type !== 'ANIME' || !RELEVANTE.has(kante.relationType) || kandidaten.has(n.id)) continue
+      kandidaten.set(n.id, { id: n.id, media: cache.get(n.id) ?? n, relation: kante.relationType, quelle: glied.id })
+      if (kante.relationType === 'SEQUEL' || kante.relationType === 'PREQUEL') warteschlange.push(n.id)
+    }
+  }
+  return kandidaten
+}
+
+/**
+ * Kandidaten für die Watch-Order eines Eintrags mit dem Hauptmedium `haupt`. Ist das Hauptmedium eine
+ * OVA/Special mit Elternserie, geht die Kette von der Elternserie aus (sonst fehlten alle Staffeln);
+ * das eigene Medium bleibt die Hauptzeile (Fortschritt!), die Elternserie ist dann „Prequel" davor.
+ * `reihenfolge`: die Zeilen in Watch-Order-Reihenfolge.
+ */
+export function kandidatenFuer(haupt: MediaInfo, cache: Map<number, MediaInfo>): { kandidaten: Map<number, Kandidat>; reihenfolge: Kandidat[] } {
+  const elternKurz = elternSerieVon(haupt)
+  const eltern = elternKurz ? cache.get(elternKurz.id) : undefined
+  if (!eltern) {
+    const kandidaten = sammleKandidaten(haupt, cache)
+    return { kandidaten, reihenfolge: ordne(kandidaten, haupt.id) }
+  }
+  const kandidaten = sammleKandidaten(eltern, cache)
+  const reihenfolge = ordne(kandidaten, eltern.id).filter(k => k.id !== haupt.id)
+  const elternK = kandidaten.get(eltern.id)!
+  elternK.relation = 'PREQUEL'
+  elternK.quelle = haupt.id
+  const eigenes: Kandidat = { id: haupt.id, media: haupt, relation: 'MAIN', quelle: haupt.id }
+  kandidaten.set(haupt.id, eigenes)
+  // Das eigene Medium direkt hinter die Elternserie setzen, die Fortsetzungen folgen danach
+  reihenfolge.splice(reihenfolge.indexOf(elternK) + 1, 0, eigenes)
+  return { kandidaten, reihenfolge }
+}
+
 /** Reihenfolge für eine neu angelegte Watch-Order: Prequel-Kette, Hauptstaffel, Sequel-Kette, Rest */
-function ordne(kandidaten: Map<number, Kandidat>, hauptId: number): Kandidat[] {
+export function ordne(kandidaten: Map<number, Kandidat>, hauptId: number): Kandidat[] {
   const liste = [...kandidaten.values()]
   const kette: Kandidat[] = [kandidaten.get(hauptId)!]
   const naechstes = (relation: string, von: number) =>
@@ -201,22 +281,11 @@ export async function aktualisiereSerien(win: BrowserWindow | null): Promise<Ser
     const startZeilen = dbAll('SELECT entry_id, related_anilist_id, relation_type FROM watch_order')
     const cache = new Map<number, MediaInfo>()
     const versucht = new Set<number>()
-    let zuHolen = [
+    const zuHolen = [
       ...start.map(e => e.anilist_id as number),
       ...startZeilen.filter(z => ['MAIN', 'PREQUEL', 'SEQUEL'].includes(String(z.relation_type))).map(z => z.related_anilist_id as number),
     ]
-    for (let runde = 0; runde < MAX_RUNDEN && zuHolen.length > 0; runde++) {
-      if (runde > 0) await warte(2100)
-      await holeMedien(zuHolen, cache, versucht)
-      zuHolen = []
-      for (const m of cache.values()) {
-        for (const kante of m.relations?.edges ?? []) {
-          if (kante.node.type === 'ANIME' && (kante.relationType === 'SEQUEL' || kante.relationType === 'PREQUEL') && !versucht.has(kante.node.id)) {
-            zuHolen.push(kante.node.id)
-          }
-        }
-      }
-    }
+    await ladeKetten(zuHolen, cache, versucht, new Set(start.map(e => e.anilist_id as number)))
 
     // 2) Ab hier synchron (kein await): Einträge und Watch-Orders FRISCH lesen, damit
     //    Änderungen der Nutzerin während der Netzwerkabfragen (Fortschritt, Status,
@@ -248,20 +317,7 @@ export async function aktualisiereSerien(win: BrowserWindow | null): Promise<Ser
       const haupt = cache.get(e.anilist_id as number)
       if (!haupt) continue // nicht abrufbar (gelöscht/Fehler) → Eintrag unverändert lassen
 
-      // Alle zur Serie gehörenden Medien: Kette ablaufen, je Kettenglied alle relevanten Verknüpfungen
-      const kandidaten = new Map<number, Kandidat>()
-      kandidaten.set(haupt.id, { id: haupt.id, media: haupt, relation: 'MAIN', quelle: haupt.id })
-      const warteschlange = [haupt.id]
-      while (warteschlange.length) {
-        const glied = cache.get(warteschlange.shift()!)
-        if (!glied) continue
-        for (const kante of glied.relations?.edges ?? []) {
-          const n = kante.node
-          if (n.type !== 'ANIME' || !RELEVANTE.has(kante.relationType) || kandidaten.has(n.id)) continue
-          kandidaten.set(n.id, { id: n.id, media: cache.get(n.id) ?? n, relation: kante.relationType, quelle: glied.id })
-          if (kante.relationType === 'SEQUEL' || kante.relationType === 'PREQUEL') warteschlange.push(n.id)
-        }
-      }
+      const { kandidaten, reihenfolge } = kandidatenFuer(haupt, cache)
 
       // Neue Staffeln: nur IDs, die der Abgleich für diesen Eintrag noch nie gesehen hat.
       // Beim allerersten Abgleich (bekannte_ids leer) wird nur der Ist-Stand gemerkt.
@@ -289,17 +345,20 @@ export async function aktualisiereSerien(win: BrowserWindow | null): Promise<Ser
 
       if (vorher.length === 0) {
         // Noch keine Watch-Order → hier anlegen, damit Folgen/Staffeln künftig verfolgt werden können
-        neu = ordne(kandidaten, haupt.id).map(k => neueZeile(k, k.id === haupt.id))
+        neu = reihenfolge.map(k => neueZeile(k, k.id === haupt.id))
         for (const z of neu) {
           const k = kandidaten.get(z.related_anilist_id)!
           if (z.neu_seit && istAktuell(k.media) && newsRelationErlaubt(z.relation_type, neben)) { ausloeser.push(k.id); art = 'staffel' }
         }
       } else {
         neu = vorher.map(z => ({ ...z }))
+        let elternAufgestuft: WoZeile | null = null
         // Vorhandene Staffeln aktualisieren (Fortschritt, Status und Reihenfolge bleiben)
         for (const z of neu) {
           const k = kandidaten.get(z.related_anilist_id)
           if (!k) continue
+          // Elternserie einer OVA/Special als Hauptzeile: gehört jetzt zur Hauptlinie (Prequel)
+          if (k.relation === 'PREQUEL' && z.relation_type === 'PARENT') { z.relation_type = 'PREQUEL'; elternAufgestuft = z }
           const m = k.media
           const alt = z.aired_episodes
           const jetztAusgestrahlt = ausgestrahlt(m, alt)
@@ -325,12 +384,21 @@ export async function aktualisiereSerien(win: BrowserWindow | null): Promise<Ser
             z.aired_episodes = jetztAusgestrahlt
           }
         }
+        if (elternAufgestuft && !vorher.some(z => z.is_custom)) {
+          // Die Elternserie steht vor der Hauptzeile (nur ohne eigene Reihenfolge)
+          const mainIdx = neu.findIndex(z => z.relation_type === 'MAIN')
+          const von = neu.indexOf(elternAufgestuft)
+          if (mainIdx >= 0 && von > mainIdx) { neu.splice(von, 1); neu.splice(mainIdx, 0, elternAufgestuft) }
+        }
+        const elternK = [...kandidaten.values()].find(c => c.relation === 'PREQUEL' && c.quelle === haupt.id)
         // Fehlende Staffeln ergänzen: Sequel hinter, Prequel vor seine Quelle; bei eigener Reihenfolge ans Ende
         const eigeneReihenfolge = vorher.some(z => z.is_custom)
-        for (const k of ordne(kandidaten, haupt.id)) {
+        for (const k of reihenfolge) {
           if (neu.some(z => z.related_anilist_id === k.id)) continue
           const item = neueZeile(k, false)
-          const quellIdx = neu.findIndex(z => z.related_anilist_id === k.quelle)
+          let quellIdx = neu.findIndex(z => z.related_anilist_id === k.quelle)
+          // Fortsetzungen einer vorgezogenen Elternserie kommen hinter die Hauptzeile (die OVA), nicht davor
+          if (elternK && k.quelle === elternK.id && k.relation === 'SEQUEL') quellIdx = Math.max(quellIdx, neu.findIndex(z => z.relation_type === 'MAIN'))
           if (!eigeneReihenfolge && quellIdx >= 0 && k.relation === 'SEQUEL') neu.splice(quellIdx + 1, 0, item)
           else if (!eigeneReihenfolge && quellIdx >= 0 && k.relation === 'PREQUEL') neu.splice(quellIdx, 0, item)
           else neu.push(item)
