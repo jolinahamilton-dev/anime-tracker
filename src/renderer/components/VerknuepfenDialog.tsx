@@ -187,7 +187,7 @@ export default function VerknuepfenDialog({ modus, entryId, titel, suche = '', z
           </div>
         )}
 
-        {laden && modus === 'umhaengen' && gewaehlt != null && !vorschau && <p className="vk-leer">Staffeln werden bei AniList geholt …</p>}
+        {laden && modus === 'umhaengen' && gewaehlt != null && !vorschau && <p className="vk-leer">Staffeln werden bei AniList geholt – bei langen Reihen kann das bis zu 30 Sekunden dauern …</p>}
 
         {inVorschau && vorschau && (
           <div className="vk-vorschau">

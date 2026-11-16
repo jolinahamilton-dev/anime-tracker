@@ -263,6 +263,20 @@ test('Verdachtsliste: OVA mit Elternserie, Crossover mit falschem Spitznamen, ei
   assert.equal(nach(4).gruende.length, 1, 'eine Zeile, aber AniList kennt Fortsetzungen')
   assert.equal(nach(5), undefined, 'Edgerunners 2: Spitzname bei 10 Folgen ist unverdächtig')
   assert.deepEqual(V.findeVerdaechtige(eintraege, woAnzahl, medien, new Map([[7, film]]), [1, 2, 3, 4]).map(v => v.entryId), [], 'Ignorierte fehlen')
+  // Filme (1 Folge, deutscher Spitzname) und Alternativen, deren Fortsetzung nur eine OVA ist, sind unverdächtig
+  const film1 = media(900, 'MOVIE', 1, [], 'Mononoke-hime')
+  const hxh = media(901, 'TV', 148, [['ALTERNATIVE', 902]], 'Hunter x Hunter 2011')
+  const hxhAlt = media(902, 'TV', 62, [['SEQUEL', 903, 'OVA']], 'Hunter x Hunter 1999')
+  const ruhig = V.findeVerdaechtige(
+    [{ id: 8, title: 'Princess Mononoke', nickname: 'Prinzessin Mononoke', anilist_id: 900, total_episodes: 1 },
+     { id: 9, title: 'HxH', nickname: null, anilist_id: 901, total_episodes: 148 }],
+    new Map([[8, 1], [9, 3]]), new Map([[900, film1], [901, hxh]]), new Map([[902, hxhAlt]]))
+  assert.deepEqual(ruhig, [])
+  // Film als Hauptzeile, Serie dazu gesehen (Free!) -> Vorschlag Serie
+  const freeFilm = media(910, 'MOVIE', 1, [], 'Free Film')
+  const free = V.findeVerdaechtige([{ id: 10, title: 'Free!', nickname: null, anilist_id: 910, total_episodes: 1 }],
+    new Map([[10, 2]]), new Map([[910, freeFilm]]), new Map(), [], new Map([[10, { id: 911, titel: 'Free! Dive' }]]))
+  assert.equal(free[0].vorschlagId, 911)
   assert.equal(V.spitznamePasst('Baki', ['Hanma Baki VS Kengan Ashura']), false)
   assert.equal(V.spitznamePasst('Baki', ['Baki']), true)
   assert.equal(V.spitznamePasst('Attack on Titan', ['Shingeki no Kyojin', 'attack on titan']), true)

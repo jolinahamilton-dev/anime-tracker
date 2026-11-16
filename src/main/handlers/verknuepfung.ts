@@ -297,7 +297,7 @@ export function spitznamePasst(nick: string, titel: Array<string | null | undefi
  * `alternativen` = die per ALTERNATIVE verbundenen Titel (mit ihren Relationen).
  */
 export function findeVerdaechtige(eintraege: Zeile[], woAnzahl: Map<number, number>, medien: Map<number, MediaInfo>,
-  alternativen: Map<number, MediaInfo>, ignoriert: number[] = []): Verdacht[] {
+  alternativen: Map<number, MediaInfo>, ignoriert: number[] = [], elternGesehen: Map<number, { id: number; titel: string | null }> = new Map()): Verdacht[] {
   const raus: Verdacht[] = []
   const t = titelAnzeige()
   for (const e of eintraege) {
@@ -314,9 +314,15 @@ export function findeVerdaechtige(eintraege: Zeile[], woAnzahl: Map<number, numb
     } else if (NEBENFORMATE.has(String(m.format))) {
       gruende.push('Hängt an einer OVA/einem Special – vermutlich nicht die Serie.')
     }
+    // Film als Hauptzeile, aber die Serie dazu (Elternserie in der Watch-Order) ist gesehen (z. B. Free!, Dive to the Future)
+    const gesehen = elternGesehen.get(id)
+    if (gesehen && m.format === 'MOVIE') {
+      gruende.push(`Hängt an einem Film, aber die Serie „${gesehen.titel ?? gesehen.id}“ ist (teilweise) gesehen.`)
+      vorschlag ??= { id: gesehen.id, titel: gesehen.titel }
+    }
     const kanten = m.relations?.edges ?? []
     const folgen = m.episodes ?? (e.total_episodes as number | null)
-    if (e.nickname && folgen != null && folgen <= 3 && !spitznamePasst(String(e.nickname), [m.title?.romaji, m.title?.english, m.title?.native])) {
+    if (e.nickname && m.format !== 'MOVIE' && folgen != null && folgen <= 3 && !spitznamePasst(String(e.nickname), [m.title?.romaji, m.title?.english, m.title?.native])) {
       gruende.push(`Nur ${folgen} Folge${folgen === 1 ? '' : 'n'}, und der Spitzname „${e.nickname}“ passt nicht zu „${m.title?.romaji ?? m.id}“.`)
     }
     const fortsetzungen = kanten.filter(k => k.node.type === 'ANIME' && (k.relationType === 'SEQUEL' || k.relationType === 'PREQUEL'))
@@ -327,7 +333,7 @@ export function findeVerdaechtige(eintraege: Zeile[], woAnzahl: Map<number, numb
       // Fortsetzungen nur über eine Alternative (z. B. Berserk 1997 → Filme → Berserk 2016)
       for (const k of kanten.filter(k => k.relationType === 'ALTERNATIVE' && k.node.type === 'ANIME')) {
         const alt = alternativen.get(k.node.id)
-        const folge = (alt?.relations?.edges ?? []).filter(x => x.relationType === 'SEQUEL' && x.node.type === 'ANIME' && x.node.id !== m.id)
+        const folge = (alt?.relations?.edges ?? []).filter(x => x.relationType === 'SEQUEL' && x.node.type === 'ANIME' && x.node.id !== m.id && SERIE.has(String(x.node.format)))
         if (folge.length) {
           const bester = folge.find(x => x.node.format === 'TV') ?? folge[0]
           gruende.push(`Fortsetzungen sind nur über die Alternative „${alt?.title?.romaji ?? alt?.id}“ erreichbar (z. B. „${bester.node.title?.romaji ?? bester.node.id}“).`)
@@ -369,10 +375,14 @@ export async function pruefeVerknuepfungen(): Promise<PruefErgebnis> {
       await holeMedien([...altIds], alternativen, new Set())
     }
     const woAnzahl = new Map(dbAll('SELECT entry_id, COUNT(*) AS n FROM watch_order GROUP BY entry_id').map(z => [z.entry_id as number, z.n as number]))
+    const elternGesehen = new Map<number, { id: number; titel: string | null }>()
+    for (const z of dbAll("SELECT entry_id, related_anilist_id, title FROM watch_order WHERE relation_type = 'PARENT' AND progress_episodes > 0 ORDER BY progress_episodes")) {
+      elternGesehen.set(z.entry_id as number, { id: z.related_anilist_id as number, titel: (z.title as string | null) ?? null })
+    }
     const ergebnis: PruefErgebnis = {
       zeit: new Date().toISOString(),
       geprueft: eintraege.length,
-      verdaechtig: findeVerdaechtige(eintraege, woAnzahl, medien, alternativen, ignorierte()),
+      verdaechtig: findeVerdaechtige(eintraege, woAnzahl, medien, alternativen, ignorierte(), elternGesehen),
     }
     for (const m of medien.values()) merkeTitel(m.id, m.title)
     setzeMeta(META_ERGEBNIS, JSON.stringify(ergebnis))
