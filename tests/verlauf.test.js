@@ -93,11 +93,13 @@ test('Wiederholen: Zurücksetzen steht als „wiederholung“ im Verlauf (zählt
   g.aendere("UPDATE watch_order SET progress_episodes = 12, item_status = 'completed' WHERE entry_id = ?", [id])
   g.aendere("UPDATE entries SET status = 'completed', progress_episodes = 12 WHERE id = ?", [id])
   const r = aufruf(g, 'entries:wiederholen', id)
-  assert.deepEqual(kurz(g), ['folge:100:12>0:wiederholung', 'folge:200:12>0:wiederholung'])
+  // Gleiche Millisekunde = Reihenfolge nach zufälliger ID: Einfügereihenfolge (rowid) ist hier die verlässliche
+  const lokal = () => g.alle('SELECT staffel, art, von, bis, quelle FROM verlauf ORDER BY rowid').map(v => `${v.art}:${v.staffel ?? '-'}:${v.von}>${v.bis}:${v.quelle}`)
+  assert.deepEqual(lokal(), ['folge:100:12>0:wiederholung', 'folge:200:12>0:wiederholung'])
   aufruf(g, 'entries:fortschritt', id, 1)
-  assert.equal(kurz(g)[2], 'folge:100:0>1:plus')
+  assert.equal(lokal()[2], 'folge:100:0>1:plus')
   aufruf(g, 'entries:rueckgaengig', r.token)
-  assert.ok(kurz(g).slice(3).every(k => k.endsWith(':wiederholung')))
+  assert.ok(lokal().slice(3).every(k => k.endsWith(':wiederholung')))
 })
 
 test('Abgleich: Verlauf wird vereinigt, auch auf einem neuen Gerät; Rückgängig und −1 stimmen auf beiden', async () => {

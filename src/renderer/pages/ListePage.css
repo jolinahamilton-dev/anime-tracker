@@ -93,6 +93,18 @@
   cursor: pointer;
 }
 
+.richtung-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+}
+.richtung-btn:hover { border-color: var(--accent); }
+
 .listen-inhalt {
   flex: 1;
   overflow-y: auto;
@@ -264,6 +276,14 @@
 
 .listen-tab-verwalten {
   margin-left: auto;
+}
+
+.listen-tab-auswaehlen { margin-left: auto; }
+.listen-tab-auswaehlen + .listen-tab-verwalten { margin-left: 0; }
+.listen-tab-auswaehlen.aktiv {
+  border-color: var(--accent);
+  color: var(--accent-text);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .listen-tab-verwalten.aktiv {

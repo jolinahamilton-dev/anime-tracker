@@ -6,6 +6,7 @@ import { registry, baueApi } from './api-web'
 import { BrowserWindow } from './electron-shim'
 import { registerEntryHandlers } from '../main/handlers/entries'
 import { registerListHandlers } from '../main/handlers/lists'
+import { registerMehrfachHandlers } from '../main/handlers/mehrfach'
 import { registerAchievementHandlers } from '../main/handlers/achievements'
 import { registerNewsHandlers, aktualisiereNews } from '../main/handlers/news'
 import { registerMetaHandlers } from '../main/handlers/meta'
@@ -38,7 +39,7 @@ async function start() {
     return
   }
 
-  for (const registriere of [registerEntryHandlers, registerListHandlers, registerAchievementHandlers, registerNewsHandlers,
+  for (const registriere of [registerEntryHandlers, registerListHandlers, registerMehrfachHandlers, registerAchievementHandlers, registerNewsHandlers,
     registerMetaHandlers, registerAniListHandlers, registerWatchOrderHandlers, registerStatsHandlers, registerSerienHandlers,
     registerVorschlagHandlers, registerVerknuepfungHandlers, registerStreamingHandlers]) {
     registriere(registry)

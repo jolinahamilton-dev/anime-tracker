@@ -1,20 +1,25 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useEntries } from '../hooks/useEntries'
-import { Entry, EntryStatus, MediaType } from '../../types'
+import { Entry, EntryStatus, MediaType, MehrfachAktion } from '../../types'
 import EintragKarte from '../components/EintragKarte'
 import BildVergroesserung from '../components/BildVergroesserung'
 import StatusFilter from '../components/StatusFilter'
 import Ladeindikator from '../components/Ladeindikator'
 import Weiterschauen from '../components/Weiterschauen'
 import BottomSheet from '../components/BottomSheet'
+import MehrFilter from '../components/MehrFilter'
+import Auswahlleiste from '../components/Auswahlleiste'
+import {
+  FilterWerte, SORT_OPTIONEN, STANDARD_RICHTUNG, STANDARD_NEUE_FILTER, SortRichtung, alleGenres, anzahlNeueFilter, passtZuNeuenFiltern, sortiere,
+} from '../listenLogik'
 import {
   Ansicht, Ansichten, SortOption, STANDARD_FILTER,
   ladeFilter, speichereFilter, ansichtKey, ladeAnsichten, speichereAnsichten, sitzung,
 } from '../listenZustand'
 import { api, CustomListMitEintraegen as CustomList } from '../api'
-import { aendereFortschritt, useBeiAenderung } from '../aktionen'
-import { bestaetigen } from '../meldungen'
+import { aendereFortschritt, meldeAenderung, useBeiAenderung } from '../aktionen'
+import { bestaetigen, snackbar } from '../meldungen'
 import { anzahlBaende } from '../baende'
 import { setzeAnsichtGlobal } from '../ansichtGlobal'
 import { istTippen, overlayOffen, useIstHandy, useTasten } from '../tastatur'
@@ -28,11 +33,18 @@ const ANSICHTEN: Array<{ key: Ansicht; icon: string; label: string }> = [
   { key: 'gross', icon: '⬛', label: 'Große Symbole' },
 ]
 
-const SORTIERUNGEN: Array<{ key: SortOption; label: string }> = [
-  { key: 'zuletzt', label: 'Zuletzt bearbeitet' },
-  { key: 'alphabetisch', label: 'Alphabetisch' },
-  { key: 'bewertung', label: 'Bewertung' },
-]
+const STATUS_NAME: Record<string, string> = { ongoing: 'Laufend', completed: 'Beendet', planned: 'Geplant', paused: 'Pausiert', dropped: 'Abgebrochen' }
+const SORT_TEXT: Record<SortOption, string> = {
+  zuletzt: 'Zuletzt bearbeitet', alphabetisch: 'Alphabetisch', bewertung: 'Bewertung', hinzugefuegt: 'Hinzugefügt',
+  fortschritt: 'Fortschritt', naechste: 'Nächste Folge', geschaut: 'Zuletzt geschaut',
+}
+const SORTIERUNGEN = SORT_OPTIONEN.map(key => ({ key, label: SORT_TEXT[key] }))
+// Beschriftung der Richtung je Sortierung („Neueste zuerst“ statt nur Pfeil); Index 0 = aufsteigend, 1 = absteigend
+const RICHTUNG_TEXT: Record<SortOption, [string, string]> = {
+  zuletzt: ['Älteste zuerst', 'Neueste zuerst'], hinzugefuegt: ['Älteste zuerst', 'Neueste zuerst'], geschaut: ['Älteste zuerst', 'Neueste zuerst'],
+  alphabetisch: ['A bis Z', 'Z bis A'], bewertung: ['Niedrigste zuerst', 'Höchste zuerst'],
+  fortschritt: ['Wenigste zuerst', 'Meiste zuerst'], naechste: ['Bald zuerst', 'Spät zuerst'],
+}
 
 export default function ListePage() {
   const { entries, laden, stillAktualisieren } = useEntries()
@@ -47,10 +59,23 @@ export default function ListePage() {
   const [filterAbo, setFilterAbo] = useState(gespeichert.filterAbo)
   const [filterRegal, setFilterRegal] = useState(gespeichert.filterRegal)
   const [sortierung, setSortierung] = useState<SortOption>(gespeichert.sortierung)
+  const [sortRichtung, setSortRichtung] = useState<SortRichtung>(gespeichert.sortRichtung)
+  const [neueFilter, setNeueFilter] = useState<FilterWerte>({
+    filterGenres: gespeichert.filterGenres, filterMinBewertung: gespeichert.filterMinBewertung, filterOhneBewertung: gespeichert.filterOhneBewertung,
+    filterSpitzname: gespeichert.filterSpitzname, filterLaenge: gespeichert.filterLaenge, filterOhneAnilist: gespeichert.filterOhneAnilist,
+  })
+  const aendereNeueFilter = (teil: Partial<FilterWerte>) => setNeueFilter(f => ({ ...f, ...teil }))
+  const waehleSortierung = (s: SortOption) => { setSortierung(s); setSortRichtung(STANDARD_RICHTUNG[s]) }
+  const richtungUmschalten = () => setSortRichtung(r => (r === 'auf' ? 'ab' : 'auf'))
   const [aktiveListe, setAktiveListe] = useState<number | null>(gespeichert.aktiveListe)
   const [ansichten, setAnsichten] = useState<Ansichten>(ladeAnsichten)
   const ansicht: Ansicht = ansichten[ansichtKey(aktiveListe)] ?? (istHandy ? 'liste' : 'kacheln')
   const [verwaltenModus, setVerwaltenModus] = useState(false)
+  // Mehrfachauswahl: Modus, gewählte IDs und der zuletzt angeklickte Eintrag (Anker für Umschalt+Klick)
+  const [auswahlModus, setAuswahlModus] = useState(false)
+  const [auswahl, setAuswahl] = useState<Set<number>>(new Set())
+  const [auswahlLaeuft, setAuswahlLaeuft] = useState(false)
+  const anker = useRef<number | null>(null)
   const [vergroessert, setVergroessert] = useState<Entry | null>(null)
   const [filterOffen, setFilterOffen] = useState(false)
 
@@ -77,8 +102,8 @@ export default function ListePage() {
   useBeiAenderung(useCallback(() => { stillAktualisieren(); ladeListen() }, [stillAktualisieren, ladeListen]))
 
   useEffect(() => {
-    speichereFilter({ filterTyp, filterStatus, filterFavorit, filterAbo, filterRegal, sortierung, aktiveListe })
-  }, [filterTyp, filterStatus, filterFavorit, filterAbo, filterRegal, sortierung, aktiveListe])
+    speichereFilter({ filterTyp, filterStatus, filterFavorit, filterAbo, filterRegal, sortierung, sortRichtung, aktiveListe, ...neueFilter })
+  }, [filterTyp, filterStatus, filterFavorit, filterAbo, filterRegal, sortierung, sortRichtung, aktiveListe, neueFilter])
 
   async function aboUmschalten(entry: Entry) {
     await api.setAbo(entry.id, !entry.abonniert)
@@ -89,6 +114,10 @@ export default function ListePage() {
 
   // Tastenkürzel: Strg+F oder / = Suche, Esc im Suchfeld = leeren
   useTasten(e => {
+    if (auswahlModus && !overlayOffen() && !istTippen(e)) {
+      if (e.key === 'Escape') { auswahlBeenden(); return }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') { e.preventDefault(); alleWaehlen(); return }
+    }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
       e.preventDefault()
       sucheRef.current?.focus()
@@ -115,7 +144,7 @@ export default function ListePage() {
   }, [laden])
 
   const anzahlFilter = (filterTyp !== STANDARD_FILTER.filterTyp ? 1 : 0) + (filterStatus.length > 0 ? 1 : 0) +
-    (filterFavorit ? 1 : 0) + (filterAbo ? 1 : 0) + (filterRegal ? 1 : 0)
+    (filterFavorit ? 1 : 0) + (filterAbo ? 1 : 0) + (filterRegal ? 1 : 0) + anzahlNeueFilter(neueFilter)
   const filterAktiv = suche !== '' || anzahlFilter > 0
 
   function filterZuruecksetzen() {
@@ -125,6 +154,7 @@ export default function ListePage() {
     setFilterFavorit(false)
     setFilterAbo(false)
     setFilterRegal(false)
+    setNeueFilter({ ...STANDARD_NEUE_FILTER })
   }
 
   useEffect(() => {
@@ -136,6 +166,7 @@ export default function ListePage() {
     if (aktiveListe === null) setVerwaltenModus(false)
     setUmbenennen(null)
   }, [aktiveListe])
+  useEffect(() => { if (verwaltenModus) auswahlBeenden() }, [verwaltenModus])
 
   async function erstelleListe() {
     const name = neuerName.trim()
@@ -195,18 +226,16 @@ export default function ListePage() {
     if (filterFavorit && !e.is_favorite) return false
     if (filterAbo && !e.abonniert) return false
     if (filterRegal && anzahlBaende(e.baende_besitz) === 0) return false
+    if (!passtZuNeuenFiltern(e, neueFilter)) return false
     return true
   })
   const anzahlJeStatus: Record<string, number> = {}
   for (const e of ohneStatusFilter) anzahlJeStatus[e.status] = (anzahlJeStatus[e.status] ?? 0) + 1
 
-  const gefiltert = ohneStatusFilter
-    .filter(e => filterStatus.length === 0 || filterStatus.includes(e.status))
-    .sort((a, b) => {
-      if (sortierung === 'alphabetisch') return anzeigeTitel(a).localeCompare(anzeigeTitel(b), 'de')
-      if (sortierung === 'bewertung') return (b.rating ?? 0) - (a.rating ?? 0)
-      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-    })
+  const gefiltert = sortiere(
+    ohneStatusFilter.filter(e => filterStatus.length === 0 || filterStatus.includes(e.status)),
+    sortierung, sortRichtung, anzeigeTitel)
+  const genreListe = alleGenres(entries)
 
   // 🏆 schaltet einfach den Status-Filter auf „Beendet" (und zurück) – so bleiben beide im Einklang
   const nurBeendete = filterStatus.length === 1 && filterStatus[0] === 'completed'
@@ -222,6 +251,82 @@ export default function ListePage() {
   function oeffneEintrag(id: number) {
     sitzung.blaetterIds = gefiltert.map(e => e.id)
     navigate(`/detail/${id}`)
+  }
+
+  // ── Mehrfachauswahl ──
+  // Es zählt nur, was gerade sichtbar ist: ein Filter, der Einträge ausblendet, nimmt sie auch aus der Auswahl
+  const sichtbarAusgewaehlt = gefiltert.filter(e => auswahl.has(e.id))
+  function auswahlBeenden() { setAuswahlModus(false); setAuswahl(new Set()); anker.current = null }
+  function auswahlStarten(id?: number) {
+    setVerwaltenModus(false)
+    setAuswahlModus(true)
+    if (id !== undefined) { setAuswahl(new Set([id])); anker.current = id }
+  }
+  function alleWaehlen() { setAuswahl(new Set(gefiltert.map(e => e.id))) }
+  function umschaltenAuswahl(id: number, modus: 'einzeln' | 'bereich' = 'einzeln') {
+    setAuswahl(alt => {
+      const neu = new Set(alt)
+      if (modus === 'bereich' && anker.current !== null) {
+        const a = gefiltert.findIndex(e => e.id === anker.current), b = gefiltert.findIndex(e => e.id === id)
+        if (a >= 0 && b >= 0) {
+          for (const e of gefiltert.slice(Math.min(a, b), Math.max(a, b) + 1)) neu.add(e.id)
+          return neu
+        }
+      }
+      if (neu.has(id)) neu.delete(id); else neu.add(id)
+      return neu
+    })
+    if (modus === 'einzeln') anker.current = id
+  }
+  // Klick auf eine Karte: in der Auswahl umschalten; am Laptop starten Strg/Umschalt+Klick die Auswahl
+  function karteGeklickt(entry: Entry, e?: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }) {
+    if (!auswahlModus && e && (e.ctrlKey || e.metaKey || e.shiftKey) && !istHandy) {
+      auswahlStarten(entry.id)
+      return
+    }
+    if (auswahlModus) umschaltenAuswahl(entry.id, e?.shiftKey ? 'bereich' : 'einzeln')
+    else oeffneEintrag(entry.id)
+  }
+
+  async function fuehreAuswahlAus(aktion: MehrfachAktion) {
+    const ids = sichtbarAusgewaehlt.map(e => e.id)
+    if (ids.length === 0 || auswahlLaeuft) return
+    const n = ids.length
+    const eintraege = n === 1 ? '1 Eintrag' : `${n} Einträge`
+    if (aktion.art === 'loeschen') {
+      const ja = await bestaetigen(`${eintraege} löschen – sicher?`, {
+        text: 'Fortschritt, Watch-Order und Listen-Zuordnung werden entfernt. Direkt danach kannst du es noch rückgängig machen.',
+        ok: 'Löschen', gefahr: true,
+      })
+      if (!ja) return
+    } else if (aktion.art === 'status' && aktion.status === 'completed') {
+      const ja = await bestaetigen(`${eintraege} auf „Beendet“ setzen?`, {
+        text: 'Wie bei jedem einzelnen Eintrag wird der Fortschritt auf das Maximum aufgefüllt, wo die Gesamtzahl bekannt ist. Das lässt sich rückgängig machen.',
+        ok: 'Beendet',
+      })
+      if (!ja) return
+    }
+    setAuswahlLaeuft(true)
+    try {
+      const r = await api.mehrere(ids, aktion)
+      if (!r.success) { snackbar(r.fehler ?? 'Das hat nicht geklappt.'); return }
+      if (aktion.art === 'loeschen') setAuswahl(new Set())
+      meldeAenderung()
+      const wort = r.geaendert === 1 ? '1 Eintrag' : `${r.geaendert} Einträge`
+      const rest = r.uebersprungen > 0 ? ` (${r.uebersprungen} ${aktion.art === 'abo' ? 'übersprungen – nur Anime oder schon so' : 'schon so'})` : ''
+      const text = r.geaendert === 0 ? `Nichts zu ändern${rest}`
+        : aktion.art === 'loeschen' ? `${wort} gelöscht`
+        : aktion.art === 'status' ? `${wort}: Status „${STATUS_NAME[aktion.status]}“ ✓${rest}`
+        : aktion.art === 'favorit' ? `${wort}: Favorit ${aktion.wert ? 'gesetzt' : 'entfernt'} ✓${rest}`
+        : aktion.art === 'abo' ? `${wort}: Abo ${aktion.wert ? 'an' : 'aus'} ✓${rest}`
+        : `${wort} ${aktion.hinzu ? 'zur Liste hinzugefügt' : 'aus der Liste entfernt'} ✓${rest}`
+      snackbar(text, r.token ? {
+        label: 'Rückgängig',
+        ausfuehren: async () => { await api.rueckgaengig(r.token!); meldeAenderung() },
+      } : undefined, aktion.art === 'loeschen' ? 10000 : 7000)
+    } finally {
+      setAuswahlLaeuft(false)
+    }
   }
 
   const typKnoepfe = (
@@ -406,6 +511,15 @@ export default function ListePage() {
             </button>
           )}
 
+          <button
+            className={auswahlModus ? 'listen-tab listen-tab-auswaehlen aktiv' : 'listen-tab listen-tab-auswaehlen'}
+            onClick={() => (auswahlModus ? auswahlBeenden() : auswahlStarten())}
+            aria-pressed={auswahlModus}
+            title={istHandy ? 'Mehrere Einträge auswählen (oder eine Karte lange drücken)' : 'Mehrere Einträge auswählen (oder Strg/Umschalt + Klick)'}
+          >
+            {auswahlModus ? '✓ Auswahl beenden' : '☑ Auswählen'}
+          </button>
+
           {/* Verwalten-Modus Button (nur bei aktiver custom Liste) */}
           {aktiveListe !== null && (
             <button
@@ -424,6 +538,7 @@ export default function ListePage() {
             {typKnoepfe}
             {sammlungKnopf}
             <StatusFilter ausgewaehlt={filterStatus} anzahl={anzahlJeStatus} onAendern={setFilterStatus} />
+            <MehrFilter {...neueFilter} genres={genreListe} onAendern={aendereNeueFilter} />
             {filterAktiv && (
               <button className="filter-reset" onClick={filterZuruecksetzen} title="Suche und Filter zurücksetzen">
                 ✕ Filter zurücksetzen
@@ -433,10 +548,18 @@ export default function ListePage() {
               className="sortierung-select"
               aria-label="Sortierung"
               value={sortierung}
-              onChange={e => setSortierung(e.target.value as SortOption)}
+              onChange={e => waehleSortierung(e.target.value as SortOption)}
             >
               {SORTIERUNGEN.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
             </select>
+            <button
+              className="richtung-btn"
+              onClick={richtungUmschalten}
+              title={`${RICHTUNG_TEXT[sortierung][sortRichtung === 'auf' ? 0 : 1]} – Richtung umschalten`}
+              aria-label={`Sortierrichtung: ${RICHTUNG_TEXT[sortierung][sortRichtung === 'auf' ? 0 : 1]}. Umschalten`}
+            >
+              {sortRichtung === 'auf' ? '↑' : '↓'}
+            </button>
             {ansichtKnoepfe}
           </div>
         )}
@@ -454,7 +577,7 @@ export default function ListePage() {
         )}
 
         {/* Weiterschauen/-lesen nur ohne Suche und wenn der Status-Filter Laufende zeigt */}
-        {!laden && aktiveListe === null && !verwaltenModus && !suche &&
+        {!laden && aktiveListe === null && !verwaltenModus && !auswahlModus && !suche &&
           (filterStatus.length === 0 || filterStatus.includes('ongoing')) && (
           <Weiterschauen onOeffnen={oeffneEintrag} entries={entries} filterTyp={filterTyp} />
         )}
@@ -472,6 +595,12 @@ export default function ListePage() {
                   : 'Keine Einträge gefunden.'
               }
             </p>
+            {entries.length > 0 && filterAktiv && (
+              <p className="empty-hint">Mit diesen Filtern passt nichts – lockere einen Filter oder setze alle zurück.</p>
+            )}
+            {entries.length > 0 && filterAktiv && (
+              <button className="dialog-btn" onClick={filterZuruecksetzen}>Filter zurücksetzen</button>
+            )}
             {entries.length === 0 && <p className="empty-hint">Füge Anime & Manga über „Einpflegen" hinzu.</p>}
           </div>
         ) : (
@@ -492,12 +621,26 @@ export default function ListePage() {
                   </div>
                 )
               }
+              if (auswahlModus) {
+                // In der Auswahl keine Knöpfe auf der Karte (nichts aus Versehen auslösen)
+                return (
+                  <EintragKarte
+                    key={entry.id}
+                    entry={entry}
+                    ansicht={ansicht}
+                    auswahlModus
+                    ausgewaehlt={auswahl.has(entry.id)}
+                    onClick={e => karteGeklickt(entry, e)}
+                  />
+                )
+              }
               return (
                 <EintragKarte
                   key={entry.id}
                   entry={entry}
                   ansicht={ansicht}
-                  onClick={() => oeffneEintrag(entry.id)}
+                  onClick={e => karteGeklickt(entry, e)}
+                  onLangDruck={() => auswahlStarten(entry.id)}
                   onVergroessern={() => setVergroessert(entry)}
                   onAboUmschalten={() => aboUmschalten(entry)}
                   onPlusEins={() => aendereFortschritt(entry.id, 1)}
@@ -507,6 +650,19 @@ export default function ListePage() {
           </div>
         )}
       </div>
+
+      {auswahlModus && (
+        <Auswahlleiste
+          anzahl={sichtbarAusgewaehlt.length}
+          sichtbar={gefiltert.length}
+          listen={listen}
+          beschaeftigt={auswahlLaeuft}
+          onAktion={fuehreAuswahlAus}
+          onAlle={alleWaehlen}
+          onKeine={() => setAuswahl(new Set())}
+          onFertig={auswahlBeenden}
+        />
+      )}
 
       {filterOffen && (
         <BottomSheet
@@ -536,10 +692,21 @@ export default function ListePage() {
             </div>
           </div>
           <div className="sheet-gruppe">
+            <span className="sheet-gruppe-titel">Weitere Filter</span>
+            <MehrFilter variante="chips" {...neueFilter} genres={genreListe} onAendern={aendereNeueFilter} />
+          </div>
+          <div className="sheet-gruppe">
             <span className="sheet-gruppe-titel">Sortierung</span>
             <div className="sheet-chips">
               {SORTIERUNGEN.map(s => (
-                <button key={s.key} className={sortierung === s.key ? 'filter-btn active' : 'filter-btn'} aria-pressed={sortierung === s.key} onClick={() => setSortierung(s.key)}>{s.label}</button>
+                <button key={s.key} className={sortierung === s.key ? 'filter-btn active' : 'filter-btn'} aria-pressed={sortierung === s.key} onClick={() => waehleSortierung(s.key)}>{s.label}</button>
+              ))}
+            </div>
+            <div className="sheet-chips">
+              {([['ab', 1], ['auf', 0]] as const).map(([r, i]) => (
+                <button key={r} className={sortRichtung === r ? 'filter-btn active' : 'filter-btn'} aria-pressed={sortRichtung === r} onClick={() => setSortRichtung(r)}>
+                  {r === 'auf' ? '↑' : '↓'} {RICHTUNG_TEXT[sortierung][i]}
+                </button>
               ))}
             </div>
           </div>

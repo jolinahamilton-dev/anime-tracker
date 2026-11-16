@@ -1,4 +1,4 @@
-import { KeyboardEvent, MouseEvent } from 'react'
+import { KeyboardEvent, MouseEvent, PointerEvent, useRef } from 'react'
 import { Entry } from '../../types'
 import { Ansicht } from '../listenZustand'
 import { anzahlBaende } from '../baende'
@@ -60,8 +60,13 @@ const STATUS_LABEL: Record<string, string> = {
 
 interface Props {
   entry: Entry
-  onClick: () => void
+  onClick: (e?: MouseEvent) => void
   ansicht?: Ansicht
+  /** Mehrfachauswahl: Karte ist ein Kontrollkästchen (statt zu öffnen) */
+  auswahlModus?: boolean
+  ausgewaehlt?: boolean
+  /** Langes Drücken (nur Touch/Stift) – startet am Handy die Auswahl */
+  onLangDruck?: () => void
   onVergroessern?: () => void
   onAboUmschalten?: () => void
   onPlusEins?: () => void
@@ -70,7 +75,32 @@ interface Props {
 // Klick auf einen Knopf in der Karte soll die Karte nicht öffnen
 const nurKnopf = (f: () => void) => (e: MouseEvent) => { e.stopPropagation(); f() }
 
-export default function EintragKarte({ entry, onClick, ansicht = 'kacheln', onVergroessern, onAboUmschalten, onPlusEins }: Props) {
+const LANG_DRUCK_MS = 500
+const LANG_DRUCK_WEG = 10 // Pixel, die der Finger wandern darf (sonst ist es ein Scrollen)
+
+export default function EintragKarte({ entry, onClick, ansicht = 'kacheln', auswahlModus, ausgewaehlt, onLangDruck, onVergroessern, onAboUmschalten, onPlusEins }: Props) {
+  // Langes Drücken: Timer ab Berühren; Wischen/Loslassen bricht ab. Danach den Klick einmal verschlucken.
+  const druck = useRef<{ timer: ReturnType<typeof setTimeout>; x: number; y: number } | null>(null)
+  const schluckeKlick = useRef(false)
+  const letzteBeruehrung = useRef(0)
+  const druckAbbrechen = () => { if (druck.current) { clearTimeout(druck.current.timer); druck.current = null } }
+  function druckStart(e: PointerEvent) {
+    if (!onLangDruck || e.pointerType === 'mouse') return
+    letzteBeruehrung.current = Date.now()
+    druckAbbrechen()
+    druck.current = {
+      x: e.clientX, y: e.clientY,
+      timer: setTimeout(() => { druck.current = null; schluckeKlick.current = true; onLangDruck() }, LANG_DRUCK_MS),
+    }
+  }
+  function druckBewegt(e: PointerEvent) {
+    if (druck.current && Math.hypot(e.clientX - druck.current.x, e.clientY - druck.current.y) > LANG_DRUCK_WEG) druckAbbrechen()
+  }
+  function geklickt(e: MouseEvent) {
+    if (schluckeKlick.current) { schluckeKlick.current = false; e.preventDefault(); return }
+    onClick(e)
+  }
+
   const aboMoeglich = entry.type === 'ANIME' && entry.anilist_id != null && !!onAboUmschalten
   const plusMoeglich = !!onPlusEins && entry.status !== 'completed' && entry.status !== 'dropped'
   const einheit = entry.type === 'ANIME' ? 'Folge' : 'Kapitel'
@@ -101,14 +131,23 @@ export default function EintragKarte({ entry, onClick, ansicht = 'kacheln', onVe
 
   return (
     <div
-      role="button"
+      role={auswahlModus ? 'checkbox' : 'button'}
+      aria-checked={auswahlModus ? !!ausgewaehlt : undefined}
       tabIndex={0}
       aria-label={`${anzeigeTitel(entry)}, ${STATUS_LABEL[entry.status]}`}
-      className={`eintrag-karte karte--${ansicht}${entry.status === 'completed' ? ' karte--beendet' : ''}`}
-      onClick={onClick}
+      className={`eintrag-karte karte--${ansicht}${entry.status === 'completed' ? ' karte--beendet' : ''}${auswahlModus ? ' karte--auswahl' : ''}${ausgewaehlt ? ' karte--ausgewaehlt' : ''}`}
+      onClick={geklickt}
       onKeyDown={taste}
+      onPointerDown={druckStart}
+      onPointerMove={druckBewegt}
+      onPointerUp={druckAbbrechen}
+      onPointerCancel={druckAbbrechen}
+      onPointerLeave={druckAbbrechen}
+      // Langes Drücken würde am Handy sonst das Kontextmenü (Bild speichern …) öffnen
+      onContextMenu={e => { if (onLangDruck && Date.now() - letzteBeruehrung.current < 1500) e.preventDefault() }}
     >
       <div className="karte-cover-wrap">
+        {auswahlModus && <span className="karte-haken" aria-hidden="true">{ausgewaehlt ? '✓' : ''}</span>}
         {entry.cover_url ? (
           <img src={entry.cover_url} alt="" className="karte-cover" loading="lazy" />
         ) : (

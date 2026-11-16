@@ -379,3 +379,29 @@
 
 /* Sammlung: Abzeichen „📚 12/24“ neben dem Status */
 .karte-regal { color: var(--text-muted); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Mehrfachauswahl: Karte mit Häkchen, ausgewählte Karten mit Rahmen (nicht nur Farbe: Häkchen + Rahmen) */
+.karte--auswahl { cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.karte--auswahl img { pointer-events: none; }
+.karte-haken {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 3;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: rgba(0, 0, 0, 0.55);
+  color: #06260f;
+  font-size: 15px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.karte--ausgewaehlt { outline: 3px solid var(--accent); outline-offset: 2px; }
+.karte--ausgewaehlt .karte-haken { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.karte--liste .karte-haken { top: 2px; left: 2px; width: 22px; height: 22px; font-size: 13px; }
+.eintrag-karte { -webkit-touch-callout: none; }

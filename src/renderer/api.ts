@@ -2,7 +2,7 @@
 // Am PC reicht sie die Electron-Brücke (preload.ts → Main-Prozess) durch. Eine Handy-Version
 // liefert hier eine eigene Umsetzung derselben Schnittstelle (z. B. Datenbank im Browser) –
 // alle Seiten und Komponenten bleiben dabei unverändert.
-import type { Entry, EntryStatus, AchievementUebersicht, NeuesAchievement } from '../types'
+import type { Entry, EntryStatus, MehrfachAktion, MehrfachErgebnis, AchievementUebersicht, NeuesAchievement } from '../types'
 import type { VorschlagAntwort } from '../types'
 
 export interface CustomListMitEintraegen {
@@ -91,6 +91,7 @@ export interface TrackerApi {
   /** „Noch einmal schauen/lesen" (nur bei Beendet): Fortschritt auf 0, Wiederholung +1; token für Rückgängig (10 Min.) */
   wiederholen(id: number): Promise<{ entry: Entry; token: string } | { fehler: string }>
   rueckgaengig(token: string): Promise<{ success: boolean }>
+  mehrere(ids: number[], aktion: MehrfachAktion): Promise<MehrfachErgebnis>
   verknuepfungSuchen(text: string): Promise<SuchTreffer[]>
   verknuepfungVorschau(entryId: number, anilistId: number): Promise<VerknuepfungVorschau | { fehler: string }>
   verknuepfungAnwenden(entryId: number, anilistId: number): Promise<{ entry: Entry | null; token: string; staffeln: number } | { fehler: string }>

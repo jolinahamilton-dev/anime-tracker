@@ -33,6 +33,7 @@ export function baueApi() {
     getWeiterschauen: () => invoke('entries:weiterschauen'),
     wiederholen: (id: number) => invoke('entries:wiederholen', id),
     rueckgaengig: (token: string) => invoke('entries:rueckgaengig', token),
+    mehrere: (ids: number[], aktion: unknown) => invoke('entries:mehrere', ids, aktion),
     verknuepfungSuchen: (text: string) => invoke('verknuepfung:suchen', text),
     verknuepfungVorschau: (entryId: number, anilistId: number) => invoke('verknuepfung:vorschau', entryId, anilistId),
     verknuepfungAnwenden: (entryId: number, anilistId: number) => invoke('verknuepfung:anwenden', entryId, anilistId),

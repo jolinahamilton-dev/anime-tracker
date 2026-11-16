@@ -48,6 +48,8 @@ export interface Entry {
   naechste_folge?: number
   naechste_folge_um?: number // Unix-Sekunden
   naechste_folge_staffel?: string | null // Staffeltitel, falls die Serie mehrere Staffeln hat
+  // Zeitpunkt (ms) der letzten Fortschrittsänderung per +1/Hand aus dem Verlauf – nur gesetzt, wenn es welche gibt
+  zuletzt_geschaut?: number
 }
 
 export interface CustomList {
@@ -182,4 +184,20 @@ export interface VorschlagAntwort {
   stand: string | null
   /** Fehlermeldung, wenn AniList nicht erreichbar war (dann ggf. alter Stand) */
   fehler?: string
+}
+
+// Mehrfachauswahl auf der Listenseite (entries:mehrere)
+export type MehrfachAktion =
+  | { art: 'status'; status: 'ongoing' | 'completed' | 'planned' | 'dropped' | 'paused' }
+  | { art: 'favorit'; wert: boolean }
+  | { art: 'abo'; wert: boolean } // nur Anime
+  | { art: 'liste'; listeId: number; hinzu: boolean }
+  | { art: 'loeschen' }
+
+export interface MehrfachErgebnis {
+  success: boolean
+  fehler?: string
+  geaendert: number // wirklich geänderte Einträge
+  uebersprungen: number // schon im Zielzustand bzw. nicht passend (z. B. Manga beim Abo)
+  token: string | null // ein Rückgängig-Token für die ganze Aktion
 }

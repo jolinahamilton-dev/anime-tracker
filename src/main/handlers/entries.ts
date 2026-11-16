@@ -244,10 +244,74 @@ function ergaenzeEintraege(eintraege: Zeile[], woZeilen: Zeile[]): Zeile[] {
   })
 }
 
+/** Felder, die entries:update (und die Mehrfachauswahl) ändern dürfen */
+const ERLAUBT = new Set(['type','title','nickname','cover_url','genres','description','total_episodes',
+  'total_chapters','total_volumes','progress_episodes','progress_chapters','progress_volumes',
+  'status','rating','is_favorite','review','rewatch_count','baende_besitz','baende_wunsch','ausgabe'])
+
+/** Schreibt Änderungen an einem Eintrag (Beendet füllt den Fortschritt auf, Verlauf, Abschlussdatum). Ohne Achievements/Antwort. */
+export function aktualisiereKern(id: number, data: Record<string, unknown>) {
+  const current = dbGet('SELECT * FROM entries WHERE id = ?', [id])
+  const vonHand = new Set(Object.keys(data))
+  // Fix #5: Bei status=completed → Fortschritt automatisch auf Maximalwert setzen
+  if (data.status === 'completed') {
+    if (current) {
+      if (current.type === 'ANIME' && current.total_episodes && !('progress_episodes' in data))
+        data = { ...data, progress_episodes: current.total_episodes }
+      if (current.type === 'MANGA') {
+        if (current.total_chapters && !('progress_chapters' in data))
+          data = { ...data, progress_chapters: current.total_chapters }
+        if (current.total_volumes && !('progress_volumes' in data))
+          data = { ...data, progress_volumes: current.total_volumes }
+      }
+    }
+  }
+
+  const keys = Object.keys(data).filter(k => ERLAUBT.has(k))
+  if (keys.length === 0) return
+  const sets = keys.map(k => `${k} = ?`).join(', ')
+  const vals = keys.map(k => data[k])
+  dbRun(`UPDATE entries SET ${sets}, updated_at = datetime('now') WHERE id = ?`, [...vals, id])
+  if (current) {
+    // Anime mit Staffeln: die Folgen stehen im Verlauf der Staffel (watchorder:save), nicht doppelt hier
+    const neu = dbGet('SELECT * FROM entries WHERE id = ?', [id]) ?? {}
+    const ohne = current.type === 'ANIME' && hatStaffeln(id) ? ['progress_episodes'] : []
+    const felder = ['progress_episodes', 'progress_chapters', 'progress_volumes']
+    verlaufAusDifferenz(id, current, neu, 'hand', [...ohne, ...felder.filter(f => !vonHand.has(f))])
+    verlaufAusDifferenz(id, current, neu, 'auto', [...ohne, ...felder.filter(f => vonHand.has(f))])
+  }
+  // Status von Hand gesetzt → keine automatische Rückkehr auf „Beendet" mehr
+  if ('status' in data) dbRun('UPDATE entries SET auto_offen = NULL WHERE id = ?', [id])
+  // Gerade beendet → Abschlussdatum merken (Statistik „Beendet pro Monat")
+  if (data.status === 'completed' && current?.status !== 'completed') {
+    dbRun("UPDATE entries SET finished_at = datetime('now') WHERE id = ?", [id])
+  }
+}
+
+/** Löscht einen Eintrag samt Listen-Zuordnung und Watch-Order; gibt die Funktion zum Zurückholen zurück (null, wenn es ihn nicht gab) */
+export function loescheKern(id: number): (() => void) | null {
+  const eintrag = dbGet('SELECT * FROM entries WHERE id = ?', [id])
+  const listen = dbAll('SELECT * FROM list_entries WHERE entry_id = ?', [id])
+  const staffeln = dbAll('SELECT * FROM watch_order WHERE entry_id = ?', [id])
+  dbRun('DELETE FROM list_entries WHERE entry_id = ?', [id])
+  dbRun('DELETE FROM watch_order WHERE entry_id = ?', [id])
+  dbRun('DELETE FROM entries WHERE id = ?', [id])
+  return eintrag ? () => {
+    fuegeEin('entries', eintrag)
+    for (const l of listen) fuegeEin('list_entries', l)
+    for (const st of staffeln) fuegeEin('watch_order', st)
+  } : null
+}
+
 export function registerEntryHandlers(ipcMain: IpcMain) {
   ipcMain.handle('entries:getAll', () => {
     const woZeilen = dbAll('SELECT * FROM watch_order ORDER BY entry_id, position')
-    return mitAnzeigeEintraege(ergaenzeEintraege(dbAll('SELECT * FROM entries ORDER BY updated_at DESC'), woZeilen), woZeilen)
+    // Zuletzt geschaut/gelesen: jüngster Verlauf-Eintrag, der als gesehen zählt (für die Sortierung der Liste)
+    const zuletzt = new Map(dbAll(`SELECT eintrag, MAX(zeit) AS z FROM verlauf WHERE quelle IN ('plus', 'hand') GROUP BY eintrag`)
+      .map(r => [String(r.eintrag), Number(r.z)] as const))
+    const eintraege = ergaenzeEintraege(dbAll('SELECT * FROM entries ORDER BY updated_at DESC'), woZeilen)
+      .map(e => (zuletzt.has(String(e.uuid)) ? { ...e, zuletzt_geschaut: zuletzt.get(String(e.uuid)) } : e))
+    return mitAnzeigeEintraege(eintraege, woZeilen)
   })
 
   ipcMain.handle('entries:get', (_, id: number) => {
@@ -290,45 +354,7 @@ export function registerEntryHandlers(ipcMain: IpcMain) {
   })
 
   ipcMain.handle('entries:update', (event, id: number, data: Record<string, unknown>) => {
-    const ALLOWED = new Set(['type','title','nickname','cover_url','genres','description','total_episodes',
-      'total_chapters','total_volumes','progress_episodes','progress_chapters','progress_volumes',
-      'status','rating','is_favorite','review','rewatch_count','baende_besitz','baende_wunsch','ausgabe'])
-
-    const current = dbGet('SELECT * FROM entries WHERE id = ?', [id])
-    const vonHand = new Set(Object.keys(data))
-    // Fix #5: Bei status=completed → Fortschritt automatisch auf Maximalwert setzen
-    if (data.status === 'completed') {
-      if (current) {
-        if (current.type === 'ANIME' && current.total_episodes && !('progress_episodes' in data))
-          data = { ...data, progress_episodes: current.total_episodes }
-        if (current.type === 'MANGA') {
-          if (current.total_chapters && !('progress_chapters' in data))
-            data = { ...data, progress_chapters: current.total_chapters }
-          if (current.total_volumes && !('progress_volumes' in data))
-            data = { ...data, progress_volumes: current.total_volumes }
-        }
-      }
-    }
-
-    const keys = Object.keys(data).filter(k => ALLOWED.has(k))
-    if (keys.length === 0) return mitAnzeige(dbGet('SELECT * FROM entries WHERE id = ?', [id]))
-    const sets = keys.map(k => `${k} = ?`).join(', ')
-    const vals = keys.map(k => data[k])
-    dbRun(`UPDATE entries SET ${sets}, updated_at = datetime('now') WHERE id = ?`, [...vals, id])
-    if (current) {
-      // Anime mit Staffeln: die Folgen stehen im Verlauf der Staffel (watchorder:save), nicht doppelt hier
-      const neu = dbGet('SELECT * FROM entries WHERE id = ?', [id]) ?? {}
-      const ohne = current.type === 'ANIME' && hatStaffeln(id) ? ['progress_episodes'] : []
-      const felder = ['progress_episodes', 'progress_chapters', 'progress_volumes']
-      verlaufAusDifferenz(id, current, neu, 'hand', [...ohne, ...felder.filter(f => !vonHand.has(f))])
-      verlaufAusDifferenz(id, current, neu, 'auto', [...ohne, ...felder.filter(f => vonHand.has(f))])
-    }
-    // Status von Hand gesetzt → keine automatische Rückkehr auf „Beendet" mehr
-    if ('status' in data) dbRun('UPDATE entries SET auto_offen = NULL WHERE id = ?', [id])
-    // Gerade beendet → Abschlussdatum merken (Statistik „Beendet pro Monat")
-    if (data.status === 'completed' && current?.status !== 'completed') {
-      dbRun("UPDATE entries SET finished_at = datetime('now') WHERE id = ?", [id])
-    }
+    aktualisiereKern(id, data)
     pruefeAchievements(BrowserWindow.fromWebContents(event.sender))
     return mitAnzeige(dbGet('SELECT * FROM entries WHERE id = ?', [id]))
   })
@@ -412,19 +438,8 @@ export function registerEntryHandlers(ipcMain: IpcMain) {
   })
 
   ipcMain.handle('entries:delete', (_, id: number) => {
-    // Alles Zugehörige merken, damit „Rückgängig" den Eintrag vollständig zurückholt
-    const eintrag = dbGet('SELECT * FROM entries WHERE id = ?', [id])
-    const listen = dbAll('SELECT * FROM list_entries WHERE entry_id = ?', [id])
-    const staffeln = dbAll('SELECT * FROM watch_order WHERE entry_id = ?', [id])
-    dbRun('DELETE FROM list_entries WHERE entry_id = ?', [id])
-    dbRun('DELETE FROM watch_order WHERE entry_id = ?', [id])
-    dbRun('DELETE FROM entries WHERE id = ?', [id])
-    const token = eintrag ? merkeRueckgaengig(() => {
-      fuegeEin('entries', eintrag)
-      for (const l of listen) fuegeEin('list_entries', l)
-      for (const s of staffeln) fuegeEin('watch_order', s)
-    }) : null
-    return { success: true, rueckgaengig: token }
+    const wiederherstellen = loescheKern(id)
+    return { success: true, rueckgaengig: wiederherstellen ? merkeRueckgaengig(wiederherstellen) : null }
   })
 
   ipcMain.handle('entries:rueckgaengig', (_, token: string) => {

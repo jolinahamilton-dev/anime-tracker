@@ -3,6 +3,7 @@ import path from 'path'
 import { initDb, wiederhergestelltAusBackup } from '../db/database'
 import { registerEntryHandlers } from './handlers/entries'
 import { registerListHandlers } from './handlers/lists'
+import { registerMehrfachHandlers } from './handlers/mehrfach'
 import { registerAchievementHandlers } from './handlers/achievements'
 import { registerNewsHandlers } from './handlers/news'
 import { registerMetaHandlers } from './handlers/meta'
@@ -89,6 +90,7 @@ app.whenReady().then(async () => {
 
   registerEntryHandlers(ipcMain)
   registerListHandlers(ipcMain)
+  registerMehrfachHandlers(ipcMain)
   registerAchievementHandlers(ipcMain)
   registerNewsHandlers(ipcMain)
   registerMetaHandlers(ipcMain)
